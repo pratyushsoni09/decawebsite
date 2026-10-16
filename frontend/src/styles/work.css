@@ -1,0 +1,30 @@
+/*
+ * Additions for the Work projects (Haven, TeraShoes). Loaded after prototype.css,
+ * which stays verbatim. Reuses the existing card tokens: 16px radius, #262624 line,
+ * #111110 surface, the 0.3s / 0.4s smooth-out timings and the cream accent.
+ */
+
+/* Project screenshot frame (Work page, right column) */
+.wk-shot{position:relative;margin:0;aspect-ratio:16/10;border:1px solid #262624;border-radius:16px;overflow:hidden;background:#111110;box-shadow:0 40px 80px -40px #000;transition:border-color .3s}
+.wk-shot img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.1,1)}
+.wk-shot:hover{border-color:#4a4a46}
+.wk-shot:hover img{transform:scale(1.03)}
+
+/* Projects follow one another; only the first keeps the landing's top padding */
+.pgw+.pgw{padding-top:clamp(40px,6vh,72px)}
+.pgw .wk-cta{margin-top:26px}
+
+/* Home: project cards ahead of the Healthcare CRM concept */
+.wk-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:clamp(24px,3vw,40px)}
+a.kc.wk-c{display:flex;flex-direction:column;gap:14px;color:inherit;text-decoration:none}
+.wk-c .wk-shot{box-shadow:none}
+.wk-c h3{margin:6px 0 0}
+.wk-c p{margin:0}
+.wk-c .tgs{margin-top:auto;padding-top:4px}
+.wk-c:hover .wk-shot{border-color:#4a4a46}
+.wk-c:hover .wk-shot img{transform:scale(1.03)}
+
+@media(max-width:860px){
+  .pgw .wk-shot{margin-top:28px}
+  .wk-g{grid-template-columns:1fr}
+}
