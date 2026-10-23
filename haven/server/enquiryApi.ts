@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { enquirySchema } from "../src/lib/enquirySchema";
+import { enquirySchema } from "../src/lib/enquirySchema.js";
 
 // On Vercel only /tmp is writable (and it does not persist), so each enquiry is also logged.
 const DATA_FILE = process.env.VERCEL ? path.join(os.tmpdir(), "enquiries.json") : path.resolve(process.cwd(), "data", "enquiries.json");

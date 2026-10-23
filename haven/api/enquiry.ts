@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { handleEnquiry } from "../server/enquiryApi";
+import { handleEnquiry } from "../server/enquiryApi.js";
 
 /** Vercel function for the enquiry form; the dev and preview servers use the same handler via the Vite plugin. */
 export default function handler(req: IncomingMessage & { body?: unknown }, res: ServerResponse) {
