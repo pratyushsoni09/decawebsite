@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {
-  BALCONY, CEILING_HEIGHT, DOOR_HEAD, FLOOR_TO_FLOOR, FOOTPRINT, RESIDENCE_ELEVATION, TOWER, furniture, rooms,
-  type FloorFinish,
+  BALCONY, CEILING_HEIGHT, DOOR_HEAD, FLOOR_TO_FLOOR, FOOTPRINT, PARTY_X, RESIDENCE_ELEVATION, TOWER, furniture, rooms,
+  type FloorFinish, type FurnitureDef,
 } from "../data/houseLayout";
 import {
   BALUSTRADE_T, isFacadeBox, leafDir, leaves, resolvedDoors, resolvedOpenings, resolvedWindows, wallBoxes,
@@ -27,9 +27,15 @@ export interface DoorLeafRuntime {
 }
 
 export interface SwingRuntime {
+  it: FurnitureDef;
   pivot: THREE.Group;
   phase: number;
+  /** resting sway; the swing rocks further while someone sits in it */
   amp: number;
+  /** current sway, eased towards amp or the seated amplitude */
+  sway: number;
+  /** seated eye point in pivot space */
+  eye: THREE.Vector3;
 }
 
 export interface HouseBuild {
@@ -118,6 +124,9 @@ function balustrade(sb: StaticBuilder, z: number) {
   }
   // posts
   for (let x = FOOTPRINT.x1 + 0.1; x <= FOOTPRINT.x2; x += 2.4) sb.add(boxAt(x - 0.025, z, y2, x + 0.025, top, y2 + t), "bronze");
+  // slatted teak privacy screen between the two homes' balconies
+  for (let y = BALCONY.y1 + 0.04; y < y2 + t - 0.04; y += 0.11) sb.add(boxAt(PARTY_X - 0.05, z, y, PARTY_X + 0.05, z + 2.4, y + 0.07), "teak");
+  sb.add(boxAt(PARTY_X - 0.07, z + 2.4, BALCONY.y1, PARTY_X + 0.07, z + 2.48, y2 + t), "teak");
 }
 
 function slab(sb: StaticBuilder, z: number) {
@@ -390,7 +399,8 @@ export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture
     h.sb.build(lib, part);
     pivot.add(part);
     root.add(outer);
-    return { pivot, phase: i * 1.7, amp: h.it.type === "swingEgg" ? 0.05 : 0.07 };
+    const amp = h.it.type === "swingEgg" ? 0.05 : 0.07;
+    return { it: h.it, pivot, phase: i * 1.7, amp, sway: amp, eye: new THREE.Vector3(...h.eye) };
   });
 
   const leafRuntimes = buildDoors(lib, root);

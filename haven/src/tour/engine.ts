@@ -3,7 +3,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { RESIDENCE_ELEVATION, roomById, type FloorId } from "../data/houseLayout";
 import { buildObstacles, leafDir, roomAt, type Obstacle } from "../data/layoutGeometry";
 import { createMaterials, type MaterialLib } from "./materials";
-import { buildHouse, easeInOut, poseLeaf, type DoorLeafRuntime, type HouseBuild } from "./buildHouse";
+import { buildHouse, easeInOut, poseLeaf, type DoorLeafRuntime, type HouseBuild, type SwingRuntime } from "./buildHouse";
 
 export type Quality = "high" | "light";
 
@@ -12,6 +12,10 @@ export interface EngineState {
   roomId: string | null;
   roomName: string;
   doorAhead: boolean;
+  /** name of the swing the player faces and can sit on */
+  swingAhead: string | null;
+  /** name of the swing the player is sitting on */
+  seated: string | null;
 }
 
 export interface Pose {
@@ -29,6 +33,10 @@ const PITCH_LIMIT = 80 * DEG;
 const REACH = 2.0;
 const DOOR_TIME = 0.6;
 const LEAF_HALF_T = 0.03;
+const SWING_REACH = 1.9;
+/** sway while someone sits in the swing (radians) */
+const SEATED_SWAY = { swingEgg: 0.11, swingBench: 0.16 } as Record<string, number>;
+const swingName = (s: SwingRuntime) => (s.it.type === "swingEgg" ? "egg chair" : "porch swing");
 
 // setTimeout rather than rAF so building continues in a background tab
 const nextFrame = () => new Promise<void>((r) => setTimeout(r, 0));
@@ -99,10 +107,13 @@ export class TourEngine {
   private running = false;
   private last = 0;
   private time = 0;
-  private state: EngineState = { floor: 0, roomId: null, roomName: "", doorAhead: false };
+  private state: EngineState = { floor: 0, roomId: null, roomName: "", doorAhead: false, swingAhead: null, seated: null };
   private stateListeners = new Set<(s: EngineState) => void>();
   private frameListeners = new Set<(p: Pose) => void>();
   private doorTarget: DoorLeafRuntime | null = null;
+  private swingTarget: SwingRuntime | null = null;
+  /** the swing the player sits on, if any */
+  seat: SwingRuntime | null = null;
   private ro: ResizeObserver;
   private pmrem: THREE.PMREMGenerator;
   /** set false by the studio, which drives the camera itself */
@@ -329,7 +340,7 @@ export class TourEngine {
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.code.startsWith("Arrow")) e.preventDefault();
-    if (e.code === "KeyE" && !e.repeat) this.toggleDoor();
+    if (e.code === "KeyE" && !e.repeat) this.interact();
     this.keys.add(e.code);
   };
 
@@ -366,6 +377,7 @@ export class TourEngine {
   teleport(roomId: string) {
     const rm = roomById(roomId);
     if (!rm) return false;
+    this.seat = null;
     this.x = rm.arrival.x;
     this.y = rm.arrival.y;
     this.yaw = rm.arrival.yaw * DEG + Math.PI;
@@ -377,6 +389,38 @@ export class TourEngine {
 
   resetView() {
     this.teleport(this.state.roomId && roomById(this.state.roomId) ? this.state.roomId : "lobby");
+  }
+
+  /** E / the action button: stand up, sit on the swing ahead, or work the door ahead. */
+  interact() {
+    if (this.seat) return this.standUp();
+    const swing = this.swingTarget ?? this.findSwingAhead();
+    if (swing) return this.sit(swing);
+    return this.toggleDoor();
+  }
+
+  /** Sit on a swing, facing out from it; the camera then rides the swing. */
+  sit(swing: SwingRuntime) {
+    this.seat = swing;
+    this.keys.clear();
+    this.yaw = swing.it.rot * DEG + Math.PI;
+    this.pitch = -0.05;
+    this.updateState(true);
+    return true;
+  }
+
+  /** Step off the swing onto the deck in front of it. */
+  standUp() {
+    const s = this.seat;
+    if (!s) return false;
+    this.seat = null;
+    const fx = Math.sin(s.it.rot * DEG);
+    const fy = Math.cos(s.it.rot * DEG);
+    this.x = s.it.x + fx * (s.it.d / 2 + RADIUS + 0.08);
+    this.y = s.it.y + fy * (s.it.d / 2 + RADIUS + 0.08);
+    this.resolveCollisions();
+    this.updateState(true);
+    return true;
   }
 
   /** Toggle the leaf the player is facing. */
@@ -427,6 +471,31 @@ export class TourEngine {
     return best;
   }
 
+  /** The swing in front of the player within reach, with no wall in between. */
+  private findSwingAhead(): SwingRuntime | null {
+    const fx = -Math.sin(this.yaw);
+    const fy = -Math.cos(this.yaw);
+    let best: SwingRuntime | null = null;
+    let bestD = SWING_REACH;
+    for (const s of this.house.swings) {
+      const dx = s.it.x - this.x;
+      const dy = s.it.y - this.y;
+      const d = Math.hypot(dx, dy);
+      if (d > bestD || d < 1e-6) continue;
+      if ((dx * fx + dy * fy) / d < Math.cos(50 * DEG)) continue;
+      const blocked = this.obstacles.some((o) => {
+        if (o.kind !== "wall") return false;
+        const t = rayBox(this.x, this.y, dx / d, dy / d, o);
+        return t !== null && t < d - 0.5;
+      });
+      if (!blocked) {
+        best = s;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
   /* ---------------------------------------------------------------- simulation */
 
   private update(dt: number) {
@@ -434,12 +503,28 @@ export class TourEngine {
     this.time += dt;
     if (this.interactive) {
       this.updateLook(dt);
-      this.updateMove(dt);
+      if (this.seat) {
+        // walking off the swing stands you up
+        const k = this.keys;
+        const walk = ["KeyW", "KeyA", "KeyS", "KeyD"].some((c) => k.has(c)) || Math.hypot(this.joy.x, this.joy.y) > 0.35;
+        if (walk) this.standUp();
+      } else {
+        this.updateMove(dt);
+      }
     }
     this.updateDoors(dt);
-    for (const s of this.house.swings) s.pivot.rotation.x = Math.sin(this.time * 1.35 + s.phase) * s.amp;
+    for (const s of this.house.swings) {
+      const target = s === this.seat ? SEATED_SWAY[s.it.type] ?? s.amp : s.amp;
+      s.sway += (target - s.sway) * Math.min(1, dt * 0.8);
+      s.pivot.rotation.x = Math.sin(this.time * (s === this.seat ? 1.1 : 1.35) + s.phase) * s.sway;
+    }
+    if (this.seat) {
+      this.x = this.seat.it.x;
+      this.y = this.seat.it.y;
+    }
     this.placeCamera();
-    this.doorTarget = this.interactive ? this.findDoorAhead() : null;
+    this.doorTarget = this.interactive && !this.seat ? this.findDoorAhead() : null;
+    this.swingTarget = this.interactive && !this.seat ? this.findSwingAhead() : null;
     this.updateState();
     if (this.frameListeners.size) {
       const heading = ((this.yaw - Math.PI) / DEG) % 360;
@@ -558,6 +643,16 @@ export class TourEngine {
 
   placeCamera() {
     if (!this.interactive) return;
+    if (this.seat) {
+      // ride the swing: eye point and tilt follow the pivot, the look stays free
+      const s = this.seat;
+      s.pivot.updateWorldMatrix(true, false);
+      this.camera.position.copy(s.eye).applyMatrix4(s.pivot.matrixWorld);
+      const ride = s.pivot.getWorldQuaternion(new THREE.Quaternion());
+      const look = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.yaw - s.it.rot * DEG, 0, "YXZ"));
+      this.camera.quaternion.copy(ride.multiply(look));
+      return;
+    }
     this.camera.position.set(this.x, RESIDENCE_ELEVATION + EYE, this.y);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
   }
@@ -566,10 +661,12 @@ export class TourEngine {
     const rm = roomAt(0, this.x, this.y);
     const roomId = rm ? rm.id : this.state.roomId;
     const roomName = rm ? rm.name : this.state.roomName;
-    const doorAhead = !!this.doorTarget;
+    const swingAhead = this.swingTarget ? swingName(this.swingTarget) : null;
+    const seated = this.seat ? swingName(this.seat) : null;
+    const doorAhead = !!this.doorTarget && !swingAhead;
     const s = this.state;
-    if (!force && s.roomId === roomId && s.roomName === roomName && s.doorAhead === doorAhead) return;
-    this.state = { floor: 0, roomId, roomName, doorAhead };
+    if (!force && s.roomId === roomId && s.roomName === roomName && s.doorAhead === doorAhead && s.swingAhead === swingAhead && s.seated === seated) return;
+    this.state = { floor: 0, roomId, roomName, doorAhead, swingAhead, seated };
     this.stateListeners.forEach((cb) => cb(this.state));
   }
 

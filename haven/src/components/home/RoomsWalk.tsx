@@ -32,7 +32,7 @@ export function RoomsWalk() {
       <header className={`${styles.head} reveal`}>
         <p className="eyebrow">Room by room</p>
         <h2 id="rooms-title" className={styles.title}>Move through the residence.</h2>
-        <p className={styles.headNote}>Seven spaces of Residence 11A, in the order you would walk them from the lift to the balcony.</p>
+        <p className={styles.headNote}>Every space of the 3BHK, in the order you would walk them from the front door to the balcony.</p>
       </header>
 
       <div className={styles.layout}>

@@ -344,7 +344,7 @@ export type MatKey =
   | "darkMetal" | "rug" | "rugTeal" | "rugSand" | "books" | "leaf" | "olive" | "pot" | "glow" | "shade"
   | "bedLinen" | "duvet" | "grass" | "pathStone" | "boxwood" | "terrace" | "stoneTrim" | "mirror"
   | "darkGlass" | "water" | "bark" | "art0" | "art1" | "art2" | "art3" | "art4" | "art5" | "white"
-  | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor";
+  | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor" | "greige";
 
 export type MaterialLib = Record<MatKey, THREE.MeshStandardMaterial>;
 
@@ -385,6 +385,7 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     darkMetal: std({ color: 0x2a2522, metalness: 0.7, roughness: 0.5 }),
     mirror: std({ color: 0xe8e6e0, metalness: 1, roughness: 0.04 }),
     porcelain: std({ color: 0xfbfaf7, roughness: 0.18 }),
+    greige: std({ color: 0x8a8278, roughness: 0.55 }),
     glass: std({ color: 0xcfe0e4, metalness: 0, roughness: 0.04, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
     darkGlass: std({ color: 0x15130f, metalness: 0.4, roughness: 0.15 }),
     water: std({ color: 0xdfe9ea, roughness: 0.05, metalness: 0.1 }),

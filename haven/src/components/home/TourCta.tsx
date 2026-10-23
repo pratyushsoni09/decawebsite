@@ -19,7 +19,7 @@ export function TourCta() {
           <p className="eyebrow">Walk it yourself</p>
           <h2 id="cta-title" className={styles.title}>Every room, the balcony, both swings.</h2>
           <p className={styles.sub}>
-            Step out of the private lift into Residence 11A. Drag to look around, walk with W A S D or the on-screen pad, and press E to open the door in front of you.
+            Step out of the lift into the foyer of Residence 11A. Drag to look around, walk with W A S D or the on-screen pad, and press E to open the door in front of you.
           </p>
           <Link to="/tour" className={styles.button}>
             Walk Residence 11A <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />

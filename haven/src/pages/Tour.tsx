@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Check, DoorOpen, HelpCircle, Layers, ListChecks, RotateCcw, X } from "lucide-react";
-import { FLOOR_NAMES, RESIDENCE_NAME, roomById, rooms, type FloorId } from "../data/houseLayout";
+import { Armchair, ArrowLeft, Check, DoorOpen, HelpCircle, Layers, ListChecks, RotateCcw, X } from "lucide-react";
+import { FLOOR_NAMES, RESIDENCE_NAME, roomById, walkableRooms, type FloorId } from "../data/houseLayout";
 import { FloorPlanSvg } from "../components/FloorPlanSvg";
 import { TourEngine, type EngineState, type Quality } from "../tour/engine";
 import { runModelChecks, type CheckRow } from "../tour/checks";
@@ -88,7 +88,7 @@ export default function Tour() {
   const [engine, setEngine] = useState<TourEngine | null>(null);
   const [progress, setProgress] = useState({ p: 0, label: "Preparing" });
   const [loaded, setLoaded] = useState(false);
-  const [state, setState] = useState<EngineState>({ floor: 0, roomId: null, roomName: "", doorAhead: false });
+  const [state, setState] = useState<EngineState>({ floor: 0, roomId: null, roomName: "", doorAhead: false, swingAhead: null, seated: null });
   const [panel, setPanel] = useState<Panel>(null);
   const [fade, setFade] = useState(false);
   const [quality, setQuality] = useState<Quality>("high");
@@ -188,7 +188,7 @@ export default function Tour() {
         <p className="eyebrow">Haven · The Oak Residences</p>
         <h2 className={styles.loaderTitle}>Building the tower</h2>
         <div className={styles.loaderTrack}><span style={{ transform: `scaleX(${progress.p})` }} /></div>
-        <p className={styles.loaderSub}>{error ? `Something went wrong: ${error}` : "Fifteen storeys, then Residence 11A on level 11"}</p>
+        <p className={styles.loaderSub}>{error ? `Something went wrong: ${error}` : "Fifteen storeys, then the 3BHK on level 11"}</p>
         <p className={`mono ${styles.loaderStep}`}>{Math.round(progress.p * 100)}% · {progress.label}</p>
       </div>
 
@@ -229,13 +229,13 @@ export default function Tour() {
                   <button className={styles.close} onClick={() => setPanel(null)} aria-label="Close panel"><X size={16} /></button>
                 </div>
                 <div className={styles.roomGrid}>
-                  {rooms.map((rm) => (
+                  {walkableRooms.map((rm) => (
                     <button key={rm.id} className={`${styles.roomBtn} ${rm.id === state.roomId ? styles.roomHere : ""}`} onClick={() => jump(rm.id)} aria-current={rm.id === state.roomId ? "location" : undefined}>
                       {rm.name}
                     </button>
                   ))}
                 </div>
-                <p className={styles.foot}>Jumping is a shortcut — every room, and the balcony with both swings, is reachable on foot from the lift.</p>
+                <p className={styles.foot}>Jumping is a shortcut — every room of this 3BHK, and the balcony with both swings, is reachable on foot from the lift lobby.</p>
               </section>
             )}
 
@@ -249,8 +249,8 @@ export default function Tour() {
                   <div><dt>Drag</dt><dd>Look around</dd></div>
                   <div><dt>W A S D</dt><dd>Walk (hold Shift to move faster)</dd></div>
                   <div><dt>Arrow keys</dt><dd>Look</dd></div>
-                  <div><dt>E</dt><dd>Open or close the door you face (each entrance leaf works independently)</dd></div>
-                  <div><dt>Touch</dt><dd>Left pad to walk, drag anywhere else to look, door button to open</dd></div>
+                  <div><dt>E</dt><dd>Open or close the door you face (each entrance leaf works independently), or sit on the swing you face. Press E again or walk to stand up.</dd></div>
+                  <div><dt>Touch</dt><dd>Left pad to walk, drag anywhere else to look, round button to open a door or sit on a swing</dd></div>
                 </dl>
                 <p className={styles.foot}>Doors pause if you stand in their swing.</p>
                 <div className={styles.quality}>
@@ -292,16 +292,26 @@ export default function Tour() {
 
           {engine && <Minimap engine={engine} floor={state.floor} roomId={state.roomId} />}
 
-          {state.doorAhead && !touch && (
+          {!touch && (state.seated || state.swingAhead || state.doorAhead) && (
             <p className={`${styles.glass} ${styles.hint}`} aria-live="polite">
-              Press <kbd>E</kbd> to open or close the door
+              {state.seated ? (
+                <>Swinging on the {state.seated} · drag to look · press <kbd>E</kbd> or walk to stand up</>
+              ) : state.swingAhead ? (
+                <>Press <kbd>E</kbd> to sit on the {state.swingAhead}</>
+              ) : (
+                <>Press <kbd>E</kbd> to open or close the door</>
+              )}
             </p>
           )}
 
           {touch && engine && (
             <>
               <Joystick onMove={(x, y) => engine.setJoystick(x, y)} />
-              {state.doorAhead && (
+              {(state.seated || state.swingAhead) ? (
+                <button className={styles.doorBtn} onClick={() => engine.interact()} aria-label={state.seated ? `Stand up from the ${state.seated}` : `Sit on the ${state.swingAhead}`}>
+                  <Armchair size={22} strokeWidth={1.6} />
+                </button>
+              ) : state.doorAhead && (
                 <button className={styles.doorBtn} onClick={() => engine.toggleDoor()} aria-label="Open or close the door">
                   <DoorOpen size={22} strokeWidth={1.6} />
                 </button>

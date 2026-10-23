@@ -4,7 +4,8 @@ import { TourEngine } from "../tour/engine";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { buildHouse, poseLeaf, setSky, type SkyPreset } from "../tour/buildHouse";
 import { buildFurnitureItems } from "../tour/buildFurniture";
-import { CEILING_HEIGHT, RESIDENCE_ELEVATION, furniture } from "../data/houseLayout";
+import { CEILING_HEIGHT, DOOR_HEAD, RESIDENCE_ELEVATION, furniture, rooms } from "../data/houseLayout";
+import { resolvedDoors, resolvedOpenings, resolvedWindows } from "../data/layoutGeometry";
 
 /**
  * Dev-only render studio (/studio). Renders the stills used on the home
@@ -47,15 +48,15 @@ export const VIEWS: View[] = [
   { name: "tower-golden", ...towerShot, sky: "golden", exposure: 0.95, sun: golden, hemi: 0.65, env: 0.35, lamps: 1.2, windowsLit: 0.35 },
   { name: "hero", ...towerShot, sky: "day", exposure: 1.0, sun: day, hemi: 0.9, env: 0.3, lamps: 0, sketch: true },
   { name: "tower-dusk", w: 1800, h: 1350, pos: [70, 1.9, 70], look: [12, 1.9, 8], fov: 62, shift: 0.14, sky: "dusk", exposure: 1.3, sun: { intensity: 0.6, color: 0xff9d6a, dir: [-0.7, 0.05, 0.71] }, hemi: 0.2, env: 0.1, lamps: 3, windowsLit: 1.8 },
-  room("lobby", [13.6, 1.6, 4.6], [12.0, 1.3, 0.3], { fov: 60 }),
-  room("living", [9.6, 1.55, 10.3], [1.5, 0.9, 13.6]),
-  room("kitchen", [11.0, 1.6, 9.5], [16.5, 0.9, 14.6]),
-  room("primary-bed", [19.6, 1.6, 15.3], [22.9, 0.7, 11.0]),
-  room("primary-bath", [21.4, 1.6, 8.5], [23.2, 0.7, 5.7]),
-  room("bed2", [6.1, 1.6, 4.9], [2.0, 0.6, 0.8]),
-  room("study", [10.6, 1.6, 4.9], [8.0, 0.9, 0.8]),
-  room("balcony", [7.2, 1.6, 16.4], [1.4, 1.0, 17.5], { doors: "closed", fov: 62 }),
-  room("swing", [17.6, 1.6, 16.45], [23.4, 0.9, 18.2], { doors: "closed", w: 2000, h: 1125, fov: 64 }),
+  room("living", [10.5, 1.55, 15.35], [5.0, 1.2, 11.6]),
+  room("dining", [10.4, 1.6, 4.6], [5.2, 0.9, 7.7], { fov: 66 }),
+  room("pooja", [6.7, 1.5, 8.05], [4.9, 1.3, 8.15], { fov: 56 }),
+  room("kitchen", [10.3, 1.6, 3.35], [7.4, 1.0, 0.9], { fov: 72 }),
+  room("master", [4.2, 1.6, 15.3], [1.2, 0.8, 12.0]),
+  room("bed2", [3.4, 1.6, 4.6], [0.6, 0.8, 1.6], { fov: 70 }),
+  room("bed3", [3.4, 1.6, 5.5], [0.6, 0.8, 8.2], { fov: 70 }),
+  room("balcony", [9.0, 1.6, 16.45], [3.5, 1.0, 18.2], { doors: "closed", fov: 62 }),
+  room("swing", [7.4, 1.6, 16.6], [11.5, 0.9, 18.9], { doors: "closed", w: 2000, h: 1125, fov: 64 }),
 ];
 
 async function save(name: string, dataUrl: string) {
@@ -274,6 +275,14 @@ export default function Studio() {
     await put("shell.glb", shellGlb);
     await put("furniture.glb", itemsGlb);
     await put("furniture.json", JSON.stringify({ residenceElevation: U, ceilingHeight: CEILING_HEIGHT, items: furniture }, null, 2));
+    // rooms, doors, archways and windows of the walkable home, for the Blender finishing pass (skirting, frames, curtains, tiles)
+    await put("layout.json", JSON.stringify({
+      residenceElevation: U, ceilingHeight: CEILING_HEIGHT, doorHead: DOOR_HEAD,
+      rooms: rooms.filter((r) => r.flat !== "B").map(({ id, name, kind, finish, rects }) => ({ id, name, kind, finish, rects })),
+      doors: resolvedDoors.map(({ id, axis, rect, glazed, width }) => ({ id, axis, rect, glazed: !!glazed, width })),
+      openings: resolvedOpenings.map(({ id, axis, rect, head, width }) => ({ id, axis, rect, head, width })),
+      windows: resolvedWindows.map(({ side, rect, sill, head }) => ({ side, rect, sill, head })),
+    }, null, 2));
     const b = await put("views.json", JSON.stringify({ residenceElevation: U, views: VIEWS }, null, 2));
     const c = await put("lights.json", JSON.stringify(eng.house.lights, null, 2));
     setLog([`tower.glb: ${Math.round(a.bytes / 1048576)} MB`, `views.json: ${b.bytes} B`, `lights.json: ${c.bytes} B`, "export done"]);

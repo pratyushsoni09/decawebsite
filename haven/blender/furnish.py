@@ -9,6 +9,7 @@ footprint the floor plan reserves for that item.
 """
 import math
 import os
+import sys
 import zlib
 
 import bpy
@@ -132,7 +133,16 @@ def furnish(data):
     elevation = data["residenceElevation"]
     ceiling = data["ceilingHeight"]
     swapped = 0
+    built = 0
+    sys.path.insert(0, HERE)
+    import modern
+    materials = modern.palette()
     for it in data["items"]:
+        # contemporary pieces modelled in Blender take priority over CC0 swaps
+        if modern.wants(it) and remove_lowpoly(it["id"]):
+            modern.build(it, item_frame(it, elevation), materials)
+            built += 1
+            continue
         rule = REPLACE.get(it["type"])
         if not rule or it.get("variant") == "outdoor":
             continue
@@ -157,7 +167,7 @@ def furnish(data):
             place(asset, base @ Matrix.Translation(Vector((0, 0, lift))), scale, it["id"])
         swapped += 1
     dress(data["items"], elevation)
-    print(f"[furnish] replaced {swapped} items with CC0 models; {len(_protos)} assets loaded")
+    print(f"[furnish] {built} pieces modelled in Blender; {swapped} items replaced with CC0 models; {len(_protos)} assets loaded")
 
 
 def dress(items, elevation):
@@ -186,7 +196,6 @@ def dress(items, elevation):
         elif t == "console" and it.get("variant") != "media":
             on(it, "ceramic_vase_01", w * 0.3, 0.0, h)
             on(it, "brass_vase_01", -w * 0.28, 0.0, h, size=0.16)
-        elif t == "sofa" and it.get("variant") != "outdoor":
-            on(it, "throw_pillows_01", 0.0, d / 2 - 0.32, 0.4, size=w * 0.78)
-        elif t == "bed":
-            on(it, "throw_pillows_01", 0.0, d / 2 - 0.5, 0.5, size=w * 0.72)
+        elif t == "sideboard":
+            on(it, "ceramic_vase_02", w * 0.25, 0.0, h)
+            on(it, "brass_vase_01", -w * 0.2, 0.0, h, size=0.16)

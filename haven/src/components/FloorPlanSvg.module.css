@@ -3,7 +3,7 @@
   width: 100%;
   height: auto;
   font-family: var(--font-family-base);
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* ---------- light (drawing sheet) ---------- */
@@ -45,3 +45,17 @@
 .dark .boards line { stroke: hsla(40, 38%, 95%, 0.08); stroke-width: 0.03; }
 .dark .rail { fill: hsla(200, 50%, 75%, 0.55); }
 .boards { pointer-events: none; }
+
+/* the neighbouring home */
+.neighbour { fill: url(#hatch); }
+.hatchLine { stroke-width: 0.04; }
+.light .hatchLine { stroke: hsla(25, 12%, 38%, 0.18); }
+.dark .hatchLine { stroke: hsla(40, 38%, 95%, 0.08); }
+.light .neighbourText { fill: var(--muted-foreground); font-size: 0.55px; font-weight: 500; text-anchor: middle; }
+.light .neighbourSub { fill: var(--muted-foreground); font-size: 0.36px; text-anchor: middle; font-family: var(--font-family-mono); }
+.dark .neighbourText { fill: hsla(40, 38%, 95%, 0.35); font-size: 0.55px; text-anchor: middle; }
+.dark .neighbourSub { display: none; }
+
+.neighbourBlock { fill: url(#hatch); }
+.light .neighbourBase { fill: var(--card); }
+.dark .neighbourBase { fill: transparent; }

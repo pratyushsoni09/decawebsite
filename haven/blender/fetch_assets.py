@@ -28,6 +28,18 @@ ASSETS = [
 ]
 
 
+# photo-scanned CC0 surface textures: id -> real-world size of one repeat in metres (from the Poly Haven listing)
+TEXTURES = {
+    "marble_01": 1.5,          # polished marble: hall, dining hall, kitchen, lobby
+    "laminate_floor_02": 1.7,  # laminated wood: bedrooms
+    "tiled_floor_001": 1.5,    # bathroom floors
+    "long_white_tiles": 1.27,  # bathroom walls, kitchen dado
+    "plastered_wall_04": 3.2,  # interior walls and ceilings
+    "wood_floor_deck": 1.8,    # balcony deck
+}
+TEX_MAPS = {"Diffuse": "diff", "nor_gl": "nor", "Rough": "rough"}
+
+
 def get(url):
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as r:
         return r.read()
@@ -57,9 +69,31 @@ def fetch(asset_id):
     print(f"{asset_id}: {total / 1e6:.1f} MB")
 
 
+def fetch_texture(tex_id):
+    out = os.path.join(DEST, "tex", tex_id)
+    os.makedirs(out, exist_ok=True)
+    files = json.loads(get(f"https://api.polyhaven.com/files/{tex_id}"))
+    total = 0
+    for key, short in TEX_MAPS.items():
+        entry = files[key][RES]["jpg"]
+        path = os.path.join(out, f"{short}.jpg")
+        if not (os.path.exists(path) and hashlib.md5(open(path, "rb").read()).hexdigest() == entry.get("md5")):
+            data = get(entry["url"])
+            if entry.get("md5") and hashlib.md5(data).hexdigest() != entry["md5"]:
+                raise ValueError(f"checksum mismatch for {tex_id}/{key}")
+            with open(path, "wb") as f:
+                f.write(data)
+        total += os.path.getsize(path)
+    with open(os.path.join(out, "size.txt"), "w") as f:
+        f.write(str(TEXTURES[tex_id]))
+    print(f"texture {tex_id}: {total / 1e6:.1f} MB")
+
+
 if __name__ == "__main__":
     os.makedirs(DEST, exist_ok=True)
     for a in ASSETS:
         fetch(a)
+    for t in TEXTURES:
+        fetch_texture(t)
     with open(os.path.join(DEST, "LICENSE.txt"), "w") as f:
         f.write("All models in this folder are from Poly Haven (https://polyhaven.com) and are licensed CC0 1.0.\n")

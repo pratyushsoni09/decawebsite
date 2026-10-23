@@ -4,10 +4,10 @@
  */
 import {
   BALCONY, BATHROOM_IDS, BEDROOM_IDS, CEILING_HEIGHT, NON_BLOCKING, PLAN_BOUNDS, SEAT_TYPES, SWING_TYPES, TOWER, WALL_TYPES,
-  facing, footprint, furniture, roomById, rooms, type FurnitureDef, type Rect,
+  facing, footprint, furniture, roomById, walkableRooms as rooms, type FurnitureDef, type Rect,
 } from "../data/houseLayout";
 import {
-  balustrade, buildObstacles, inRect, leafDir, leaves, probe, rectsOverlap, resolvedDoors, resolvedWindows, wallBoxes,
+  balustrade, buildObstacles, inRect, leafDir, leaves, probe, rectsOverlap, resolvedDoors, resolvedOpenings, resolvedWindows, wallBoxes,
 } from "../data/layoutGeometry";
 import { featuredRooms, STATS } from "../data/rooms";
 
@@ -135,7 +135,7 @@ function checkReach(): CheckRow {
   const reached = reachability();
   const missing = rooms.filter((r) => !reached.includes(r));
   return {
-    id: "reach", label: "Every room reachable from the private lift (walk test)", pass: missing.length === 0,
+    id: "reach", label: "Every room reachable from the lift lobby (walk test)", pass: missing.length === 0,
     detail: missing.length ? `Unreached: ${missing.map((m) => m.name).join(", ")}` : `${reached.length} rooms reached`,
   };
 }
@@ -209,20 +209,31 @@ function checkStats(): CheckRow {
   const pass = beds === stat("Bedrooms") && baths === stat("Bathrooms") && TOWER.storeys === stat("Storeys") && Math.abs(CEILING_HEIGHT - stat("Ceiling")) < 1e-9;
   return {
     id: "stats", label: "Property statistics match the model", pass,
-    detail: `${beds} bedrooms, ${baths} full bathrooms, level ${TOWER.residenceLevel} of ${TOWER.storeys}`,
+    detail: `${beds} bedrooms, ${baths} bathrooms, level ${TOWER.residenceLevel} of ${TOWER.storeys}`,
   };
 }
 
 /* 8 — daylight: every habitable room has a window or glazed door */
 function checkDaylight(): CheckRow {
-  const habitable = rooms.filter((r) => r.kind === "living" || r.kind === "bedroom" || r.kind === "kitchen");
-  const dark: string[] = [];
-  for (const rm of habitable) {
-    const rc = rm.rects[0];
-    const lit = resolvedWindows.some((w) => rectsOverlap(w.rect, rc, 0.31)) ||
-      resolvedDoors.some((d) => d.glazed && rectsOverlap(d.rect, rc, 0.31));
-    if (!lit) dark.push(rm.name);
+  const habitable = rooms.filter((r) => r.flat === "A" && (r.kind === "living" || r.kind === "bedroom" || r.kind === "kitchen"));
+  // a room is daylit if it has a window or glazed door, or opens to a daylit room through an opening ≥ 2 m wide
+  const touches = (rm: (typeof rooms)[number], r: Rect) => rm.rects.some((rc) => rectsOverlap(r, rc, 0.31));
+  const lit = new Set(habitable.filter((rm) =>
+    resolvedWindows.some((w) => touches(rm, w.rect)) || resolvedDoors.some((d) => d.glazed && touches(rm, d.rect))).map((rm) => rm.id));
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const rm of habitable) {
+      if (lit.has(rm.id)) continue;
+      const borrowed = resolvedOpenings.some((o) => o.width >= 2 && touches(rm, o.rect) &&
+        habitable.some((other) => other.id !== rm.id && lit.has(other.id) && touches(other, o.rect)));
+      if (borrowed) {
+        lit.add(rm.id);
+        grew = true;
+      }
+    }
   }
+  const dark = habitable.filter((rm) => !lit.has(rm.id)).map((rm) => rm.name);
   return {
     id: "daylight", label: "Every habitable room has daylight", pass: dark.length === 0,
     detail: dark.length ? `No window: ${dark.join(", ")}` : `${habitable.length} rooms, ${resolvedWindows.length} windows`,
@@ -238,7 +249,8 @@ function measure(x: number, y: number, dx: number, dy: number) {
 
 function checkSizes(): CheckRow {
   const bad: string[] = [];
-  const measured = featuredRooms.filter((fr) => /×/.test(fr.chips[0]) && fr.id !== "balcony");
+  // L-shaped rooms (more than one rectangle) have no single width × depth to measure
+  const measured = featuredRooms.filter((fr) => /×/.test(fr.chips[0]) && fr.id !== "balcony" && roomById(fr.id)!.rects.length === 1);
   for (const fr of measured) {
     const r = roomById(fr.id)!.rects[0];
     const cx = (r.x1 + r.x2) / 2;

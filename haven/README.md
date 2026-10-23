@@ -1,6 +1,6 @@
 # Haven — The Oak Residences
 
-A marketing site for an illustrative fifteen-storey tower. One full-floor apartment, Residence 11A on level 11, is fully furnished and walkable in real-time 3D, including its balcony with an egg chair and a porch swing.
+A marketing site for an illustrative fifteen-storey tower. One full-floor apartment, Residence 11A on level 11, is fully furnished and walkable in real-time 3D, including its balcony with an egg chair and a porch swing you can sit on (face one and press E).
 
 ```bash
 npm install
@@ -27,6 +27,16 @@ The room and tower photos are Blender Cycles renders of the same model you walk:
    `blender/assets/` (about 150 MB, checksums verified). `blender/furnish.py` swaps the web model's
    low-poly sofas, chairs, tables, plants and pendants for them and dresses the rooms; run the
    renderer with `--no-cc0` to skip this.
+   `blender/modern.py` replaces the low-poly sofa, dining chairs, tables, beds, nightstands, wardrobes,
+   dresser, desk, bench, sideboard, bathroom fittings and the kitchen (greige handleless run, walnut
+   appliance column, quartz waterfall island, counter stools, island pendants) with contemporary pieces
+   modelled in Blender (Poly Haven's furniture is mostly vintage); the CC0 lounge chairs, room pendants,
+   plants and decor stay.
+   It also downloads photo-scanned CC0 surface textures (polished marble, laminate, bathroom and wall
+   tiles, plaster relief, deck). `blender/finish.py` then finishes the home from `layout.json` the way
+   Indian 3BHK homes are typically finished: marble floors with tile skirting in the hall, dining hall
+   and kitchen; laminate in the bedrooms; bathroom walls tiled to 2.1 m; teak
+   architraves on every door and archway; recessed spotlights; pleated curtains on rods.
 3. Render (GPU/OptiX is picked up automatically):
 
    ```bash

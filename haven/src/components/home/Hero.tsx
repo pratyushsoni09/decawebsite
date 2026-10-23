@@ -147,7 +147,7 @@ export function Hero({ onReady }: { onReady: () => void }) {
 
         <p className={styles.intro}>
           <span className="eyebrow">Haven presents</span>
-          <span>Residence 11A · Level 11 of 15</span>
+          <span>Residence 11A · 3BHK · Level 11 of 15</span>
         </p>
 
         <div className={styles.titleWrap}>
@@ -158,7 +158,7 @@ export function Hero({ onReady }: { onReady: () => void }) {
 
         <div className={styles.content}>
           <p className={styles.sub}>
-            A fifteen-storey tower of oak, white stone and glass. Walk one full-floor home on level 11 — three bedrooms, every room furnished, and a long balcony with two swings.
+            A fifteen-storey tower of oak, white stone and glass. Walk a furnished 3BHK on level 11 — three bedrooms, a hall, a dining hall with an open pooja unit, a modular kitchen, and a balcony with two swings.
           </p>
           <div className={styles.actions}>
             <Link to="/tour" className={styles.primary}>

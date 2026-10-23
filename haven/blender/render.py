@@ -312,7 +312,7 @@ def add_lamps(lights):
 
 OUTDOOR_VIEWS = {"balcony", "swing"}
 # north-facing rooms only get skylight: open them up further, as a photographer would
-EXTRA_EV = {"primary-bath": -0.6, "bed2": 1.4, "study": 1.3, "living": 0.4}
+EXTRA_EV = {"bed2": 1.2, "bed3": 0.8, "kitchen": 0.0, "pooja": 0.9, "dining": 0.9, "living": 0.8}
 
 PRESET = {
     "day": {"elev": 42, "air": 1.0, "dust": 1.0, "sun": 4.2, "sky": 1.0, "exposure": 0.0},
@@ -403,6 +403,12 @@ def main():
     import_model()
     tune_materials()
     add_detail()
+    layout_path = os.path.join(EXPORT, "layout.json")
+    if os.path.exists(layout_path) and not NO_CC0:
+        sys.path.insert(0, HERE)
+        import finish
+        with open(layout_path) as f:
+            finish.finish(json.load(f))
     sky, bg = setup_world()
     sun = add_sun()
     lamps = add_lamps(lights)

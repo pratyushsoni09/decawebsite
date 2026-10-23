@@ -71,7 +71,7 @@ export function SiteHeader({ show = true }: { show?: boolean }) {
             <Box size={18} strokeWidth={1.5} aria-hidden="true" /> Walk Residence 11A in 3D
           </Link>
         </nav>
-        <p className={styles.menuFoot}>Level 11 of 15 · three bedrooms · a balcony with two swings</p>
+        <p className={styles.menuFoot}>3BHK on level 11 of 15 · hall, dining hall, kitchen · a balcony with two swings</p>
       </div>
     </>
   );

@@ -1,7 +1,7 @@
 import { memo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { BALCONY, PLAN_BOUNDS, dimsOf, footprint, furniture, roomsOnFloor, type FloorId, type FurnitureDef } from "../data/houseLayout";
-import { balustrade, leaves, resolvedDoors, wallBoxes } from "../data/layoutGeometry";
+import { BALCONY, FOOTPRINT, PARTY_X, PLAN_BOUNDS, dimsOf, footprint, furniture, roomsOnFloor, type FloorId, type FurnitureDef } from "../data/houseLayout";
+import { balustrade, leaves, wallBoxes } from "../data/layoutGeometry";
 import styles from "./FloorPlanSvg.module.css";
 
 interface Props {
@@ -19,9 +19,17 @@ interface Props {
 }
 
 const PAD = 1.2;
-const VIEW = `${PLAN_BOUNDS.x1 - PAD} ${PLAN_BOUNDS.y1 - PAD} ${PLAN_BOUNDS.x2 - PLAN_BOUNDS.x1 + PAD * 2} ${PLAN_BOUNDS.y2 - PLAN_BOUNDS.y1 + PAD * 2 + 1.2}`;
+/** The plan shows Residence 11A and the lift lobby only; the neighbouring home lies beyond the crop. */
+export const PLAN_VIEW = { x1: PLAN_BOUNDS.x1, x2: 13.4, y1: PLAN_BOUNDS.y1, y2: PLAN_BOUNDS.y2 };
+const VIEW = `${PLAN_VIEW.x1 - PAD} ${PLAN_VIEW.y1 - PAD} ${PLAN_VIEW.x2 - PLAN_VIEW.x1 + PAD} ${PLAN_VIEW.y2 - PLAN_VIEW.y1 + PAD * 2 + 1.2}`;
 
 const fmt = (n: number) => n.toFixed(2);
+/** Parts of the neighbouring home that fall inside the crop, blanked out. */
+const NEIGHBOUR_BLOCK = [
+  { x1: 12.125, y1: 5.75, x2: 14, y2: 15.75 },
+  { x1: PARTY_X + 0.06, y1: 15.75, x2: 14, y2: 18.6 },
+  { x1: 13.4, y1: -0.2, x2: 14, y2: 5.75 },
+];
 const SKIP: FurnitureDef["type"][] = ["art", "mirror", "pendant", "chandelier", "tv", "lift"];
 
 function FurnitureMark({ it }: { it: FurnitureDef }) {
@@ -43,7 +51,6 @@ function FloorPlanSvgInner({
   const plan = roomsOnFloor(floor);
   const walls = wallBoxes(floor);
   const items = showFurniture ? furniture.filter((it) => !SKIP.includes(it.type)) : [];
-  const front = resolvedDoors.find((d) => d.id === "front")!;
 
   return (
     <svg
@@ -52,8 +59,15 @@ function FloorPlanSvgInner({
       role={interactive ? "group" : "img"}
       aria-label={title ?? "Residence 11A floor plan"}
     >
+      <defs>
+        <pattern id="hatch" patternUnits="userSpaceOnUse" width="0.5" height="0.5" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="0.5" className={styles.hatchLine} />
+        </pattern>
+      </defs>
+
+
       {/* Room fills (links when interactive) */}
-      {plan.map((rm) => {
+      {plan.filter((rm) => rm.flat !== "B").map((rm) => {
         const active = highlight === rm.id;
         const body = rm.rects.map((rc, i) => (
           <rect key={i} x={rc.x1} y={rc.y1} width={rc.x2 - rc.x1} height={rc.y2 - rc.y1}
@@ -102,9 +116,16 @@ function FloorPlanSvgInner({
             </g>
           ) : null,
         )}
-        {balustrade.map((b, i) => (
+        {/* glass balustrade (thin rails only; the wide block over 11B's balcony is collision, not glass) */}
+        {balustrade.filter((b) => Math.min(b.x2 - b.x1, b.y2 - b.y1) < 0.4).map((b, i) => (
           <rect key={`rail${i}`} x={b.x1} y={b.y1} width={b.x2 - b.x1} height={b.y2 - b.y1} className={styles.rail} />
         ))}
+        <rect x={FOOTPRINT.x2 - 0.3} y={BALCONY.y1} width={0.3} height={BALCONY.y2 - BALCONY.y1} className={styles.rail} />
+        {/* the neighbouring home is not drawn: blank whatever of it falls inside the crop */}
+        {NEIGHBOUR_BLOCK.map((rc, i) => (
+          <rect key={`nb${i}`} x={rc.x1} y={rc.y1} width={rc.x2 - rc.x1} height={rc.y2 - rc.y1} className={styles.neighbourBase} />
+        ))}
+        <rect x={PARTY_X - 0.06} y={BALCONY.y1} width={0.12} height={BALCONY.y2 - BALCONY.y1 + 0.15} className={styles.wall} />
       </g>
 
       {/* Door swings */}
@@ -126,7 +147,7 @@ function FloorPlanSvgInner({
       {/* Labels */}
       {labels !== "none" && (
         <g aria-hidden="true" className={styles.labels}>
-          {plan.map((rm) => {
+          {plan.filter((rm) => rm.flat !== "B").map((rm) => {
             const m = rm.rects[0];
             const w = m.x2 - m.x1;
             const h = m.y2 - m.y1;
@@ -149,9 +170,9 @@ function FloorPlanSvgInner({
       )}
 
       {labels !== "none" && (
-        <text x={front.at} y={PLAN_BOUNDS.y1 - 0.45} className={styles.entrance} aria-hidden="true">
-          Private lift ↓
-        </text>
+        <g aria-hidden="true">
+          <text x={PARTY_X} y={PLAN_BOUNDS.y1 - 0.45} className={styles.entrance}>Lifts ↓</text>
+        </g>
       )}
       {children}
     </svg>

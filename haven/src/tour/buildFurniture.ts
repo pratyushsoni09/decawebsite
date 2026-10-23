@@ -17,6 +17,8 @@ export interface SwingPart {
   sb: StaticBuilder;
   /** hook height above the floor */
   hookY: number;
+  /** where a seated visitor's eyes are, hook-local */
+  eye: [number, number, number];
 }
 
 const I = new THREE.Matrix4();
@@ -131,6 +133,15 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     B(c, "walnut", 0.5, 0.36, 0.04, 0, 0.6, -0.22);
   },
   stool(c) {
+    if (c.it.room === "kitchen") {
+      // counter stool: black frame with a footrest, upholstered seat and low back
+      legs(c, "darkMetal", 0.4, 0.4, 0.66, 0.022, 0.02);
+      for (const sz of [-1, 1]) B(c, "darkMetal", 0.36, 0.02, 0.02, 0, 0.26, sz * 0.17);
+      for (const sx of [-1, 1]) B(c, "darkMetal", 0.02, 0.02, 0.36, sx * 0.17, 0.26, 0);
+      B(c, "upholstery", 0.42, 0.07, 0.4, 0, 0.66, 0);
+      B(c, "upholstery", 0.4, 0.2, 0.05, 0, 0.73, -0.18);
+      return;
+    }
     C(c, "brass", 0.025, 0.025, 0.7, 0, 0, 0, 8);
     C(c, "brass", 0.17, 0.17, 0.02, 0, 0, 0);
     C(c, "brass", 0.14, 0.14, 0.015, 0, 0.3, 0);
@@ -170,13 +181,48 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     }
   },
   island(c) {
-    const { w, d } = c.it;
+    const { w, d, h } = c.it;
+    if (c.it.variant === "luxury") {
+      // quartz waterfall island: greige drawers to the hob side, fluted walnut and a breakfast overhang to the front
+      const base = d - 0.28;
+      const bz = -d / 2 + base / 2;
+      B(c, "darkMetal", w - 0.2, 0.08, base - 0.08, 0, 0, bz);
+      B(c, "greige", w - 0.12, h - 0.13, base, 0, 0.08, bz);
+      for (const y of [0.35, 0.6]) B(c, "darkMetal", w - 0.16, 0.004, 0.005, 0, y, -d / 2 + 0.002);
+      const ribs = Math.floor((w - 0.16) / 0.04);
+      for (let i = 0; i < ribs; i++) C(c, "walnut", 0.014, 0.014, h - 0.18, -w / 2 + 0.1 + i * 0.04, 0.08, bz + base / 2 + 0.01, 8);
+      B(c, "marble", w, 0.05, d, 0, h - 0.05, 0);
+      for (const sx of [-1, 1]) B(c, "marble", 0.05, h - 0.05, d, sx * (w / 2 - 0.025), 0, 0);
+      B(c, "glow", w - 0.14, 0.006, 0.02, 0, h - 0.056, d / 2 - 0.05);
+      B(c, "porcelain", 0.3, 0.012, 0.3, w * 0.22, h, -0.05);
+      return;
+    }
     B(c, "oakWood", w - 0.1, 0.88, d - 0.25, 0, 0, -0.08);
     B(c, "marble", w, 0.04, d, 0, 0.88, 0);
     for (const sx of [-1, 1]) B(c, "marble", 0.04, 0.88, d, sx * (w / 2 - 0.02), 0, 0);
   },
   kitchenRun(c) {
     const { w, d } = c.it;
+    if (c.it.variant === "modular") {
+      // handleless greige run with a gola channel, quartz top and full-height quartz splashback;
+      // undermount sink with a black gooseneck under the window, hob under the chimney
+      B(c, "darkMetal", w - 0.02, 0.1, d - 0.1, 0, 0, -0.05);
+      B(c, "greige", w, 0.68, d - 0.03, 0, 0.1, -0.015);
+      B(c, "darkMetal", w, 0.05, d - 0.07, 0, 0.78, -0.035);
+      const n = Math.max(1, Math.round(w / 0.6));
+      for (let i = 1; i < n; i++) B(c, "darkMetal", 0.004, 0.66, 0.005, -w / 2 + (w / n) * i, 0.11, d / 2 - 0.028);
+      for (let i = 0; i < n; i += 2) B(c, "darkMetal", w / n - 0.01, 0.004, 0.005, -w / 2 + (w / n) * (i + 0.5), 0.45, d / 2 - 0.028);
+      B(c, "marble", w, 0.05, d, 0, 0.83, 0);
+      B(c, "marble", w, 0.62, 0.02, 0, 0.88, -d / 2 + 0.01);
+      B(c, "glow", w - 0.04, 0.008, 0.02, 0, 1.5, -d / 2 + 0.03);
+      if (w >= 2.5) {
+        const sx = w / 2 - 1.2;
+        B(c, "darkGlass", 0.72, 0.004, 0.42, sx, 0.88, 0.02);
+        C(c, "darkMetal", 0.016, 0.016, 0.42, sx, 0.88, -0.22, 10);
+        B(c, "darkMetal", 0.03, 0.03, 0.22, sx, 1.27, -0.12);
+      }
+      return;
+    }
     B(c, "oakWood", w, 0.86, d - 0.03, 0, 0, -0.015);
     B(c, "marble", w, 0.04, d, 0, 0.86, 0);
     const n = Math.max(1, Math.round(w / 0.6));
@@ -190,6 +236,23 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   tallUnits(c) {
     const { w, d, h } = c.it;
+    if (c.it.variant === "column") {
+      // walnut appliance column: integrated fridge-freezer, built-in oven and combi microwave
+      B(c, "darkMetal", w - 0.04, 0.1, d - 0.08, 0, 0, -0.04);
+      B(c, "walnut", w, h - 0.1, d - 0.02, 0, 0.1, -0.01);
+      const f = d / 2 + 0.001;
+      B(c, "darkMetal", 0.004, h - 0.14, 0.005, 0, 0.12, f);
+      B(c, "darkMetal", w / 2 - 0.02, 0.004, 0.005, -w / 4, 0.85, f);
+      B(c, "darkMetal", w - 0.02, 0.004, 0.005, 0, h - 0.4, f);
+      B(c, "darkMetal", 0.02, 1.1, 0.03, -0.05, 0.95, f);
+      B(c, "darkMetal", 0.02, 0.5, 0.03, -0.05, 0.25, f);
+      B(c, "darkGlass", 0.6, 0.6, 0.012, w / 4, 0.82, f);
+      B(c, "darkGlass", 0.6, 0.46, 0.012, w / 4, 1.48, f);
+      B(c, "darkMetal", 0.56, 0.02, 0.03, w / 4, 1.36, f + 0.01);
+      for (const y of [0.33, 0.58]) B(c, "darkMetal", w / 2 - 0.04, 0.004, 0.005, w / 4, y, f);
+      B(c, "glow", w - 0.04, 0.008, 0.02, 0, h - 0.008, d / 2 - 0.04);
+      return;
+    }
     B(c, "oakWood", w, h, d - 0.02, 0, 0, -0.01);
     const n = Math.round(w / 0.65);
     for (let i = 1; i < n; i++) B(c, "darkMetal", 0.006, h - 0.1, 0.005, -w / 2 + (w / n) * i, 0.05, d / 2 - 0.018);
@@ -303,6 +366,15 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   console(c) {
     const { w, d } = c.it;
+    if (c.it.variant === "shoe") {
+      // shoe cabinet: louvred teak doors, oak top
+      B(c, "teak", w, 0.84, d, 0, 0.04, 0);
+      B(c, "oakWood", w + 0.02, 0.04, d + 0.02, 0, 0.88, 0);
+      for (let y = 0.12; y < 0.82; y += 0.06) B(c, "walnut", w - 0.08, 0.012, 0.006, 0, y, d / 2 + 0.002);
+      B(c, "darkMetal", 0.004, 0.76, 0.006, 0, 0.08, d / 2 + 0.004);
+      C(c, "pot", 0.07, 0.05, 0.22, w * 0.3, 0.92, 0, 14);
+      return;
+    }
     if (c.it.variant === "media") {
       B(c, "walnut", w, 0.42, d, 0, 0.1, 0);
       legs(c, "brass", w - 0.1, d - 0.06, 0.1, 0.03);
@@ -366,10 +438,12 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     B(c, "mirror", w - 0.02, h - 0.02, 0.01, 0, -h / 2 + 0.01, 0.027);
   },
   pendant(c) {
-    const low = c.it.room === "kitchen" ? 2.2 : 2.35;
+    // island pendants hang lower, about 0.8 m over the counter
+    const low = c.it.room === "kitchen" ? 1.75 : 2.35;
+    const r = 0.28 * Math.min(1, c.it.w / 0.6);
     C(c, "darkMetal", 0.006, 0.006, CEILING_HEIGHT - low - 0.25, 0, low + 0.25, 0, 4);
     C(c, "brass", 0.08, 0.08, 0.03, 0, CEILING_HEIGHT - 0.03, 0, 12);
-    const dome = new THREE.SphereGeometry(0.28, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    const dome = new THREE.SphereGeometry(r, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2);
     dome.scale(1, 0.85, 1);
     dome.translate(0, low, 0);
     c.sb.add(dome, "brass", c.M);
@@ -427,7 +501,7 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     beam(c, "darkMetal", 0.045, new THREE.Vector3(0, 0.05, -0.32), new THREE.Vector3(0, 1.8, -0.42));
     beam(c, "darkMetal", 0.045, new THREE.Vector3(0, 1.8, -0.42), new THREE.Vector3(0, hookY + 0.08, -0.1));
     beam(c, "darkMetal", 0.045, new THREE.Vector3(0, hookY + 0.08, -0.1), new THREE.Vector3(0, hookY + 0.04, 0));
-    c.hang = { it: c.it, sb: new StaticBuilder(), hookY };
+    c.hang = { it: c.it, sb: new StaticBuilder(), hookY, eye: [0, 1.22 - hookY, 0.1] };
     HC(c, "darkMetal", 0.008, 0.5, 0, -0.5, 0);
     const shell = new THREE.SphereGeometry(0.5, 32, 18, Math.PI * 0.72, Math.PI * 1.56, 0.05, Math.PI * 0.95);
     shell.scale(1, 1.25, 0.95);
@@ -454,7 +528,7 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       beam(c, "teak", 0.06, new THREE.Vector3(x, 0.55, -d / 2 + 0.3), new THREE.Vector3(x, 0.55, d / 2 - 0.3));
     }
     beam(c, "teak", 0.1, new THREE.Vector3(-w / 2, top + 0.02, 0), new THREE.Vector3(w / 2, top + 0.02, 0));
-    c.hang = { it: c.it, sb: new StaticBuilder(), hookY: top - 0.03 };
+    c.hang = { it: c.it, sb: new StaticBuilder(), hookY: top - 0.03, eye: [-0.3, 1.3 - (top - 0.03), 0.05] };
     const seatY = -(top - 0.03) + 0.45;
     for (const sx of [-0.62, 0.62]) {
       HC(c, "darkMetal", 0.008, -seatY - 0.02, sx, seatY + 0.02, 0.18);
@@ -466,6 +540,89 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     HB(c, "linen", 1.3, 0.08, 0.44, 0, seatY + 0.06, 0.01);
     HB(c, "teal", 0.4, 0.3, 0.1, -0.35, seatY + 0.14, -0.17);
     HB(c, "cream", 0.4, 0.3, 0.1, 0.35, seatY + 0.14, -0.17);
+  },
+  tvWall(c) {
+    // fluted oak feature wall with the TV set into it and a warm LED line at the base
+    const { w, h } = c.it;
+    const base = -(c.it.elev ?? 1.3); // floor, relative to the wall item's centre height
+    B(c, "walnut", w, h, 0.03, 0, base, 0.015);
+    const tvW = 1.65;
+    for (let x = -w / 2 + 0.03; x < w / 2 - 0.03; x += 0.06) {
+      if (Math.abs(x) < tvW / 2 + 0.08) continue;
+      B(c, "oakWood", 0.035, h - 0.04, 0.025, x + 0.0175, base + 0.02, 0.04);
+    }
+    B(c, "oakWood", tvW + 0.16, h - 0.04, 0.012, 0, base + 0.02, 0.036);
+    B(c, "darkMetal", tvW, 0.95, 0.04, 0, base + 0.95, 0.062);
+    B(c, "darkGlass", tvW - 0.03, 0.92, 0.005, 0, base + 0.965, 0.085);
+    B(c, "glow", w - 0.1, 0.012, 0.012, 0, base + 0.62, 0.05);
+  },
+  poojaUnit(c) {
+    // open wooden mandir: drawers below, an arched, back-lit shrine above, brass bells and diyas
+    const { w, d } = c.it;
+    B(c, "teak", w, 0.85, d, 0, 0, 0);
+    for (const y of [0.3, 0.58]) B(c, "darkMetal", w - 0.06, 0.005, 0.005, 0, y, d / 2);
+    for (const sx of [-0.25, 0.25]) B(c, "brass", 0.12, 0.02, 0.02, sx * w, 0.45, d / 2 + 0.01);
+    B(c, "shade", w - 0.32, 1.15, 0.02, 0, 0.88, -d / 2 + 0.05);
+    for (const sx of [-1, 1]) B(c, "teak", 0.14, 1.25, d - 0.1, sx * (w / 2 - 0.09), 0.85, -0.05);
+    const arch = new THREE.TorusGeometry((w - 0.32) / 2, 0.05, 10, 32, Math.PI);
+    arch.translate(0, 1.72, -0.02);
+    c.sb.add(arch, "teak", c.M);
+    B(c, "teak", w + 0.06, 0.16, d + 0.04, 0, 2.06, -0.02);
+    B(c, "teak", w - 0.2, 0.18, 0.08, 0, 2.0, d / 2 - 0.04);
+    // idol (abstract brass form) on a stepped platform
+    B(c, "walnut", 0.5, 0.08, 0.32, 0, 0.85, -0.05);
+    B(c, "walnut", 0.34, 0.08, 0.24, 0, 0.93, -0.07);
+    C(c, "brass", 0.11, 0.14, 0.26, 0, 1.01, -0.08, 20);
+    S(c, "brass", 0.1, 0, 1.36, -0.08, 1, 1.15, 1, 2);
+    // bells
+    for (const sx of [-1, 1]) {
+      C(c, "brass", 0.005, 0.005, 0.24, sx * 0.4, 1.62, 0.05, 6);
+      C(c, "brass", 0.025, 0.06, 0.09, sx * 0.4, 1.53, 0.05, 16);
+    }
+    // diyas with flames
+    for (const sx of [-0.33, 0.33]) {
+      C(c, "brass", 0.06, 0.04, 0.035, sx, 0.85, d / 2 - 0.12, 16);
+      S(c, "glow", 0.016, sx, 0.91, d / 2 - 0.12, 0.8, 1.6, 0.8, 1);
+    }
+    // marigold garland along the arch
+    for (let i = 0; i <= 14; i++) {
+      const a = (i / 14) * Math.PI;
+      const rr = (w - 0.32) / 2;
+      S(c, "leather", 0.035, Math.cos(a) * rr, 1.72 + Math.sin(a) * rr - 0.06, 0.04, 1, 1, 1, 1);
+    }
+  },
+  chimney(c) {
+    // wall-mounted hood above a glass hob on the counter
+    const { w } = c.it;
+    const counter = 0.88 - (c.it.elev ?? 1.9);
+    B(c, "darkMetal", w, 0.1, 0.5, 0, -0.3, 0.25);
+    B(c, "darkGlass", w - 0.02, 0.32, 0.01, 0, -0.2, 0.495);
+    B(c, "darkMetal", 0.3, 0.75, 0.25, 0, 0.12, 0.125);
+    B(c, "glow", 0.5, 0.005, 0.03, 0, -0.302, 0.3);
+    B(c, "darkGlass", 0.6, 0.012, 0.5, 0, counter, 0.3);
+    for (const [x, z] of [[-0.15, 0.2], [0.15, 0.2], [-0.15, 0.4], [0.15, 0.4]]) C(c, "darkMetal", 0.07, 0.07, 0.012, x, counter + 0.012, z, 18);
+  },
+  cove(c) {
+    // false ceiling: a dropped plaster border with a warm LED cove washing the ceiling
+    const { w, d } = c.it;
+    const top = CEILING_HEIGHT;
+    const drop = 0.22;
+    const band = 0.55;
+    B(c, "ceiling", w, drop, band, 0, top - drop, -d / 2 + band / 2);
+    B(c, "ceiling", w, drop, band, 0, top - drop, d / 2 - band / 2);
+    B(c, "ceiling", band, drop, d - 2 * band, -w / 2 + band / 2, top - drop, 0);
+    B(c, "ceiling", band, drop, d - 2 * band, w / 2 - band / 2, top - drop, 0);
+    // lip and LED strip on the inner edge, facing up
+    const lw = w - 2 * band;
+    const ld = d - 2 * band;
+    B(c, "ceiling", lw, 0.06, 0.03, 0, top - drop, -ld / 2 + 0.015);
+    B(c, "ceiling", lw, 0.06, 0.03, 0, top - drop, ld / 2 - 0.015);
+    B(c, "ceiling", 0.03, 0.06, ld, -lw / 2 + 0.015, top - drop, 0);
+    B(c, "ceiling", 0.03, 0.06, ld, lw / 2 - 0.015, top - drop, 0);
+    B(c, "glow", lw + 0.1, 0.01, 0.02, 0, top - drop + 0.05, -ld / 2 - 0.03);
+    B(c, "glow", lw + 0.1, 0.01, 0.02, 0, top - drop + 0.05, ld / 2 + 0.03);
+    B(c, "glow", 0.02, 0.01, ld + 0.1, -lw / 2 - 0.03, top - drop + 0.05, 0);
+    B(c, "glow", 0.02, 0.01, ld + 0.1, lw / 2 + 0.03, top - drop + 0.05, 0);
   },
   washer(c) {
     const { w, d, h } = c.it;

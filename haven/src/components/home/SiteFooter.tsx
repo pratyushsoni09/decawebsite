@@ -10,7 +10,7 @@ export function SiteFooter() {
         <div className={styles.brand}>
           <ArchMark size={44} className={styles.mark} />
           <p className={styles.word}>HAVEN</p>
-          <p className={styles.line}>The Oak Residences — an illustrative fifteen-storey tower, with one residence you can walk in 3D.</p>
+          <p className={styles.line}>The Oak Residences — an illustrative fifteen-storey tower, with one 3BHK home you can walk in 3D.</p>
         </div>
         <nav className={styles.nav} aria-label="Footer">
           {NAV.map((n) => <a key={n.id} href={`#${n.id}`}>{n.label}</a>)}
@@ -19,7 +19,7 @@ export function SiteFooter() {
       </div>
       <div className={styles.fine}>
         <p>
-          3D model authored procedurally (Three.js) for this site and rendered in Blender Cycles, with furniture and decor models from Poly Haven (CC0). Images are renders of that model and are not photographs of a real property.
+          3D model authored procedurally (Three.js) for this site and rendered in Blender Cycles, with furniture modelled in Blender and some furniture, decor and surface textures from Poly Haven (CC0). Images are renders of that model and are not photographs of a real property.
         </p>
         <p>© {new Date().getFullYear()} Haven</p>
       </div>

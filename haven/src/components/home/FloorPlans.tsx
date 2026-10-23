@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AREAS, PLAN_BOUNDS, roomById, rooms, dimsOf } from "../../data/houseLayout";
+import { AREAS, PLAN_BOUNDS, roomById, walkableRooms, dimsOf } from "../../data/houseLayout";
 import { FloorPlanSvg } from "../FloorPlanSvg";
 import styles from "./FloorPlans.module.css";
 
@@ -26,7 +26,7 @@ export function FloorPlans() {
     <section id="plans" className={styles.section} aria-labelledby="plans-title">
       <header className={`${styles.head} reveal`}>
         <div>
-          <p className="eyebrow">Floor plan · Level 11</p>
+          <p className="eyebrow">Floor plan · Level 11 · 3BHK</p>
           <h2 id="plans-title" className={styles.title}>Drawn from the same model you can walk.</h2>
         </div>
         <p className={styles.sub}>Select any room on the plan to stand in it in 3D.</p>
@@ -56,7 +56,7 @@ export function FloorPlans() {
                 <span className={styles.enter}> · Enter to walk in</span>
               </>
             ) : (
-              <span>{rooms.length} spaces · {Math.round(AREAS.internal)} m² inside + {Math.round(AREAS.balcony)} m² balcony</span>
+              <span>3BHK · {walkableRooms.filter((r) => r.flat === "A").length} spaces · {Math.round(AREAS.internal)} m² carpet + {Math.round(AREAS.balcony)} m² balcony</span>
             )}
           </span>
         </div>
@@ -80,7 +80,7 @@ export function FloorPlans() {
                   <text key={m} x={m} y={barY + 0.62} className={styles.barText}>{m}</text>
                 ))}
                 <text x={4.4} y={barY + 0.62} className={styles.barText} textAnchor="start">m</text>
-                <g transform={`translate(23.2 ${barY + 0.1})`}>
+                <g transform={`translate(12.4 ${barY + 0.1})`}>
                   <circle r={0.6} className={styles.northRing} />
                   <path d="M0 -0.48 L0.26 0.34 L0 0.2 L-0.26 0.34 Z" className={styles.barDark} />
                   <text y={-0.75} className={styles.barText}>N</text>
