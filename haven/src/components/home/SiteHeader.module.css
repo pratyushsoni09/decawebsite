@@ -1,0 +1,38 @@
+.header {
+  position: fixed; inset: 0 0 auto 0; z-index: var(--z-nav);
+  color: var(--ivory);
+  transition: background var(--animation-duration-normal) ease, color var(--animation-duration-normal) ease, border-color var(--animation-duration-normal) ease;
+  border-bottom: 1px solid transparent;
+}
+.solid, .menuOpen { background: hsla(40, 38%, 95%, 0.94); color: var(--foreground); border-bottom-color: var(--border); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+/* backdrop-filter would make the header the containing block of the fixed sheet */
+.menuOpen { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--ivory); }
+.inner { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); height: 68px; display: flex; align-items: center; gap: 2rem; }
+.brand { display: flex; flex-direction: column; text-decoration: none; line-height: 1.1; margin-right: auto; }
+.word { font-weight: 400; letter-spacing: 0.3em; font-size: 17px; }
+.sub { font-size: 9.5px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.7; margin-top: 3px; }
+.nav { display: flex; gap: 1.75rem; }
+.nav a { position: relative; text-decoration: none; font-size: 13.5px; font-weight: 500; opacity: 0.82; padding: 6px 0; transition: opacity var(--animation-duration-fast); }
+.nav a:hover, .nav a.active { opacity: 1; }
+.nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform var(--animation-duration-normal) var(--ease-out); }
+.nav a.active::after, .nav a:hover::after { transform: scaleX(1); }
+.solid .nav a.active { color: var(--primary); }
+.cta {
+  display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+  background: var(--primary); color: var(--primary-foreground);
+  font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: var(--radius-full);
+  transition: background var(--animation-duration-fast), transform var(--animation-duration-fast);
+}
+.cta:hover { background: hsl(176, 18%, 27%); }
+.burger { display: none; background: none; border: 0; padding: 8px; cursor: pointer; color: inherit; }
+.sheet { position: fixed; inset: 68px 0 0 0; background: var(--ivory); color: var(--foreground); padding: 2rem var(--gutter); overflow: auto; }
+.sheet nav { display: flex; flex-direction: column; }
+.sheet a { display: flex; gap: 1.25rem; align-items: baseline; text-decoration: none; font-size: 2rem; font-weight: 250; letter-spacing: -0.02em; padding: 0.9rem 0; border-bottom: 1px solid var(--border); }
+.sheet a :global(.mono) { color: var(--oak); }
+.sheet .sheetCta { margin-top: 2rem; border: 0; justify-content: center; align-items: center; font-size: 15px; font-weight: 500; letter-spacing: 0; background: var(--primary); color: var(--primary-foreground); border-radius: var(--radius-full); padding: 0.9rem; }
+
+@media (max-width: 960px) {
+  .nav { display: none; }
+  .cta { display: none; }
+  .burger { display: inline-flex; }
+}

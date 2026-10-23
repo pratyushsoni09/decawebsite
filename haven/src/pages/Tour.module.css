@@ -1,0 +1,102 @@
+.tour { position: fixed; inset: 0; background: var(--walnut-deep); color: var(--ivory); overflow: hidden; font-size: 14px; user-select: none; -webkit-user-select: none; }
+.canvasHost { position: absolute; inset: 0; }
+.canvasHost canvas { display: block; cursor: grab; }
+.canvasHost canvas:active { cursor: grabbing; }
+
+.glass {
+  background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--ivory);
+}
+
+/* loader */
+.loader {
+  position: absolute; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; text-align: center;
+  background: radial-gradient(ellipse at 50% 40%, hsl(22, 24%, 17%) 0%, var(--walnut-deep) 70%);
+  transition: opacity 0.9s ease, visibility 0.9s;
+}
+.loaderDone { opacity: 0; visibility: hidden; pointer-events: none; }
+.loaderTitle { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 200; letter-spacing: -0.02em; }
+.loaderTrack { width: min(280px, 70vw); height: 1px; background: hsla(40, 38%, 95%, 0.15); overflow: hidden; margin: 0.6rem 0; }
+.loaderTrack span { display: block; height: 100%; background: var(--brass); transform-origin: left; transition: transform 0.3s ease; }
+.loaderSub { color: hsla(40, 38%, 95%, 0.7); }
+.loaderStep { color: hsla(40, 38%, 95%, 0.45); }
+
+.fade { position: absolute; inset: 0; background: #0d0907; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; z-index: 30; }
+.fadeOn { opacity: 1; }
+
+.crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: hsla(40, 38%, 95%, 0.75); box-shadow: 0 0 0 1px hsla(22, 26%, 11%, 0.4); pointer-events: none; }
+
+/* where am I */
+.where { position: absolute; left: 16px; top: 16px; padding: 10px 16px 11px; min-width: 180px; z-index: 10; pointer-events: none; }
+.whereFloor { font-size: 10.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--brass); }
+.whereRoom { font-size: 19px; font-weight: 300; letter-spacing: -0.01em; margin-top: 2px; }
+
+/* toolbar */
+.topRight { position: absolute; right: 16px; top: 16px; z-index: 20; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: calc(100vw - 32px); }
+.toolbar { display: flex; gap: 6px; }
+.tool, .iconTool { cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; height: 38px; transition: background var(--animation-duration-fast), border-color var(--animation-duration-fast); }
+.tool { padding: 0 14px; }
+.iconTool { width: 38px; justify-content: center; }
+.tool:hover, .iconTool:hover { background: hsla(22, 26%, 16%, 0.85); }
+.toolOn { border-color: var(--brass); }
+.leave { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-size: 12.5px; padding: 6px 12px; }
+.leave:hover { background: hsla(22, 26%, 16%, 0.85); }
+
+/* panels */
+.panel { width: min(380px, calc(100vw - 32px)); padding: 14px; margin-top: 4px; animation: pop 0.22s var(--ease-out); max-height: calc(100vh - 140px); overflow: auto; user-select: text; }
+@keyframes pop { from { opacity: 0; transform: translateY(-6px); } }
+.checksPanel { width: min(440px, calc(100vw - 32px)); }
+.panelHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.panelTitle { font-size: 15px; font-weight: 500; letter-spacing: 0; display: flex; gap: 10px; align-items: baseline; }
+.panelTitle :global(.mono) { color: var(--brass); }
+.close { background: none; border: 0; color: hsla(40, 38%, 95%, 0.7); cursor: pointer; padding: 4px; display: grid; place-items: center; border-radius: var(--radius); }
+.close:hover { color: var(--ivory); }
+.segment { display: flex; background: hsla(40, 38%, 95%, 0.06); border-radius: var(--radius); padding: 3px; }
+.segment button { background: none; border: 0; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 500; color: hsla(40, 38%, 95%, 0.75); cursor: pointer; }
+.segment .segOn { background: var(--primary); color: var(--primary-foreground); }
+.roomGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.roomBtn { text-align: left; background: hsla(40, 38%, 95%, 0.05); border: 1px solid hsla(40, 38%, 95%, 0.1); color: var(--ivory); padding: 9px 10px; border-radius: var(--radius); font-size: 12.5px; cursor: pointer; transition: background var(--animation-duration-fast), border-color var(--animation-duration-fast); }
+.roomBtn:hover { background: hsla(40, 38%, 95%, 0.12); }
+.roomHere { border-color: var(--brass); }
+.foot { font-size: 11.5px; color: hsla(40, 38%, 95%, 0.6); margin-top: 12px; line-height: 1.5; }
+.keys { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.keys div { display: grid; grid-template-columns: 92px 1fr; gap: 10px; font-size: 13px; }
+.keys dt { font-family: var(--font-family-mono); font-size: 11.5px; color: var(--brass); padding-top: 1px; }
+.keys dd { margin: 0; color: hsla(40, 38%, 95%, 0.86); }
+.quality { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-border); font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
+.linkBtn { background: none; border: 0; padding: 0; color: var(--brass); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 12.5px; align-self: flex-start; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.checks li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 12.5px; line-height: 1.4; }
+.ok, .fail { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px; }
+.ok { background: hsl(150, 30%, 36%); color: #fff; }
+.fail { background: var(--error); color: #fff; }
+.detail { color: hsla(40, 38%, 95%, 0.55); font-size: 11.5px; }
+
+/* minimap */
+.minimap { position: absolute; right: 16px; bottom: 16px; z-index: 10; width: min(300px, 46vw); padding: 10px; pointer-events: none;
+  background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius-md); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.cone { fill: hsla(37, 60%, 62%, 0.35); }
+.dot { fill: var(--brass); stroke: var(--walnut-deep); stroke-width: 0.12; }
+
+.hint { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 8px 14px; font-size: 13px; z-index: 10; pointer-events: none; white-space: nowrap; }
+.hint kbd { font-family: var(--font-family-mono); border: 1px solid var(--brass); color: var(--brass); border-radius: var(--radius-sm); padding: 0 6px; margin: 0 2px; }
+
+/* touch */
+.joystick { position: absolute; left: 22px; bottom: 22px; width: 128px; height: 128px; border-radius: 50%; z-index: 15; touch-action: none;
+  background: hsla(22, 26%, 11%, 0.45); border: 1px solid var(--glass-border); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: grid; place-items: center; }
+.knob { width: 52px; height: 52px; border-radius: 50%; background: hsla(40, 38%, 95%, 0.85); box-shadow: 0 4px 14px hsla(0, 0%, 0%, 0.35); pointer-events: none; }
+.doorBtn { position: absolute; right: 22px; bottom: calc(22px + min(300px, 46vw) * 0.55 + 30px); z-index: 15; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--brass);
+  background: hsla(22, 26%, 11%, 0.7); color: var(--brass); display: grid; place-items: center; cursor: pointer; }
+
+.fallback { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; text-align: center; padding: 2rem; background: var(--walnut-deep); color: var(--ivory); }
+.fallback h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 200; }
+.fallback p { color: hsla(40, 38%, 95%, 0.75); max-width: 420px; }
+.fallbackLink { color: var(--walnut-deep); background: var(--brass); text-decoration: none; padding: 12px 20px; border-radius: var(--radius-sm); font-weight: 500; }
+
+@media (max-width: 640px) {
+  .tool span { display: none; }
+  .tool { width: 38px; padding: 0; justify-content: center; }
+  .where { min-width: 0; max-width: 46vw; }
+  .whereRoom { font-size: 16px; }
+  .minimap { width: 42vw; }
+}

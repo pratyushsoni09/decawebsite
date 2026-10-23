@@ -1,0 +1,10 @@
+.footer { background: var(--walnut-deep); color: var(--ivory); padding: clamp(3.5rem, 7vw, 5.5rem) var(--gutter) 2rem; }
+.inner { max-width: var(--max); margin: 0 auto; display: flex; justify-content: space-between; gap: 3rem; flex-wrap: wrap; padding-bottom: 3rem; border-bottom: 1px solid var(--glass-border); }
+.mark { color: var(--brass); margin-bottom: 1.2rem; }
+.word { letter-spacing: 0.3em; font-size: 22px; font-weight: 400; }
+.line { color: hsla(40, 38%, 95%, 0.7); max-width: 380px; margin-top: 0.6rem; font-size: 15px; }
+.nav { display: grid; grid-template-columns: repeat(2, auto); gap: 0.7rem 3rem; align-content: start; }
+.nav a { text-decoration: none; color: hsla(40, 38%, 95%, 0.8); font-size: 14px; }
+.nav a:hover { color: var(--ivory); text-decoration: underline; text-underline-offset: 4px; }
+.fine { max-width: var(--max); margin: 1.5rem auto 0; display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; font-size: 12.5px; color: hsla(40, 38%, 95%, 0.5); }
+.fine p:first-child { max-width: 640px; }

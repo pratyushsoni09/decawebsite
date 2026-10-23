@@ -1,0 +1,21 @@
+.section { padding: clamp(5rem, 12vw, 9.5rem) var(--gutter); max-width: var(--max); margin: 0 auto; }
+.grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(2rem, 6vw, 6rem); }
+.head { position: sticky; top: 110px; align-self: start; }
+.sheet { color: var(--muted-foreground); margin-top: 0.6rem; }
+.title { font-size: clamp(2.2rem, 4.4vw, 3.6rem); margin-top: 1.6rem; font-weight: 250; }
+.body { min-width: 0; }
+.lead { font-size: clamp(17px, 1.35vw, 19.5px); line-height: 1.7; color: var(--foreground); font-weight: 300; }
+.disclaimer { margin-top: 1.6rem; font-style: italic; font-size: 14px; color: var(--muted-foreground); padding-left: 1rem; border-left: 1px solid var(--oak); }
+.stats { margin: 3.5rem 0 0; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); }
+.stat { padding: 1.6rem 1.25rem 1.8rem 0; border-bottom: 1px solid var(--border); }
+.stat:not(:nth-child(3n + 1)) { padding-left: 1.25rem; border-left: 1px solid var(--border); }
+.statLabel { font-size: 10.5px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted-foreground); min-height: 2.6em; }
+.statValue { margin: 0.4rem 0 0; font-size: clamp(2.4rem, 4vw, 3.4rem); font-weight: 200; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .head { position: static; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat:not(:nth-child(3n + 1)) { padding-left: 0; border-left: 0; }
+  .stat:nth-child(2n) { padding-left: 1.25rem; border-left: 1px solid var(--border); }
+}
