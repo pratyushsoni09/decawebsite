@@ -1,29 +1,64 @@
-/* --r: radius of the dissolve from sketch to render; --p: pinned-scroll progress 0..1 */
+/*
+ * --draw: ink line work drawn so far (0..1, rises from the ground up)
+ * --tone: graphite shading laid in (0..1)
+ * --r:    radius of the dissolve from drawing to render
+ * --p:    pinned-scroll progress 0..1
+ */
 @property --r {
   syntax: "<percentage>";
   inherits: true;
   initial-value: 0%;
 }
 
-.hero { --p: 0; position: relative; height: 220vh; background: var(--walnut-deep); color: var(--ivory); }
-.stage { position: sticky; top: 0; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; isolation: isolate; }
+.hero { --p: 0; --draw: 0; --tone: 0; position: relative; height: 220vh; background: var(--walnut-deep); color: var(--ivory); }
+.stage { position: sticky; top: 0; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; isolation: isolate; background: #f3efe6; }
 
 .media { position: absolute; inset: 0; z-index: -1; --r: 0%; }
-.go .media { animation: dissolve 2.4s 0.35s cubic-bezier(0.55, 0, 0.25, 1) forwards; }
+.go .media { animation: dissolve 2.4s 0.15s cubic-bezier(0.55, 0, 0.25, 1) forwards; }
 @keyframes dissolve { to { --r: 150%; } }
 
-.render, .sketch {
+.render, .lines, .tone {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%;
   transform: scale(calc(1.14 - var(--p) * 0.1)); transform-origin: 50% 40%;
 }
-.render { filter: blur(6px) saturate(0.7); transition: filter 2.2s 0.5s ease; }
+.render { filter: blur(6px) saturate(0.7); transition: filter 2.2s 0.3s ease; }
 .go .render { filter: blur(0) saturate(1); }
+/* the drawing: paper, construction lines, shading, ink */
 .sketch {
+  position: absolute; inset: 0; background: #f3efe6;
   -webkit-mask-image: radial-gradient(circle at 50% 46%, transparent calc(var(--r) - 18%), #000 var(--r));
   mask-image: radial-gradient(circle at 50% 46%, transparent calc(var(--r) - 18%), #000 var(--r));
 }
+.guides { position: absolute; inset: 0; width: 100%; height: 100%; }
+.guides line {
+  stroke: rgba(60, 52, 44, 0.22); stroke-width: 0.1;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: guide 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes guide { to { stroke-dashoffset: 0; } }
+.tone { opacity: calc(var(--tone) * 0.92); }
+/* ink rises from the ground up behind a soft edge, like a hand working up the façade */
+.lines {
+  -webkit-mask-image: linear-gradient(to top, #000 calc(var(--draw) * 112% - 12%), transparent calc(var(--draw) * 112%));
+  mask-image: linear-gradient(to top, #000 calc(var(--draw) * 112% - 12%), transparent calc(var(--draw) * 112%));
+}
+.pencil {
+  position: absolute; left: 0; right: 0; height: 2px; bottom: calc(var(--draw) * 112% - 6%);
+  background: linear-gradient(90deg, transparent, rgba(60, 52, 44, 0.35) 30%, rgba(184, 138, 82, 0.6) 50%, rgba(60, 52, 44, 0.35) 70%, transparent);
+  filter: blur(1px); opacity: calc(min(1, var(--draw) * 8) * (1 - var(--draw)));
+}
+
+.loading {
+  position: absolute; left: 50%; bottom: 42px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px; color: rgba(52, 46, 40, 0.8); font-size: 12px; letter-spacing: 0.08em;
+  padding: 9px 18px; border-radius: var(--radius-full); background: rgba(243, 239, 230, 0.9); box-shadow: 0 0 0 1px rgba(52, 46, 40, 0.08);
+  transition: opacity 0.6s ease;
+}
+.loadingLabel { text-transform: uppercase; letter-spacing: 0.22em; font-size: 10.5px; font-weight: 600; }
+.loadingTrack { width: 140px; height: 1px; background: rgba(52, 46, 40, 0.18); overflow: hidden; }
+.loadingTrack span { display: block; height: 100%; background: var(--brass); transform-origin: left; }
+.go .loading { opacity: 0; pointer-events: none; }
 .shade {
-  position: absolute; inset: 0;
+  position: absolute; inset: 0; opacity: 0; transition: opacity 1.6s 0.6s ease;
   background:
     linear-gradient(to top, hsla(22, 26%, 7%, calc(0.35 + var(--p) * 0.45)) 0%, transparent 55%),
     hsla(22, 26%, 7%, calc(var(--p) * 0.4));
@@ -35,6 +70,7 @@
   opacity: 0; transition: opacity 1s 2.2s ease;
 }
 .intro :global(.eyebrow) { color: hsl(37, 55%, 74%); }
+.go .shade { opacity: 1; }
 .go .intro { opacity: calc(1 - var(--p) * 3); }
 
 .titleWrap { position: absolute; left: 0; right: 0; bottom: 31vh; overflow: hidden; padding: 0 var(--gutter); pointer-events: none; }
@@ -63,11 +99,13 @@
 .secondary { border: 1px solid hsla(40, 38%, 95%, 0.6); color: var(--ivory); }
 .secondary:hover { background: hsla(40, 38%, 95%, 0.1); }
 
-.caption { position: absolute; right: var(--gutter); bottom: 18px; font-size: 11px; color: hsla(40, 38%, 95%, 0.65); }
+.caption { position: absolute; right: var(--gutter); bottom: 18px; font-size: 11px; color: hsla(40, 38%, 95%, 0.65); opacity: 0; transition: opacity 1s 1.8s; }
+.go .caption { opacity: 1; }
 .scrollCue {
   position: absolute; left: var(--gutter); bottom: 18px; font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: hsla(40, 38%, 95%, 0.7);
-  padding-left: 46px; opacity: calc(1 - var(--p) * 4);
+  padding-left: 46px; opacity: 0; transition: opacity 1s 2s;
 }
+.go .scrollCue { opacity: calc(1 - var(--p) * 4); }
 .scrollCue::before { content: ""; position: absolute; left: 0; top: 50%; width: 34px; height: 1px; background: currentColor; animation: cue 2.4s ease-in-out infinite; transform-origin: left; }
 @keyframes cue { 0% { transform: scaleX(0); } 50% { transform: scaleX(1); } 100% { transform: scaleX(0); transform-origin: right; } }
 
@@ -84,6 +122,7 @@
   .hero { height: auto; }
   .stage { position: relative; }
   .media { --r: 150%; animation: none !important; }
+  .guides line { stroke-dashoffset: 0; }
   .render { filter: none; }
   .title { transform: none; }
   .content { opacity: 1; transform: translate(-50%, 0); }

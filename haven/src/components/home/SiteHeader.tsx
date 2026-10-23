@@ -15,7 +15,7 @@ export const NAV = [
 const IDS = NAV.map((n) => n.id);
 
 /** Floating pill navigation: MENU · mark · INQUIRE, with a full-screen menu. */
-export function SiteHeader() {
+export function SiteHeader({ show = true }: { show?: boolean }) {
   const [open, setOpen] = useState(false);
   const active = useActiveSection(IDS);
   const menuBtn = useRef<HTMLButtonElement>(null);
@@ -37,7 +37,7 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className={styles.header}>
+      <header className={`${styles.header} ${show ? "" : styles.waiting}`}>
         <div className={styles.pill}>
           <button ref={menuBtn} className={styles.menuBtn} onClick={() => setOpen(true)} aria-expanded={open} aria-controls="site-menu">
             <span className={styles.lines} aria-hidden="true"><span /><span /></span>

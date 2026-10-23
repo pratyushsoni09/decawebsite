@@ -1,4 +1,7 @@
 .header { position: fixed; top: 16px; left: 0; right: 0; z-index: var(--z-nav); display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
+.header { transition: opacity 0.9s 1.4s ease, transform 0.9s 1.4s var(--ease-out); }
+.waiting { opacity: 0; transform: translateY(-12px); transition: none; }
+.waiting .pill { pointer-events: none; }
 .pill {
   pointer-events: auto;
   width: min(1040px, 100%); height: 70px; border-radius: var(--radius-full);

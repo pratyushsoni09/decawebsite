@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { TourEngine } from "../tour/engine";
-import { setSky, type SkyPreset } from "../tour/buildHouse";
-import { RESIDENCE_ELEVATION } from "../data/houseLayout";
+import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+import { buildHouse, poseLeaf, setSky, type SkyPreset } from "../tour/buildHouse";
+import { buildFurnitureItems } from "../tour/buildFurniture";
+import { CEILING_HEIGHT, RESIDENCE_ELEVATION, furniture } from "../data/houseLayout";
 
 /**
  * Dev-only render studio (/studio). Renders the stills used on the home
@@ -43,7 +45,7 @@ const room = (name: string, pos: [number, number, number], look: [number, number
 const towerShot = { w: 2400, h: 1350, pos: [33, 1.7, 68] as [number, number, number], look: [12, 1.7, 9] as [number, number, number], fov: 88, shift: 0.06 };
 export const VIEWS: View[] = [
   { name: "tower-golden", ...towerShot, sky: "golden", exposure: 0.95, sun: golden, hemi: 0.65, env: 0.35, lamps: 1.2, windowsLit: 0.35 },
-  { name: "hero-sketch", ...towerShot, sky: "day", exposure: 1.0, sun: day, hemi: 0.9, env: 0.3, lamps: 0, sketch: true },
+  { name: "hero", ...towerShot, sky: "day", exposure: 1.0, sun: day, hemi: 0.9, env: 0.3, lamps: 0, sketch: true },
   { name: "tower-dusk", w: 1800, h: 1350, pos: [70, 1.9, 70], look: [12, 1.9, 8], fov: 62, shift: 0.14, sky: "dusk", exposure: 1.3, sun: { intensity: 0.6, color: 0xff9d6a, dir: [-0.7, 0.05, 0.71] }, hemi: 0.2, env: 0.1, lamps: 3, windowsLit: 1.8 },
   room("lobby", [13.6, 1.6, 4.6], [12.0, 1.3, 0.3], { fov: 60 }),
   room("living", [9.6, 1.55, 10.3], [1.5, 0.9, 13.6]),
@@ -61,83 +63,105 @@ async function save(name: string, dataUrl: string) {
   return res.json();
 }
 
-function sketchPass(engine: TourEngine, render: () => void): HTMLCanvasElement {
+const SKETCH_HIDDEN = ["sky", "static:glass", "static:grass", "static:glow", "static:towerGlass", "static:curtain", "static:curtainLit"];
+const NO_EDGES = ["static:leaf", "static:olive", "static:boxwood", "static:bronze", "static:oakVertical"];
+
+/**
+ * Two layers for the hero's drawing animation:
+ *  - lines: ink edges only, hidden lines removed, on a transparent background
+ *  - tone:  graphite shading on paper, no edges
+ */
+function sketchPass(engine: TourEngine, render: () => void): { lines: HTMLCanvasElement; tone: HTMLCanvasElement } {
   const { scene, renderer } = engine;
   const paper = new THREE.MeshLambertMaterial({ color: 0xf6f3ec });
-  const ink = new THREE.LineBasicMaterial({ color: 0x3a342e, transparent: true, opacity: 0.6 });
+  const depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const ink = new THREE.LineBasicMaterial({ color: 0x000000 });
   const swapped: [THREE.Mesh, THREE.Material | THREE.Material[]][] = [];
   const lines: THREE.LineSegments[] = [];
   const hidden: THREE.Object3D[] = [];
   scene.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
-    if (["sky", "static:glass", "static:grass", "static:glow", "static:towerGlass", "static:curtain", "static:curtainLit"].includes(m.name)) {
+    if (SKETCH_HIDDEN.includes(m.name)) {
       hidden.push(m);
       return;
     }
     swapped.push([m, m.material]);
-    m.material = paper;
-    if (m.name.startsWith("static:") && !["static:leaf", "static:olive", "static:boxwood", "static:bronze", "static:oakVertical"].includes(m.name)) {
+    if (m.name.startsWith("static:") && !NO_EDGES.includes(m.name)) {
       const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 28), ink);
       e.matrixAutoUpdate = false;
       e.matrix.copy(m.matrixWorld);
-      scene.add(e);
+      e.visible = false;
       lines.push(e);
     }
   });
+  lines.forEach((l) => scene.add(l));
   hidden.forEach((h) => (h.visible = false));
   const fog = scene.fog;
   scene.fog = null;
-  scene.background = new THREE.Color(0xf6f3ec);
   const tm = renderer.toneMapping;
   renderer.toneMapping = THREE.NoToneMapping;
-  render();
-  renderer.toneMapping = tm;
   const src = renderer.domElement;
-  const out = document.createElement("canvas");
-  out.width = src.width;
-  out.height = src.height;
-  const ctx = out.getContext("2d")!;
+  const mk = () => {
+    const c = document.createElement("canvas");
+    c.width = src.width;
+    c.height = src.height;
+    return c;
+  };
+
+  // pass 1: ink lines over depth-only geometry (hidden-line removal), white background
+  swapped.forEach(([m]) => (m.material = depthOnly));
+  lines.forEach((l) => (l.visible = true));
+  scene.background = new THREE.Color(0xffffff);
+  render();
+  const linesCanvas = mk();
+  const lctx = linesCanvas.getContext("2d")!;
+  lctx.drawImage(src, 0, 0);
+  const img = lctx.getImageData(0, 0, linesCanvas.width, linesCanvas.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const dark = 1 - (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255;
+    d[i] = 52;
+    d[i + 1] = 46;
+    d[i + 2] = 40;
+    d[i + 3] = Math.min(255, dark * 255 * 0.9);
+  }
+  lctx.putImageData(img, 0, 0);
+
+  // pass 2: graphite tone on paper, no lines
+  swapped.forEach(([m]) => (m.material = paper));
+  lines.forEach((l) => (l.visible = false));
+  scene.background = new THREE.Color(0xf6f3ec);
+  render();
+  const toneCanvas = mk();
+  const ctx = toneCanvas.getContext("2d")!;
   ctx.fillStyle = "#f3efe6";
-  ctx.fillRect(0, 0, out.width, out.height);
-  ctx.filter = "grayscale(1) contrast(1.25) brightness(1.06)";
+  ctx.fillRect(0, 0, toneCanvas.width, toneCanvas.height);
+  ctx.filter = "grayscale(1) contrast(1.15) brightness(1.08)";
   ctx.globalCompositeOperation = "multiply";
   ctx.drawImage(src, 0, 0);
   ctx.filter = "none";
-  // construction lines, like a drafting sheet
-  ctx.globalCompositeOperation = "multiply";
-  ctx.strokeStyle = "rgba(60,52,44,0.16)";
-  ctx.lineWidth = 1;
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 26; i++) {
-    const y = out.height * (0.25 + rnd() * 0.6);
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(out.width, y + (rnd() - 0.5) * 6);
-    ctx.stroke();
-  }
-  for (let i = 0; i < 18; i++) {
-    const x = out.width * (0.08 + rnd() * 0.84);
-    ctx.beginPath();
-    ctx.moveTo(x, out.height * 0.1);
-    ctx.lineTo(x + (rnd() - 0.5) * 4, out.height);
-    ctx.stroke();
-  }
-  // paper grain
   for (let i = 0; i < 60000; i++) {
     ctx.fillStyle = `rgba(90,80,70,${rnd() * 0.06})`;
-    ctx.fillRect(rnd() * out.width, rnd() * out.height, 1.4, 1.4);
+    ctx.fillRect(rnd() * toneCanvas.width, rnd() * toneCanvas.height, 1.4, 1.4);
   }
+
   // restore
+  renderer.toneMapping = tm;
   swapped.forEach(([m, mat]) => (m.material = mat));
-  lines.forEach((l) => { scene.remove(l); l.geometry.dispose(); });
+  lines.forEach((l) => {
+    scene.remove(l);
+    l.geometry.dispose();
+  });
   hidden.forEach((h) => (h.visible = true));
   scene.fog = fog;
   scene.background = null;
   paper.dispose();
+  depthOnly.dispose();
   ink.dispose();
-  return out;
+  return { lines: linesCanvas, tone: toneCanvas };
 }
 
 export default function Studio() {
@@ -202,15 +226,58 @@ export default function Studio() {
     eng.lib.glow.emissiveIntensity = v.sky === "dusk" ? 4 : 2.4;
     (scene.fog as THREE.Fog).color.set(v.sky === "dusk" ? 0x3a3340 : 0xe6e0d4);
     const draw = () => renderer.render(scene, camera);
-    let canvas: HTMLCanvasElement;
-    if (v.sketch) canvas = sketchPass(eng, draw);
-    else {
+    const outputs: [string, HTMLCanvasElement][] = [];
+    if (v.sketch) {
+      const { lines, tone } = sketchPass(eng, draw);
+      outputs.push([`${v.name}-lines`, lines], [`${v.name}-tone`, tone]);
+    } else {
       draw();
-      canvas = renderer.domElement;
+      outputs.push([v.name, renderer.domElement]);
     }
-    const url = canvas.toDataURL("image/webp", 0.84);
-    const r = await save(v.name, url);
-    setLog((l) => [...l, `${v.name}: ${r.ok ? `${Math.round(r.bytes / 1024)} KB` : "failed"}`]);
+    for (const [name, canvas] of outputs) {
+      const r = await save(name, canvas.toDataURL("image/webp", 0.84));
+      setLog((l) => [...l, `${name}: ${r.ok ? `${Math.round(r.bytes / 1024)} KB` : "failed"}`]);
+    }
+  };
+
+  /** Hand the model, the camera views and the lamp positions to blender/render.py. */
+  const exportForBlender = async () => {
+    const eng = engine!;
+    setBusy(true);
+    setLog(["exporting…"]);
+    eng.setAllDoors(true);
+    for (const l of eng.house.leaves) if (l.geom.doorId.endsWith("balcony")) {
+      l.s = l.target = 0;
+      poseLeaf(l);
+    }
+    eng.house.swings.forEach((s) => (s.pivot.rotation.x = 0));
+    const root = eng.house.root;
+    root.remove(eng.house.sky);
+    root.updateMatrixWorld(true);
+    const glb = (await new GLTFExporter().parseAsync(root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
+    root.add(eng.house.sky);
+    const put = (name: string, body: BodyInit) => fetch(`/api/__save-file?name=${name}`, { method: "POST", body }).then((r) => r.json());
+    const a = await put("tower.glb", glb);
+    // shell without furniture + furniture item by item, so Blender can swap pieces for detailed CC0 models
+    const shell = await buildHouse(eng.lib, async () => {}, { furniture: false });
+    for (const l of shell.leaves) {
+      l.s = l.target = l.geom.doorId.endsWith("balcony") ? 0 : 1;
+      poseLeaf(l);
+    }
+    shell.root.remove(shell.sky);
+    shell.root.updateMatrixWorld(true);
+    const shellGlb = (await new GLTFExporter().parseAsync(shell.root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
+    const items = buildFurnitureItems(eng.lib, furniture);
+    items.updateMatrixWorld(true);
+    const itemsGlb = (await new GLTFExporter().parseAsync(items, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
+    for (const g of [shell.root, items]) g.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+    await put("shell.glb", shellGlb);
+    await put("furniture.glb", itemsGlb);
+    await put("furniture.json", JSON.stringify({ residenceElevation: U, ceilingHeight: CEILING_HEIGHT, items: furniture }, null, 2));
+    const b = await put("views.json", JSON.stringify({ residenceElevation: U, views: VIEWS }, null, 2));
+    const c = await put("lights.json", JSON.stringify(eng.house.lights, null, 2));
+    setLog([`tower.glb: ${Math.round(a.bytes / 1048576)} MB`, `views.json: ${b.bytes} B`, `lights.json: ${c.bytes} B`, "export done"]);
+    setBusy(false);
   };
 
   const renderAll = async () => {
@@ -230,6 +297,7 @@ export default function Studio() {
       <p>Renders the home-page stills from the 3D model into public/images (dev server only).</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
         <button id="render-all" disabled={!engine || busy} onClick={renderAll}>Render all</button>
+        <button id="export-blender" disabled={!engine || busy} onClick={exportForBlender}>Export for Blender</button>
         {VIEWS.map((v) => (
           <button key={v.name} disabled={!engine || busy} onClick={() => renderView(v)}>{v.name}</button>
         ))}

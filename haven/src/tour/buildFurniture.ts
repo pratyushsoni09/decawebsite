@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { CEILING_HEIGHT, FLOOR_LEVEL, WALL_TYPES, roomById, type FurnitureDef } from "../data/houseLayout";
 import { StaticBuilder, metricBox, placeMatrix } from "./geom";
-import type { MatKey } from "./materials";
+import type { MatKey, MaterialLib } from "./materials";
 
 /**
  * Low-poly furniture, authored in local space: origin at the footprint
@@ -504,4 +504,25 @@ export function buildFurniture(sb: StaticBuilder, items: FurnitureDef[]): { ligh
     }
   }
   return { lights, swings };
+}
+
+/** Every item as its own group named `item:<id>` (world space), for the Blender export. */
+export function buildFurnitureItems(lib: MaterialLib, items: FurnitureDef[]): THREE.Group {
+  const all = new THREE.Group();
+  all.name = "furniture";
+  for (const it of items) {
+    const sb = new StaticBuilder();
+    const { swings } = buildFurniture(sb, [it]);
+    const g = new THREE.Group();
+    g.name = `item:${it.id}`;
+    sb.build(lib, g);
+    for (const h of swings) {
+      const hang = new THREE.Group();
+      h.sb.build(lib, hang);
+      hang.applyMatrix4(placeMatrix(h.it.x, FLOOR_LEVEL[roomById(h.it.room)!.floor] + h.hookY, h.it.y, h.it.rot));
+      g.add(hang);
+    }
+    all.add(g);
+  }
+  return all;
 }

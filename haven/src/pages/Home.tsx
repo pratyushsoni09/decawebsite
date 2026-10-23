@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { IntroLoader } from "../components/home/IntroLoader";
 import { SiteHeader } from "../components/home/SiteHeader";
 import { Hero } from "../components/home/Hero";
 import { Overview } from "../components/home/Overview";
@@ -11,15 +10,11 @@ import { Enquiry } from "../components/home/Enquiry";
 import { SiteFooter } from "../components/home/SiteFooter";
 import { useReveal } from "../hooks/useReveal";
 
-const PRELOAD = ["/images/hero-sketch.webp", "/images/tower-golden.webp", "/images/living.webp"];
-let introShown = false;
 
 export default function Home() {
-  const [ready, setReady] = useState(introShown);
-  const done = useCallback(() => {
-    introShown = true;
-    setReady(true);
-  }, []);
+  // the hero draws the tower while the page loads, then reports ready
+  const [ready, setReady] = useState(false);
+  const done = useCallback(() => setReady(true), []);
   useReveal([ready]);
 
   useEffect(() => {
@@ -29,10 +24,9 @@ export default function Home() {
   return (
     <>
       <a href="#main" className="skip-link">Skip to content</a>
-      {!introShown && <IntroLoader images={PRELOAD} onDone={done} />}
-      <SiteHeader />
+      <SiteHeader show={ready} />
       <main id="main">
-        <Hero start={ready} />
+        <Hero onReady={done} />
         <Overview />
         <RoomsWalk />
         <FloorPlans />

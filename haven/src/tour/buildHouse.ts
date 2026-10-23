@@ -355,7 +355,7 @@ export function setSky(sky: THREE.Mesh, preset: SkyPreset) {
 
 /* ------------------------------------------------------------------ assemble */
 
-export async function buildHouse(lib: MaterialLib, step: Step): Promise<HouseBuild> {
+export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture?: boolean } = {}): Promise<HouseBuild> {
   const root = new THREE.Group();
   root.name = "tower";
   const sb = new StaticBuilder();
@@ -363,7 +363,8 @@ export async function buildHouse(lib: MaterialLib, step: Step): Promise<HouseBui
 
   buildResidenceShell(sb, ceilingRooms);
   await step("Residence 11A");
-  const { lights, swings: hanging } = buildFurniture(sb, furniture);
+  // the Blender export takes the shell without furniture and the furniture item by item
+  const { lights, swings: hanging } = opts.furniture === false ? { lights: [], swings: [] } : buildFurniture(sb, furniture);
   await step("Furniture and fittings");
   for (let level = 1; level <= TOWER.storeys; level++) {
     slab(sb, levelZ(level));

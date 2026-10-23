@@ -65,13 +65,26 @@ async function handleSaveRender(req: IncomingMessage, res: ServerResponse) {
   return send(res, 200, { ok: true, bytes: fs.statSync(out).size });
 }
 
-function readBody2(req: IncomingMessage): Promise<string> {
+function readRaw(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     req.on("data", (c) => chunks.push(c));
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
+}
+
+const readBody2 = async (req: IncomingMessage) => (await readRaw(req)).toString("utf8");
+
+/** Dev-only: lets the /studio route hand the model, cameras and lamps to the Blender scripts in blender/. */
+async function handleSaveFile(req: IncomingMessage, res: ServerResponse) {
+  const name = new URL(req.url ?? "", "http://x").searchParams.get("name") ?? "";
+  if (!/^[a-z0-9-]+\.(glb|json)$/.test(name)) return send(res, 400, { ok: false });
+  const dir = path.resolve(process.cwd(), "blender", "export");
+  fs.mkdirSync(dir, { recursive: true });
+  const out = path.join(dir, name);
+  fs.writeFileSync(out, await readRaw(req));
+  return send(res, 200, { ok: true, bytes: fs.statSync(out).size });
 }
 
 export function enquiryApiPlugin(): Plugin {
@@ -80,6 +93,7 @@ export function enquiryApiPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use("/api/enquiry", (req, res) => void handleEnquiry(req, res));
       server.middlewares.use("/api/__save-render", (req, res) => void handleSaveRender(req, res));
+      server.middlewares.use("/api/__save-file", (req, res) => void handleSaveFile(req, res));
     },
     configurePreviewServer(server) {
       server.middlewares.use("/api/enquiry", (req, res) => void handleEnquiry(req, res));

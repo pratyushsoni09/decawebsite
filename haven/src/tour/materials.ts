@@ -410,5 +410,7 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
   for (let i = 0; i < 6; i++) {
     lib[`art${i}` as MatKey] = std({ map: tx(`artwork ${i + 1}`, 512, paintArt(i), 100 + i, [1, 1]), roughness: 0.85 });
   }
+  // names travel with the glTF export, so the Blender script can recognise each material
+  for (const [k, m] of Object.entries(lib)) m!.name = k;
   return lib as MaterialLib;
 }
