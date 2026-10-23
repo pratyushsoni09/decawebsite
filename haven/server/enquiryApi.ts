@@ -1,10 +1,12 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { enquirySchema } from "../src/lib/enquirySchema";
 
-const DATA_FILE = path.resolve(process.cwd(), "data", "enquiries.json");
+// On Vercel only /tmp is writable (and it does not persist), so each enquiry is also logged.
+const DATA_FILE = process.env.VERCEL ? path.join(os.tmpdir(), "enquiries.json") : path.resolve(process.cwd(), "data", "enquiries.json");
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -24,11 +26,12 @@ function send(res: ServerResponse, status: number, payload: unknown) {
   res.end(JSON.stringify(payload));
 }
 
-export async function handleEnquiry(req: IncomingMessage, res: ServerResponse) {
+/** `body` is the already-parsed request body when the host (Vercel) has read the stream itself. */
+export async function handleEnquiry(req: IncomingMessage, res: ServerResponse, body?: unknown) {
   if (req.method !== "POST") return send(res, 405, { ok: false, error: "Method not allowed" });
   let json: unknown;
   try {
-    json = JSON.parse(await readBody(req));
+    json = body !== undefined ? (typeof body === "string" ? JSON.parse(body) : body) : JSON.parse(await readBody(req));
   } catch {
     return send(res, 400, { ok: false, error: "Invalid JSON" });
   }
@@ -48,6 +51,7 @@ export async function handleEnquiry(req: IncomingMessage, res: ServerResponse) {
     message: data.message || null,
     createdAt: new Date().toISOString(),
   };
+  console.log("[enquiry]", JSON.stringify(record));
   fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
   const existing: unknown[] = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) : [];
   existing.push(record);
