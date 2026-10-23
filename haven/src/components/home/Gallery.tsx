@@ -71,7 +71,7 @@ export function Gallery() {
     <section id="gallery" className={styles.section} aria-labelledby="gallery-title">
       <header className={`${styles.head} reveal`}>
         <p className="eyebrow">Interior gallery</p>
-        <h2 id="gallery-title" className={styles.title}>Materials and moods.</h2>
+        <h2 id="gallery-title" className={styles.title}>Inside and out.</h2>
         <p className={styles.note}>All gallery images are illustrative renders of the 3D model, not photographs.</p>
       </header>
       <ul className={styles.grid}>

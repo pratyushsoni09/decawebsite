@@ -1,6 +1,6 @@
-# Haven — The Oak Mansion
+# Haven — The Oak Residences
 
-A marketing site for an illustrative residence you can walk through in real-time 3D.
+A marketing site for an illustrative fifteen-storey tower. One full-floor apartment, Residence 11A on level 11, is fully furnished and walkable in real-time 3D, including its balcony with an egg chair and a porch swing.
 
 ```bash
 npm install
@@ -13,7 +13,7 @@ npm run dev      # http://localhost:5180
 
 ## One source of truth
 
-`src/data/houseLayout.ts` holds every room rectangle, door, window, the stair and all furniture.
+`src/data/houseLayout.ts` holds the tower dimensions and, for Residence 11A, every room rectangle, door, window, the balcony and all furniture.
 `src/data/layoutGeometry.ts` derives the walls from it. The walls are the space left between rooms. The SVG plans, the 3D scene,
 the collision map and the in-tour **Model checks** panel are all built from these two files.
 

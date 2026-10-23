@@ -15,15 +15,6 @@
 .light .swing { fill: none; stroke: var(--muted-foreground); stroke-width: 0.025; stroke-dasharray: 0.12 0.08; }
 .light .furn { fill: none; stroke: hsla(25, 12%, 38%, 0.35); stroke-width: 0.025; }
 .light .rug { fill: hsla(30, 38%, 54%, 0.06); stroke: hsla(30, 38%, 54%, 0.35); stroke-width: 0.02; stroke-dasharray: 0.1 0.08; }
-.light .stairFlight { fill: hsla(30, 38%, 54%, 0.28); }
-.light .stairLanding { fill: hsla(30, 38%, 54%, 0.18); }
-.light .stair line { stroke: var(--oak); stroke-width: 0.03; }
-.light .stairRail { stroke: var(--walnut) !important; stroke-width: 0.05 !important; }
-.light .stairArrow { stroke: var(--walnut); stroke-width: 0.04; fill: none; }
-.light .arrowHead { fill: var(--walnut); }
-.light .stairText { fill: var(--walnut); font-size: 0.32px; font-weight: 600; letter-spacing: 0.05em; text-anchor: middle; }
-.light .void { fill: hsla(22, 30%, 22%, 0.06); }
-.light .guard { stroke: var(--walnut); stroke-width: 0.06; }
 .light .name { fill: var(--foreground); font-weight: 500; text-anchor: middle; }
 .light .dims { fill: var(--muted-foreground); font-weight: 400; text-anchor: middle; font-family: "JetBrains Mono", ui-monospace, monospace; }
 .light .entrance { fill: var(--oak); font-size: 0.42px; font-weight: 600; letter-spacing: 0.12em; text-anchor: middle; text-transform: uppercase; }
@@ -43,10 +34,14 @@
 .dark .leaf { stroke: hsla(40, 38%, 95%, 0.55); stroke-width: 0.06; }
 .dark .swing { fill: none; stroke: hsla(40, 38%, 95%, 0.22); stroke-width: 0.04; }
 .dark .furn, .dark .rug { fill: none; stroke: hsla(40, 38%, 95%, 0.14); stroke-width: 0.04; }
-.dark .stairFlight, .dark .stairLanding { fill: hsla(37, 38%, 52%, 0.25); }
-.dark .stair line { stroke: hsla(37, 38%, 62%, 0.6); stroke-width: 0.04; }
-.dark .stairArrow, .dark .stairText, .dark .arrowHead { display: none; }
-.dark .void { fill: hsla(0, 0%, 0%, 0.25); }
-.dark .guard { stroke: hsla(40, 38%, 95%, 0.7); stroke-width: 0.08; }
 .dark .name { fill: hsla(40, 38%, 95%, 0.7); font-weight: 500; text-anchor: middle; }
 .dark .dims, .dark .entrance { display: none; }
+
+/* balcony */
+.light .deck { fill: hsl(30, 32%, 86%); }
+.light .boards line { stroke: hsla(30, 38%, 44%, 0.25); stroke-width: 0.02; }
+.light .rail { fill: hsl(200, 45%, 86%); stroke: var(--walnut); stroke-width: 0.03; }
+.dark .deck { fill: hsla(30, 40%, 60%, 0.12); }
+.dark .boards line { stroke: hsla(40, 38%, 95%, 0.08); stroke-width: 0.03; }
+.dark .rail { fill: hsla(200, 50%, 75%, 0.55); }
+.boards { pointer-events: none; }

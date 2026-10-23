@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { featuredRooms, RENDER_LABEL } from "../../data/rooms";
-import { roomById } from "../../data/houseLayout";
 import { FloorPlanSvg } from "../FloorPlanSvg";
 import styles from "./RoomsWalk.module.css";
 
@@ -27,14 +26,13 @@ export function RoomsWalk() {
   }, []);
 
   const current = featuredRooms[active];
-  const floor = roomById(current.id)!.floor;
 
   return (
     <section id="rooms" className={styles.section} aria-labelledby="rooms-title">
       <header className={`${styles.head} reveal`}>
         <p className="eyebrow">Room by room</p>
-        <h2 id="rooms-title" className={styles.title}>Move through the house.</h2>
-        <p className={styles.headNote}>Seven rooms, in the order you would walk them: the ground floor first, then up the oak stair.</p>
+        <h2 id="rooms-title" className={styles.title}>Move through the residence.</h2>
+        <p className={styles.headNote}>Seven spaces of Residence 11A, in the order you would walk them from the lift to the balcony.</p>
       </header>
 
       <div className={styles.layout}>
@@ -60,9 +58,9 @@ export function RoomsWalk() {
           <div className={styles.keyPlan}>
             <div className={styles.keyHead}>
               <span className="mono">Key plan</span>
-              <span className="mono">{floor === 0 ? "Ground" : "First"} floor · {current.name}</span>
+              <span className="mono">Level 11 · {current.name}</span>
             </div>
-            <FloorPlanSvg floor={floor} highlight={current.id} labels="none" showFurniture={false} title="Key plan" />
+            <FloorPlanSvg highlight={current.id} labels="none" showFurniture={false} title="Key plan" />
           </div>
         </div>
 
@@ -81,7 +79,7 @@ export function RoomsWalk() {
                 <figcaption className={styles.badge}>{RENDER_LABEL}</figcaption>
               </figure>
               <p className="eyebrow">
-                {rm.num} · {rm.floor} floor
+                {rm.num} · Residence 11A
               </p>
               <h3 className={styles.name}>{rm.name}</h3>
               <p className={styles.desc}>{rm.description}</p>

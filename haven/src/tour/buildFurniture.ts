@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CEILING_HEIGHT, FLOOR_LEVEL, roomById, type FurnitureDef } from "../data/houseLayout";
+import { CEILING_HEIGHT, FLOOR_LEVEL, WALL_TYPES, roomById, type FurnitureDef } from "../data/houseLayout";
 import { StaticBuilder, metricBox, placeMatrix } from "./geom";
 import type { MatKey } from "./materials";
 
@@ -9,7 +9,36 @@ import type { MatKey } from "./materials";
  * their origin on the wall face at their centre height.
  */
 
-type Ctx = { sb: StaticBuilder; M: THREE.Matrix4; it: FurnitureDef };
+type Ctx = { sb: StaticBuilder; M: THREE.Matrix4; it: FurnitureDef; hang?: SwingPart };
+
+/** The moving part of a swing: geometry in hook-local space (y down from the hook). */
+export interface SwingPart {
+  it: FurnitureDef;
+  sb: StaticBuilder;
+  /** hook height above the floor */
+  hookY: number;
+}
+
+const I = new THREE.Matrix4();
+/** box into the swing's moving part (hook-local) */
+function HB(c: Ctx, mat: MatKey, w: number, h: number, d: number, x = 0, y = 0, z = 0) {
+  const g = metricBox(w, h, d);
+  g.translate(x, y + h / 2, z);
+  c.hang!.sb.add(g, mat, I);
+}
+function HC(c: Ctx, mat: MatKey, r: number, h: number, x: number, y: number, z: number) {
+  const g = new THREE.CylinderGeometry(r, r, h, 6);
+  g.translate(x, y + h / 2, z);
+  c.hang!.sb.add(g, mat, I);
+}
+/** beam between two local points (frame members) */
+function beam(c: Ctx, mat: MatKey, t: number, a: THREE.Vector3, b: THREE.Vector3) {
+  const len = a.distanceTo(b);
+  const g = metricBox(t, t, len);
+  const m = new THREE.Matrix4().lookAt(b, a, new THREE.Vector3(0, 1, 0));
+  m.setPosition(a.clone().add(b).multiplyScalar(0.5));
+  c.sb.add(g, mat, c.M.clone().multiply(m));
+}
 
 /** box by centre-x, bottom-y, centre-z */
 function B(c: Ctx, mat: MatKey, w: number, h: number, d: number, x = 0, y = 0, z = 0) {
@@ -52,6 +81,17 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   sofa(c) {
     const { w, d } = c.it;
     const mat: MatKey = c.it.variant === "cognac" ? "leather" : c.it.variant === "linen" ? "linen" : "cream";
+    if (c.it.variant === "outdoor") {
+      legs(c, "teak", w - 0.04, d - 0.04, 0.3, 0.06, 0.0);
+      B(c, "teak", w, 0.06, d, 0, 0.24, 0);
+      B(c, "teak", w, 0.5, 0.06, 0, 0.3, -d / 2 + 0.03);
+      for (const sx of [-1, 1]) B(c, "teak", 0.06, 0.3, d, sx * (w / 2 - 0.03), 0.3, 0);
+      const n = 3;
+      const cw = (w - 0.16) / n;
+      for (let i = 0; i < n; i++) B(c, "cream", cw - 0.02, 0.12, d - 0.14, -w / 2 + 0.08 + cw * (i + 0.5), 0.3, 0.05);
+      for (let i = 0; i < n; i++) B(c, i === 1 ? "teal" : "cream", cw - 0.06, 0.38, 0.12, -w / 2 + 0.08 + cw * (i + 0.5), 0.42, -d / 2 + 0.14);
+      return;
+    }
     legs(c, "darkMetal", w - 0.1, d - 0.1, 0.1, 0.035);
     B(c, mat, w, 0.3, d, 0, 0.1, 0);
     const n = w > 2.6 ? 3 : 2;
@@ -128,12 +168,6 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
         S(c, i % 3 ? "olive" : "leaf", 0.16, Math.cos(a) * 0.2, 1.2 + (i % 3) * 0.08, Math.sin(a) * 0.2, 1, 1, 1, 0);
       }
     }
-  },
-  gamesTable(c) {
-    const { w, d } = c.it;
-    legs(c, "walnut", w, d, 0.72, 0.05);
-    B(c, "walnut", w, 0.04, d, 0, 0.72, 0);
-    B(c, "leather", w * 0.6, 0.005, d * 0.6, 0, 0.76, 0);
   },
   island(c) {
     const { w, d } = c.it;
@@ -269,6 +303,14 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   console(c) {
     const { w, d } = c.it;
+    if (c.it.variant === "media") {
+      B(c, "walnut", w, 0.42, d, 0, 0.1, 0);
+      legs(c, "brass", w - 0.1, d - 0.06, 0.1, 0.03);
+      for (let i = 1; i < 4; i++) B(c, "darkMetal", 0.006, 0.36, 0.005, -w / 2 + (w / 4) * i, 0.13, d / 2);
+      B(c, "pot", 0.14, 0.22, 0.14, w * 0.36, 0.52, 0);
+      B(c, "oakWood", 0.3, 0.06, 0.22, -w * 0.32, 0.52, 0);
+      return;
+    }
     legs(c, "bronze", w, d, 0.78, 0.03, 0.02);
     B(c, "oakWood", w, 0.04, d, 0, 0.78, 0);
     B(c, "oakWood", w - 0.1, 0.03, d - 0.06, 0, 0.2, 0);
@@ -358,6 +400,73 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       S(c, "glow", 0.035, x, 2.62, 0, 1, 1.3, 1, 1);
     }
   },
+  tv(c) {
+    const { w, h } = c.it;
+    B(c, "darkMetal", w, h, 0.04, 0, -h / 2, 0.02);
+    B(c, "darkGlass", w - 0.03, h - 0.03, 0.005, 0, -h / 2 + 0.015, 0.042);
+  },
+  lift(c) {
+    const { w, h } = c.it;
+    B(c, "bronze", w + 0.2, h + 0.12, 0.05, 0, -h / 2, 0.025);
+    B(c, "liftDoor", w / 2 - 0.01, h, 0.02, -w / 4, -h / 2, 0.06);
+    B(c, "liftDoor", w / 2 - 0.01, h, 0.02, w / 4, -h / 2, 0.06);
+    B(c, "glow", 0.06, 0.12, 0.02, w / 2 + 0.25, -0.1, 0.03);
+  },
+  planter(c) {
+    const { w, d, h } = c.it;
+    B(c, "concrete", w, h, d);
+    for (let i = 0; i < Math.round(w / 0.32); i++) {
+      S(c, i % 2 ? "leaf" : "olive", 0.2, -w / 2 + 0.18 + i * 0.32, h + 0.12, 0, 1, 1.3, 0.9, 0);
+    }
+    S(c, "leaf", 0.12, 0, h + 0.45, 0, 1, 2.2, 1, 0);
+  },
+  swingEgg(c) {
+    // C-shaped stand; the rattan egg hangs from the hook and sways
+    const hookY = 1.95;
+    C(c, "darkMetal", 0.42, 0.45, 0.05, 0, 0, 0, 28);
+    beam(c, "darkMetal", 0.045, new THREE.Vector3(0, 0.05, -0.32), new THREE.Vector3(0, 1.8, -0.42));
+    beam(c, "darkMetal", 0.045, new THREE.Vector3(0, 1.8, -0.42), new THREE.Vector3(0, hookY + 0.08, -0.1));
+    beam(c, "darkMetal", 0.045, new THREE.Vector3(0, hookY + 0.08, -0.1), new THREE.Vector3(0, hookY + 0.04, 0));
+    c.hang = { it: c.it, sb: new StaticBuilder(), hookY };
+    HC(c, "darkMetal", 0.008, 0.5, 0, -0.5, 0);
+    const shell = new THREE.SphereGeometry(0.5, 32, 18, Math.PI * 0.72, Math.PI * 1.56, 0.05, Math.PI * 0.95);
+    shell.scale(1, 1.25, 0.95);
+    shell.rotateY(Math.PI);
+    shell.translate(0, -1.15, 0);
+    c.hang.sb.add(shell, "rattan", I);
+    const cushion = new THREE.SphereGeometry(0.4, 20, 10);
+    cushion.scale(1, 0.32, 0.95);
+    cushion.translate(0, -1.55, 0.02);
+    c.hang.sb.add(cushion, "cream", I);
+    const back = new THREE.SphereGeometry(0.28, 16, 10);
+    back.scale(1.1, 0.9, 0.45);
+    back.translate(0, -1.25, -0.25);
+    c.hang.sb.add(back, "teal", I);
+  },
+  swingBench(c) {
+    // A-frame porch swing in teak; the bench hangs on four chains
+    const { w, d } = c.it;
+    const top = 2.1;
+    for (const sx of [-1, 1]) {
+      const x = sx * (w / 2 - 0.06);
+      beam(c, "teak", 0.08, new THREE.Vector3(x, 0, -d / 2 + 0.05), new THREE.Vector3(x, top, 0));
+      beam(c, "teak", 0.08, new THREE.Vector3(x, 0, d / 2 - 0.05), new THREE.Vector3(x, top, 0));
+      beam(c, "teak", 0.06, new THREE.Vector3(x, 0.55, -d / 2 + 0.3), new THREE.Vector3(x, 0.55, d / 2 - 0.3));
+    }
+    beam(c, "teak", 0.1, new THREE.Vector3(-w / 2, top + 0.02, 0), new THREE.Vector3(w / 2, top + 0.02, 0));
+    c.hang = { it: c.it, sb: new StaticBuilder(), hookY: top - 0.03 };
+    const seatY = -(top - 0.03) + 0.45;
+    for (const sx of [-0.62, 0.62]) {
+      HC(c, "darkMetal", 0.008, -seatY - 0.02, sx, seatY + 0.02, 0.18);
+      HC(c, "darkMetal", 0.008, -seatY - 0.44, sx, seatY + 0.44, -0.2);
+    }
+    HB(c, "teak", 1.4, 0.06, 0.5, 0, seatY, 0);
+    HB(c, "teak", 1.4, 0.45, 0.05, 0, seatY + 0.06, -0.24);
+    for (const sx of [-1, 1]) HB(c, "teak", 0.05, 0.22, 0.5, sx * 0.7, seatY + 0.06, 0);
+    HB(c, "linen", 1.3, 0.08, 0.44, 0, seatY + 0.06, 0.01);
+    HB(c, "teal", 0.4, 0.3, 0.1, -0.35, seatY + 0.14, -0.17);
+    HB(c, "cream", 0.4, 0.3, 0.1, 0.35, seatY + 0.14, -0.17);
+  },
   washer(c) {
     const { w, d, h } = c.it;
     B(c, "white", w, h, d);
@@ -378,18 +487,21 @@ export interface LightSpot {
   strength: number;
 }
 
-/** Builds every item into the static builder; returns light positions for the warm point lights. */
-export function buildFurniture(sb: StaticBuilder, items: FurnitureDef[]): LightSpot[] {
+/** Builds every item into the static builder; returns lamp positions and the swings' moving parts. */
+export function buildFurniture(sb: StaticBuilder, items: FurnitureDef[]): { lights: LightSpot[]; swings: SwingPart[] } {
   const lights: LightSpot[] = [];
+  const swings: SwingPart[] = [];
   for (const it of items) {
     const room = roomById(it.room)!;
     const level = FLOOR_LEVEL[room.floor];
-    const isWall = it.type === "art" || it.type === "mirror";
+    const isWall = WALL_TYPES.includes(it.type);
     const M = placeMatrix(it.x, level + (isWall ? it.elev ?? 1.5 : 0), it.y, it.rot);
-    builders[it.type]?.({ sb, M, it });
+    const c: Ctx = { sb, M, it };
+    builders[it.type]?.(c);
+    if (c.hang) swings.push(c.hang);
     if (it.type === "pendant" || it.type === "chandelier") {
       lights.push({ x: it.x, y: level + 2.3, z: it.y, room: it.room, strength: it.type === "chandelier" ? 1.4 : 1 });
     }
   }
-  return lights;
+  return { lights, swings };
 }

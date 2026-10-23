@@ -10,7 +10,7 @@ export function SiteFooter() {
         <div className={styles.brand}>
           <ArchMark size={44} className={styles.mark} />
           <p className={styles.word}>HAVEN</p>
-          <p className={styles.line}>The Oak Mansion — an illustrative residence presented as a walkable 3D model.</p>
+          <p className={styles.line}>The Oak Residences — an illustrative fifteen-storey tower, with one residence you can walk in 3D.</p>
         </div>
         <nav className={styles.nav} aria-label="Footer">
           {NAV.map((n) => <a key={n.id} href={`#${n.id}`}>{n.label}</a>)}

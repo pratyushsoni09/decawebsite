@@ -243,6 +243,23 @@ const paintRug = (hue: number, sat: number, light: number, border: string): Pain
   ctx.strokeRect(w * 0.1, h * 0.1, w * 0.8, h * 0.8);
 };
 
+const paintRattan: Paint = (ctx, w, h, rnd) => {
+  ctx.fillStyle = hsl(34, 40, 62);
+  ctx.fillRect(0, 0, w, h);
+  const n = 8;
+  const s = w / n;
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < n; j++) {
+      const horiz = (i + j) % 2 === 0;
+      ctx.fillStyle = hsl(32, 38, 52 + rnd() * 10);
+      if (horiz) ctx.fillRect(i * s + 1, j * s + s * 0.2, s - 2, s * 0.6);
+      else ctx.fillRect(i * s + s * 0.2, j * s + 1, s * 0.6, s - 2);
+      ctx.strokeStyle = "rgba(70,45,25,0.45)";
+      ctx.strokeRect(i * s + 0.5, j * s + 0.5, s - 1, s - 1);
+    }
+  noise(ctx, w, h, rnd, 0.05);
+};
+
 const BOOK_COLOURS = [
   [24, 40, 32], [176, 18, 30], [37, 38, 50], [10, 35, 35], [40, 30, 80], [200, 15, 30], [30, 25, 60], [0, 0, 18], [140, 15, 35], [35, 45, 70],
 ];
@@ -327,7 +344,7 @@ export type MatKey =
   | "darkMetal" | "rug" | "rugTeal" | "rugSand" | "books" | "leaf" | "olive" | "pot" | "glow" | "shade"
   | "bedLinen" | "duvet" | "grass" | "pathStone" | "boxwood" | "terrace" | "stoneTrim" | "mirror"
   | "darkGlass" | "water" | "bark" | "art0" | "art1" | "art2" | "art3" | "art4" | "art5" | "white"
-  | "upholstery";
+  | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor";
 
 export type MaterialLib = Record<MatKey, THREE.MeshStandardMaterial>;
 
@@ -382,6 +399,13 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     terrace: std({ map: tx("terrace", 512, paintStone, 79, [2.4, 2.4]), roughness: 0.75, color: 0xeee6d8 }),
     stoneTrim: std({ map: tx("stone trim", 512, paintStone, 83, [1.6, 1.6]), roughness: 0.7, color: 0xe2dacb }),
     boxwood: std({ color: 0x3f5a2f, roughness: 0.9, flatShading: true }),
+    teak: std({ map: tx("teak deck", 512, paintPlanks, 89, [2, 2]), roughness: 0.7, color: 0xc49a74 }),
+    rattan: std({ map: tx("rattan", 256, paintRattan, 97, [0.25, 0.25]), roughness: 0.85, side: THREE.DoubleSide }),
+    curtain: std({ color: 0xece3d3, roughness: 1, emissive: 0xffd9a8, emissiveIntensity: 0.0 }),
+    curtainLit: std({ color: 0xf1e2c8, roughness: 1, emissive: 0xffc583, emissiveIntensity: 0.12 }),
+    concrete: std({ map: plasterMap, color: 0xf3efe7, roughness: 0.85 }),
+    towerGlass: std({ color: 0x9fb2b8, metalness: 0.6, roughness: 0.08, transparent: true, opacity: 0.55 }),
+    liftDoor: std({ color: 0xb89a6a, metalness: 0.9, roughness: 0.35 }),
   };
   for (let i = 0; i < 6; i++) {
     lib[`art${i}` as MatKey] = std({ map: tx(`artwork ${i + 1}`, 512, paintArt(i), 100 + i, [1, 1]), roughness: 0.85 });

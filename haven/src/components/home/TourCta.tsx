@@ -13,16 +13,16 @@ const KEYS = [
 export function TourCta() {
   return (
     <section className={styles.band} aria-labelledby="cta-title">
-      <img className={styles.bg} src="/images/stair.webp" alt="" aria-hidden="true" loading="lazy" width={2000} height={1125} />
+      <img className={styles.bg} src="/images/swing.webp" alt="" aria-hidden="true" loading="lazy" width={2000} height={1125} />
       <div className={styles.inner}>
         <div className={`${styles.copy} reveal`}>
           <p className="eyebrow">Walk it yourself</p>
-          <h2 id="cta-title" className={styles.title}>Every room, both floors, the real staircase.</h2>
+          <h2 id="cta-title" className={styles.title}>Every room, the balcony, both swings.</h2>
           <p className={styles.sub}>
-            Drag to look around, walk with W A S D or the on-screen pad, and press E to open the door in front of you.
+            Step out of the private lift into Residence 11A. Drag to look around, walk with W A S D or the on-screen pad, and press E to open the door in front of you.
           </p>
           <Link to="/tour" className={styles.button}>
-            Explore the 360° house <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />
+            Walk Residence 11A <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />
           </Link>
         </div>
         <div className={`${styles.keys} reveal`} aria-hidden="true">

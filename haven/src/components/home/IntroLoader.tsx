@@ -32,7 +32,7 @@ export function IntroLoader({ images, onDone }: { images: string[]; onDone: () =
       <ArchMark size={64} className={styles.mark} />
       <div className={styles.track}><div className={styles.bar} style={{ transform: `scaleX(${pct / 100})` }} /></div>
       <div className={styles.pct}>{pct}%</div>
-      <span className="visually-hidden">Loading The Oak Mansion</span>
+      <span className="visually-hidden">Loading The Oak Residences</span>
     </div>
   );
 }

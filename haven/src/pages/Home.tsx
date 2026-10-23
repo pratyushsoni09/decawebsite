@@ -11,7 +11,7 @@ import { Enquiry } from "../components/home/Enquiry";
 import { SiteFooter } from "../components/home/SiteFooter";
 import { useReveal } from "../hooks/useReveal";
 
-const PRELOAD = ["/images/hero-sketch.webp", "/images/facade-golden.webp", "/images/drawing.webp"];
+const PRELOAD = ["/images/hero-sketch.webp", "/images/tower-golden.webp", "/images/living.webp"];
 let introShown = false;
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
   useReveal([ready]);
 
   useEffect(() => {
-    document.title = "Haven — The Oak Mansion · A walkable 3D residence";
+    document.title = "Haven — The Oak Residences · Walk Residence 11A in 3D";
   }, []);
 
   return (

@@ -1,18 +1,22 @@
 import * as THREE from "three";
 import {
-  CEILING_HEIGHT, DOOR_HEAD, FLOOR_LEVEL, FLOOR_TO_FLOOR, FOOTPRINT, STAIR, furniture, rooms,
-  type FloorId, type FloorFinish,
+  BALCONY, CEILING_HEIGHT, DOOR_HEAD, FLOOR_TO_FLOOR, FOOTPRINT, RESIDENCE_ELEVATION, TOWER, furniture, rooms,
+  type FloorFinish,
 } from "../data/houseLayout";
 import {
-  gardenFeatures, leafDir, leaves, resolvedDoors, resolvedOpenings, resolvedWindows, subtractRect, wallBoxes,
-  type LeafGeom,
+  BALUSTRADE_T, isFacadeBox, leafDir, leaves, resolvedDoors, resolvedOpenings, resolvedWindows, wallBoxes,
+  type LeafGeom, type WallBox,
 } from "../data/layoutGeometry";
-import { StaticBuilder, boxAt, metricBox, planeAt } from "./geom";
+import { StaticBuilder, boxAt, metricBox, planeAt, placeMatrix } from "./geom";
 import { buildFurniture, type LightSpot } from "./buildFurniture";
 import type { MatKey, MaterialLib } from "./materials";
 
-const FINISH: Record<FloorFinish, MatKey> = { oak: "oak", herringbone: "herringbone", stone: "stone", marble: "marble", tile: "tile" };
-const ROOF = FLOOR_TO_FLOOR * 2;
+const FINISH: Record<FloorFinish, MatKey> = { oak: "oak", herringbone: "herringbone", stone: "stone", marble: "marble", tile: "tile", teak: "teak" };
+const E = RESIDENCE_ELEVATION;
+const H = FLOOR_TO_FLOOR;
+const SLAB = H - CEILING_HEIGHT; // 0.3 m structural slab
+const TOP = TOWER.storeys * H;
+const levelZ = (level: number) => (level - 1) * H;
 
 export interface DoorLeafRuntime {
   geom: LeafGeom;
@@ -22,158 +26,224 @@ export interface DoorLeafRuntime {
   target: 0 | 1;
 }
 
+export interface SwingRuntime {
+  pivot: THREE.Group;
+  phase: number;
+  amp: number;
+}
+
 export interface HouseBuild {
   root: THREE.Group;
   leaves: DoorLeafRuntime[];
+  swings: SwingRuntime[];
   lights: LightSpot[];
   sky: THREE.Mesh;
-  /** logical meshes authored (before merging) */
   authoredMeshes: number;
   ceilingRooms: Set<string>;
 }
 
 type Step = (label: string) => Promise<void>;
 
-/* ------------------------------------------------------------------ shell */
+/* ------------------------------------------------------------------ residence 11A */
 
-function buildFloorsAndCeilings(sb: StaticBuilder, ceilingRooms: Set<string>) {
-  // ground slab / plinth under the whole footprint
-  sb.add(boxAt(FOOTPRINT.x1, -0.45, FOOTPRINT.y1, FOOTPRINT.x2, 0, FOOTPRINT.y2), "stoneTrim");
+function buildResidenceShell(sb: StaticBuilder, ceilingRooms: Set<string>) {
   for (const rm of rooms) {
-    const level = FLOOR_LEVEL[rm.floor];
     for (const rc of rm.rects) {
-      const floorParts = rm.floor === 1 ? subtractRect(rc, STAIR.void) : [rc];
-      for (const p of floorParts) sb.add(planeAt(p.x1, p.y1, p.x2, p.y2, level + 0.002), FINISH[rm.finish]);
-      const ceilParts = rm.floor === 0 ? subtractRect(rc, STAIR.void) : [rc];
-      for (const p of ceilParts) sb.add(planeAt(p.x1, p.y1, p.x2, p.y2, level + CEILING_HEIGHT, true), "ceiling");
-      ceilingRooms.add(rm.id);
+      sb.add(planeAt(rc.x1, rc.y1, rc.x2, rc.y2, E + 0.002), FINISH[rm.finish]);
+      if (rm.kind !== "outdoor") {
+        sb.add(planeAt(rc.x1, rc.y1, rc.x2, rc.y2, E + CEILING_HEIGHT, true), "ceiling");
+        ceilingRooms.add(rm.id);
+      }
     }
   }
-  // thresholds in door / opening cells
   for (const d of [...resolvedDoors, ...resolvedOpenings]) {
-    const level = FLOOR_LEVEL[d.floor];
-    const r = d.rect;
-    const mat: MatKey = d.id === "front" || d.id === "stair-entrance" ? "stone" : d.id === "garden" ? "stoneTrim" : "oak";
-    sb.add(planeAt(r.x1, r.y1, r.x2, r.y2, level + 0.003), mat);
+    const mat: MatKey = d.id === "front" ? "stone" : "oak";
+    sb.add(planeAt(d.rect.x1, d.rect.y1, d.rect.x2, d.rect.y2, E + 0.003), mat);
   }
-  // slab edges around the stair void (between ground ceiling and first floor)
-  const v = STAIR.void;
-  sb.add(boxAt(v.x1, CEILING_HEIGHT, v.y2, v.x2, FLOOR_TO_FLOOR, v.y2 + 0.04), "ceiling");
-  sb.add(boxAt(v.x1 - 0.04, CEILING_HEIGHT, v.y1, v.x1, FLOOR_TO_FLOOR, v.y2), "ceiling");
-  sb.add(boxAt(v.x2, CEILING_HEIGHT, v.y1, v.x2 + 0.04, FLOOR_TO_FLOOR, v.y2), "ceiling");
+  for (const b of wallBoxes(0)) {
+    for (const [a, top] of b.segments) sb.add(boxAt(b.x1, E + a, b.y1, b.x2, E + Math.min(top, CEILING_HEIGHT + 0.001), b.y2), "plaster");
+  }
+  for (const w of resolvedWindows) windowFrame(sb, w.rect, w.side, E + w.sill, E + w.head, false);
 }
 
-function buildWalls(sb: StaticBuilder) {
-  for (const floor of [0, 1] as FloorId[]) {
-    const level = FLOOR_LEVEL[floor];
-    for (const b of wallBoxes(floor)) {
-      for (const [a, top] of b.segments) sb.add(boxAt(b.x1, level + a, b.y1, b.x2, level + top, b.y2), "plaster");
+/* ------------------------------------------------------------------ façade pieces */
+
+type Side = "N" | "S" | "E" | "W";
+
+function sideOf(b: { x1: number; y1: number; x2: number; y2: number }): Side {
+  if (b.y1 <= FOOTPRINT.y1 + 1e-6) return "N";
+  if (b.y2 >= FOOTPRINT.y2 - 1e-6) return "S";
+  if (b.x1 <= FOOTPRINT.x1 + 1e-6) return "W";
+  return "E";
+}
+
+/** Bronze frame + glass in the wall's centre plane; optionally a curtain just inside (other storeys). */
+function windowFrame(sb: StaticBuilder, r: { x1: number; y1: number; x2: number; y2: number }, side: Side, y0: number, y1: number, curtain: boolean, lit = false) {
+  const F = 0.05;
+  const ns = side === "N" || side === "S";
+  const c = ns ? (r.y1 + r.y2) / 2 : (r.x1 + r.x2) / 2;
+  const a = ns ? r.x1 : r.y1;
+  const b = ns ? r.x2 : r.y2;
+  const frame = (p1: number, q1: number, p2: number, q2: number, mat: MatKey, depth = 0.08, off = 0) =>
+    sb.add(ns ? boxAt(p1, q1, c + off - depth / 2, p2, q2, c + off + depth / 2) : boxAt(c + off - depth / 2, q1, p1, c + off + depth / 2, q2, p2), mat);
+  frame(a, y0, b, y0 + F, "bronze");
+  frame(a, y1 - F, b, y1, "bronze");
+  frame(a, y0, a + F, y1, "bronze");
+  frame(b - F, y0, b, y1, "bronze");
+  const width = b - a;
+  const mullions = width > 2.2 ? 2 : width > 1.25 ? 1 : 0;
+  for (let i = 1; i <= mullions; i++) {
+    const m = a + (width / (mullions + 1)) * i;
+    frame(m - F / 2, y0, m + F / 2, y1, "bronze");
+  }
+  frame(a + F, y0 + F, b - F, y1 - F, "glass", 0.012);
+  if (curtain) {
+    const inward = side === "N" || side === "W" ? 1 : -1;
+    frame(a + 0.02, y0 + 0.02, b - 0.02, y1 - 0.02, lit ? "curtainLit" : "curtain", 0.01, inward * 0.12);
+  }
+}
+
+/** Glass balustrade (bronze cap) around a balcony at floor height z. */
+function balustrade(sb: StaticBuilder, z: number) {
+  const top = z + 1.08;
+  const y2 = BALCONY.y2;
+  const t = BALUSTRADE_T;
+  // south
+  sb.add(boxAt(FOOTPRINT.x1, z + 0.05, y2 + t / 2 - 0.006, FOOTPRINT.x2, top - 0.04, y2 + t / 2 + 0.006), "glass");
+  sb.add(boxAt(FOOTPRINT.x1, top - 0.04, y2, FOOTPRINT.x2, top, y2 + t), "bronze");
+  // sides
+  for (const x of [FOOTPRINT.x1 + 0.15, FOOTPRINT.x2 - 0.15]) {
+    sb.add(boxAt(x - 0.006, z + 0.05, BALCONY.y1, x + 0.006, top - 0.04, y2 + t), "glass");
+    sb.add(boxAt(x - 0.075, top - 0.04, BALCONY.y1, x + 0.075, top, y2 + t), "bronze");
+  }
+  // posts
+  for (let x = FOOTPRINT.x1 + 0.1; x <= FOOTPRINT.x2; x += 2.4) sb.add(boxAt(x - 0.025, z, y2, x + 0.025, top, y2 + t), "bronze");
+}
+
+function slab(sb: StaticBuilder, z: number) {
+  // floor plate + balcony slab, with a crisp white edge band
+  sb.add(boxAt(FOOTPRINT.x1 - 0.06, z - SLAB, FOOTPRINT.y1 - 0.06, FOOTPRINT.x2 + 0.06, z, FOOTPRINT.y2), "concrete");
+  sb.add(boxAt(FOOTPRINT.x1 - 0.06, z - SLAB + 0.05, FOOTPRINT.y2, FOOTPRINT.x2 + 0.06, z, BALCONY.y2 + BALUSTRADE_T + 0.06), "concrete");
+}
+
+/** Façade-only shell of a storey that isn't the walkable residence. */
+function buildStorey(sb: StaticBuilder, level: number, seed: number) {
+  const z = levelZ(level);
+  let k = seed;
+  const rnd = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+  for (const b of wallBoxes(0)) {
+    if (!isFacadeBox(b)) continue;
+    const side = sideOf(b);
+    if (b.type === "door") {
+      sb.add(boxAt(b.x1, z + DOOR_HEAD, b.y1, b.x2, z + CEILING_HEIGHT, b.y2), "plaster");
+      windowFrame(sb, b, side, z + 0.02, z + DOOR_HEAD, true, rnd() > 0.55);
+      continue;
+    }
+    for (const [a, top] of (b as WallBox).segments) sb.add(boxAt(b.x1, z + a, b.y1, b.x2, z + Math.min(top, CEILING_HEIGHT), b.y2), "plaster");
+    if (b.type === "window") {
+      const w = resolvedWindows[Number(b.ref)];
+      windowFrame(sb, b, side, z + w.sill, z + w.head, true, rnd() > 0.55);
     }
   }
+  // dark interior volume so nothing reads as hollow through the glass
+  sb.add(boxAt(0.5, z + 0.01, 0.5, 23.5, z + CEILING_HEIGHT - 0.01, 15.5), "darkGlass");
+  balustrade(sb, z);
+  // a few planters on every other balcony
+  if (level % 2 === 0) for (const x of [3 + (level % 3), 12, 20 - (level % 4)]) sb.add(boxAt(x - 0.7, z, 17.8, x + 0.7, z + 0.5, 18.25), "concrete");
 }
 
-function buildWindows(sb: StaticBuilder) {
-  const F = 0.055; // frame member
-  for (const w of resolvedWindows) {
-    const level = FLOOR_LEVEL[w.floor];
-    const r = w.rect;
-    const ns = w.side === "N" || w.side === "S";
-    const y0 = level + w.sill;
-    const y1 = level + w.head;
-    // centre plane of the wall
-    const c = ns ? (r.y1 + r.y2) / 2 : (r.x1 + r.x2) / 2;
-    const a = ns ? r.x1 : r.y1;
-    const b = ns ? r.x2 : r.y2;
-    const frame = (p1: number, q1: number, p2: number, q2: number, mat: MatKey, depth = 0.09) =>
-      sb.add(ns ? boxAt(p1, q1, c - depth / 2, p2, q2, c + depth / 2) : boxAt(c - depth / 2, q1, p1, c + depth / 2, q2, p2), mat);
-    frame(a, y0, b, y0 + F, "bronze");
-    frame(a, y1 - F, b, y1, "bronze");
-    frame(a, y0, a + F, y1, "bronze");
-    frame(b - F, y0, b, y1, "bronze");
-    const width = b - a;
-    const mullions = width > 2.2 ? 2 : width > 1.25 ? 1 : 0;
-    for (let i = 1; i <= mullions; i++) {
-      const m = a + (width / (mullions + 1)) * i;
-      frame(m - F / 2, y0, m + F / 2, y1, "bronze");
-    }
-    if (w.head - w.sill > 2.2) frame(a, y1 - 0.62, b, y1 - 0.62 + F * 0.8, "bronze");
-    frame(a + F, y0 + F, b - F, y1 - F, "glass", 0.012);
-    // stone sill outside, oak sill inside
-    const ext = w.side === "N" ? -1 : w.side === "S" ? 1 : w.side === "W" ? -1 : 1;
-    const outer = ns ? (ext > 0 ? r.y2 : r.y1) : ext > 0 ? r.x2 : r.x1;
-    if (w.sill > 0.05) {
-      if (ns) sb.add(boxAt(a - 0.05, y0 - 0.06, Math.min(outer, outer + ext * 0.06), b + 0.05, y0, Math.max(outer, outer + ext * 0.06)), "stoneTrim");
-      else sb.add(boxAt(Math.min(outer, outer + ext * 0.06), y0 - 0.06, a - 0.05, Math.max(outer, outer + ext * 0.06), y0, b + 0.05), "stoneTrim");
+function buildLobby(sb: StaticBuilder) {
+  // double-glazed ground floor: bronze mullions, lit interior, entrance canopy
+  const z = 0;
+  sb.add(boxAt(1.0, z, 1.0, 23.0, z + CEILING_HEIGHT, 15.0), "stoneTrim");
+  sb.add(boxAt(0.6, z, 0.6, 23.4, z + 0.02, 15.4), "stone");
+  for (const side of ["N", "S", "E", "W"] as Side[]) {
+    const ns = side === "N" || side === "S";
+    const len = ns ? FOOTPRINT.x2 : FOOTPRINT.y2;
+    const c = side === "N" ? 0.3 : side === "S" ? FOOTPRINT.y2 - 0.3 : side === "W" ? 0.3 : FOOTPRINT.x2 - 0.3;
+    for (let p = 0; p < len - 0.01; p += 2) {
+      const r = ns ? { x1: p, x2: p + 2, y1: c - 0.15, y2: c + 0.15 } : { y1: p, y2: p + 2, x1: c - 0.15, x2: c + 0.15 };
+      windowFrame(sb, r, side, z, z + CEILING_HEIGHT, false);
     }
   }
+  // canopy over the entrance (south)
+  sb.add(boxAt(8.5, CEILING_HEIGHT - 0.1, FOOTPRINT.y2, 15.5, CEILING_HEIGHT + 0.15, 21.5), "concrete");
+  for (const x of [8.8, 15.2]) sb.add(boxAt(x - 0.12, 0, 21.0, x + 0.12, CEILING_HEIGHT - 0.1, 21.24), "bronze");
+  // lit lobby
+  sb.add(boxAt(10, 0.02, 7, 14, 0.9, 8.2), "oakWood");
+  sb.add(boxAt(3, 2.6, 3, 21, 2.62, 13), "glow");
 }
 
-/* ------------------------------------------------------------------ stair */
-
-function rail(sb: StaticBuilder, x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, balusters = true) {
-  // handrail along the segment at the given heights (y = top of rail); balusters drop 0.9 m to the walking line
-  const p1 = new THREE.Vector3(x1, y1, z1);
-  const p2 = new THREE.Vector3(x2, y2, z2);
-  const len = p1.distanceTo(p2);
-  const g = metricBox(0.06, 0.05, len);
-  const m = new THREE.Matrix4().lookAt(p2, p1, new THREE.Vector3(0, 1, 0));
-  m.setPosition(p1.clone().add(p2).multiplyScalar(0.5).add(new THREE.Vector3(0, -0.025, 0)));
-  sb.add(g, "oakWood", m);
-  if (!balusters) return;
-  const n = Math.max(2, Math.floor(len / 0.12));
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const x = x1 + (x2 - x1) * t;
-    const z = z1 + (z2 - z1) * t;
-    const top = y1 + (y2 - y1) * t - 0.05;
-    sb.add(boxAt(x - 0.01, top - 0.88, z - 0.01, x + 0.01, top, z + 0.01), "bronze");
+function buildFins(sb: StaticBuilder) {
+  // vertical oak fins on the north, east and west faces, running the full height
+  const z0 = H;
+  const z1 = TOP;
+  for (let x = 1.0; x < FOOTPRINT.x2; x += 1.5) sb.add(boxAt(x - 0.04, z0, FOOTPRINT.y1 - 0.4, x + 0.04, z1, FOOTPRINT.y1 - 0.06), "oakVertical");
+  for (let y = 1.0; y < FOOTPRINT.y2; y += 1.5) {
+    sb.add(boxAt(FOOTPRINT.x1 - 0.4, z0, y - 0.04, FOOTPRINT.x1 - 0.06, z1, y + 0.04), "oakVertical");
+    sb.add(boxAt(FOOTPRINT.x2 + 0.06, z0, y - 0.04, FOOTPRINT.x2 + 0.4, z1, y + 0.04), "oakVertical");
   }
 }
 
-function buildStair(sb: StaticBuilder) {
-  const { flight1, flight2, yFoot, yLanding, yNorth, going, rise } = STAIR;
-  const HALF = FLOOR_TO_FLOOR / 2;
-  const nose = 0.025;
-  // flight 1 (rising north)
-  for (let i = 1; i <= 9; i++) {
-    const zA = yFoot - i * going;
-    const zB = yFoot - (i - 1) * going;
-    const top = rise * i;
-    sb.add(boxAt(flight1.x1, 0, zA, flight1.x2, top - 0.04, zB), "white");
-    sb.add(boxAt(flight1.x1, top - 0.04, zA, flight1.x2, top, zB + nose), "oakWood");
+function buildRoof(sb: StaticBuilder) {
+  sb.add(boxAt(FOOTPRINT.x1 - 0.06, TOP - SLAB, FOOTPRINT.y1 - 0.06, FOOTPRINT.x2 + 0.06, TOP, FOOTPRINT.y2), "concrete");
+  // parapet
+  sb.add(boxAt(FOOTPRINT.x1, TOP, FOOTPRINT.y1, FOOTPRINT.x2, TOP + 1.1, FOOTPRINT.y1 + 0.25), "concrete");
+  sb.add(boxAt(FOOTPRINT.x1, TOP, FOOTPRINT.y2 - 0.25, FOOTPRINT.x2, TOP + 1.1, FOOTPRINT.y2), "concrete");
+  sb.add(boxAt(FOOTPRINT.x1, TOP, FOOTPRINT.y1, FOOTPRINT.x1 + 0.25, TOP + 1.1, FOOTPRINT.y2), "concrete");
+  sb.add(boxAt(FOOTPRINT.x2 - 0.25, TOP, FOOTPRINT.y1, FOOTPRINT.x2, TOP + 1.1, FOOTPRINT.y2), "concrete");
+  // timber pergola crown + roof garden
+  for (let x = 2; x <= 22; x += 1.0) sb.add(boxAt(x - 0.05, TOP + 3.2, 2, x + 0.05, TOP + 3.4, 14), "oakVertical");
+  for (const [x, y] of [[2, 2], [22, 2], [2, 14], [22, 14], [12, 2], [12, 14]]) sb.add(boxAt(x - 0.15, TOP, y - 0.15, x + 0.15, TOP + 3.2, y + 0.15), "concrete");
+  for (const [x, y] of [[5, 5], [9, 11], [15, 4.5], [19, 10]]) {
+    sb.add(boxAt(x - 1.2, TOP, y - 1.2, x + 1.2, TOP + 0.6, y + 1.2), "concrete");
+    const c = new THREE.IcosahedronGeometry(1.3, 1);
+    c.translate(x, TOP + 1.9, y);
+    sb.add(c, "leaf");
   }
-  // half landing
-  sb.add(boxAt(flight1.x1, 0, yNorth, flight2.x2, HALF - 0.04, yLanding), "white");
-  sb.add(boxAt(flight1.x1, HALF - 0.04, yNorth, flight2.x2, HALF, yLanding + nose), "oakWood");
-  // flight 2 (rising south)
-  for (let k = 1; k <= 9; k++) {
-    const zA = yLanding + (k - 1) * going;
-    const zB = yLanding + k * going;
-    const top = HALF + rise * k;
-    sb.add(boxAt(flight2.x1, 0, zA, flight2.x2, top - 0.04, zB), "white");
-    sb.add(boxAt(flight2.x1, top - 0.04, zA - nose, flight2.x2, top, zB), "oakWood");
+}
+
+/* ------------------------------------------------------------------ site and city */
+
+function tree(sb: StaticBuilder, x: number, z: number, s = 1) {
+  const trunk = new THREE.CylinderGeometry(0.16 * s, 0.24 * s, 4.2 * s, 8);
+  trunk.translate(x, 2.1 * s, z);
+  sb.add(trunk, "bark");
+  for (let i = 0; i < 6; i++) {
+    const a = i * 2.3 + x;
+    const c = new THREE.IcosahedronGeometry((1.4 + (i % 3) * 0.35) * s, 1);
+    c.translate(x + Math.cos(a) * 1.2 * s, (5 + (i % 3) * 0.7) * s, z + Math.sin(a) * 1.2 * s);
+    sb.add(c, i % 2 ? "leaf" : "olive");
   }
-  // spine wall between flights (plastered, oak capped up to the guard line)
-  sb.add(boxAt(flight1.x2, 0, yLanding, flight2.x1, 0.3, yFoot), "white");
-  // balustrades: rail 0.9 m above the pitch line
-  const H = 0.95;
-  const pitch1 = (z: number) => HALF * ((yFoot - z) / (yFoot - yLanding));
-  const pitch2 = (z: number) => HALF + HALF * ((z - yLanding) / (yFoot - yLanding));
-  rail(sb, flight1.x1 - 0.03, pitch1(yFoot) + H, yFoot, flight1.x1 - 0.03, pitch1(yLanding) + H, yLanding);
-  rail(sb, (flight1.x2 + flight2.x1) / 2, pitch1(yFoot) + H, yFoot, (flight1.x2 + flight2.x1) / 2, HALF + H, yLanding);
-  rail(sb, flight2.x2 + 0.03, pitch2(yLanding) + H, yLanding, flight2.x2 + 0.03, pitch2(yFoot) + H, yFoot);
-  // half-landing side guards
-  rail(sb, flight1.x1 - 0.03, HALF + H, yLanding, flight1.x1 - 0.03, HALF + H, yNorth + 0.05);
-  rail(sb, flight2.x2 + 0.03, HALF + H, yLanding, flight2.x2 + 0.03, HALF + H, yNorth + 0.05);
-  // first-floor gallery guard around the void
-  const v = STAIR.void;
-  const top = FLOOR_TO_FLOOR + 1.0;
-  rail(sb, v.x1 + 0.03, top, v.y2 - 0.03, flight2.x1 - 0.02, top, v.y2 - 0.03);
-  rail(sb, v.x1 + 0.03, top, v.y2 - 0.03, v.x1 + 0.03, top, v.y1 + 0.05);
-  rail(sb, v.x2 - 0.03, top, v.y2 - 0.03, v.x2 - 0.03, top, v.y1 + 0.05);
-  // newel posts
-  for (const [x, z, h] of [[flight1.x1 - 0.03, yFoot, 1.05], [flight2.x1 - 0.1, yFoot, FLOOR_TO_FLOOR + 1.05]] as const) {
-    sb.add(boxAt(x - 0.05, h > 2 ? FLOOR_TO_FLOOR : 0, z - 0.05, x + 0.05, h, z + 0.05), "oakWood");
+}
+
+function buildSite(sb: StaticBuilder) {
+  sb.add(planeAt(-260, -260, 290, 280, -0.03), "grass");
+  sb.add(boxAt(-12, -0.4, -10, 36, -0.005, 34), "terrace");
+  // path to the entrance and a reflecting pool
+  sb.add(boxAt(10, -0.02, 21.5, 14, 0.01, 60), "pathStone");
+  sb.add(boxAt(17, -0.02, 24, 30, 0.02, 30), "water");
+  sb.add(boxAt(-6, -0.02, 24, 7, 0.4, 30), "boxwood");
+  for (const [x, z, s] of [[-8, 26, 1.1], [3, 33, 1], [-10, 10, 1.2], [33, 34, 1], [36, 6, 1.1], [-4, -6, 1], [30, -6, 1.2], [22, 40, 0.9], [-14, 38, 1]] as const) tree(sb, x, z, s);
+  // neighbouring city: lower blocks around the tower
+  let k = 11;
+  const rnd = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2 + rnd() * 0.15;
+    const dist = 85 + rnd() * 90;
+    const cx = 12 + Math.cos(a) * dist;
+    const cz = 9 + Math.sin(a) * dist;
+    const w = 14 + rnd() * 18;
+    const d = 12 + rnd() * 14;
+    const h = 9 + rnd() * 30;
+    sb.add(boxAt(cx - w / 2, 0, cz - d / 2, cx + w / 2, h, cz + d / 2), rnd() > 0.35 ? "concrete" : "stoneTrim");
+    for (let y = 3.2; y < h - 1; y += 3.3) sb.add(boxAt(cx - w / 2 - 0.05, y, cz - d / 2 - 0.05, cx + w / 2 + 0.05, y + 1.5, cz + d / 2 + 0.05), "towerGlass");
+  }
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    if (a > 0.6 && a < 2.0) continue; // keep the south-east view of the tower open
+    const dist = 55 + ((i * 37) % 23);
+    tree(sb, 12 + Math.cos(a) * dist, 9 + Math.sin(a) * dist, 0.8 + ((i * 13) % 5) / 10);
   }
 }
 
@@ -183,9 +253,8 @@ function buildLeaf(lib: MaterialLib, l: LeafGeom, height: number): THREE.Group {
   const g = new THREE.Group();
   const T = 0.045;
   const L = l.length - 0.01;
-  const front = l.doorId === "front";
   if (l.glazed) {
-    const F = 0.08;
+    const F = 0.07;
     const mk = (w: number, h: number, x: number, y: number, mat: THREE.Material, d = T) => {
       const m = new THREE.Mesh(metricBox(w, h, d), mat);
       m.position.set(x, y, 0);
@@ -193,29 +262,21 @@ function buildLeaf(lib: MaterialLib, l: LeafGeom, height: number): THREE.Group {
       g.add(m);
     };
     mk(L, F, L / 2, height - F / 2, lib.bronze);
-    mk(L, F * 1.6, L / 2, F * 0.8, lib.bronze);
+    mk(L, F * 1.4, L / 2, F * 0.7, lib.bronze);
     mk(F, height, F / 2, height / 2, lib.bronze);
     mk(F, height, L - F / 2, height / 2, lib.bronze);
-    mk(L - 2 * F, height - 2.6 * F, L / 2, height / 2 + 0.3 * F, lib.glass, 0.012);
+    mk(L - 2 * F, height - 2.4 * F, L / 2, height / 2 + 0.2 * F, lib.glass, 0.012);
   } else {
+    const front = l.doorId === "front";
     const body = new THREE.Mesh(metricBox(L, height, T), front ? lib.oakVertical : lib.oakWood);
     body.position.set(L / 2, height / 2, 0);
     body.castShadow = true;
     body.receiveShadow = true;
     g.add(body);
-    if (front) {
-      for (let i = 1; i < 6; i++) {
-        const groove = new THREE.Mesh(metricBox(0.008, height - 0.2, T + 0.004), lib.walnut);
-        groove.position.set((L / 6) * i, height / 2, 0);
-        g.add(groove);
-      }
-    }
   }
-  // handles on both faces
-  const hl = front ? 0.9 : 0.14;
   for (const side of [-1, 1]) {
-    const h = new THREE.Mesh(metricBox(0.025, hl, 0.025), lib.brass);
-    h.position.set(L - 0.09, front ? 1.15 : 1.0, side * (T / 2 + 0.035));
+    const h = new THREE.Mesh(metricBox(0.025, l.glazed ? 0.4 : 0.14, 0.025), lib.brass);
+    h.position.set(L - 0.09, 1.05, side * (T / 2 + 0.035));
     g.add(h);
   }
   return g;
@@ -224,16 +285,14 @@ function buildLeaf(lib: MaterialLib, l: LeafGeom, height: number): THREE.Group {
 function buildDoors(lib: MaterialLib, root: THREE.Group): DoorLeafRuntime[] {
   return leaves.map((l) => {
     const pivot = new THREE.Group();
-    pivot.position.set(l.hx, FLOOR_LEVEL[l.floor] + 0.01, l.hy);
+    pivot.position.set(l.hx, E + 0.01, l.hy);
     const leaf = buildLeaf(lib, l, DOOR_HEAD - 0.06);
-    // keep the leaf's thickness on the non-swing side of the hinge line
     const [dx, dy] = leafDir(l, 0);
     const psi = Math.atan2(-dy, dx);
     const sgn = Math.sin(psi) * l.nx + Math.cos(psi) * l.ny;
     leaf.position.z = -sgn * 0.03;
     pivot.add(leaf);
     pivot.rotation.y = psi;
-    pivot.userData.leafDoor = l.doorId;
     root.add(pivot);
     return { geom: l, pivot, s: 0, target: 0 as const };
   });
@@ -241,117 +300,17 @@ function buildDoors(lib: MaterialLib, root: THREE.Group): DoorLeafRuntime[] {
 
 /** Apply a leaf's pose for its current progress. */
 export function poseLeaf(rt: DoorLeafRuntime) {
-  const t = easeInOut(rt.s);
-  const [dx, dy] = leafDir(rt.geom, t);
+  const [dx, dy] = leafDir(rt.geom, easeInOut(rt.s));
   rt.pivot.rotation.y = Math.atan2(-dy, dx);
 }
 
 export const easeInOut = (s: number) => (s < 0.5 ? 2 * s * s : 1 - Math.pow(-2 * s + 2, 2) / 2);
 
-/* ------------------------------------------------------------------ exterior */
-
-function buildExterior(sb: StaticBuilder) {
-  const { x1, y1, x2, y2 } = FOOTPRINT;
-  // lawn + terrace
-  sb.add(planeAt(-140, -140, 180, 160, -0.02), "grass");
-  sb.add(boxAt(x1 - 2.2, -0.45, y1 - 2.2, x2 + 2.2, -0.005, y2 + 1.4), "terrace");
-  sb.add(boxAt(x2 + 2.2, -0.45, 9.6, x2 + 6, -0.005, 18.6), "terrace"); // east dining terrace
-  // stepping-stone path to the front door
-  for (let z = y2 + 2.1, i = 0; z < 38; z += 0.92, i++) {
-    const w = i % 2 ? 1.3 : 1.5;
-    sb.add(boxAt(20 - w / 2, -0.03, z, 20 + w / 2, 0.015, z + 0.58), "pathStone");
-  }
-  // plinth, string course and parapet
-  const band = (yA: number, yB: number, out: number, mat: MatKey) => {
-    sb.add(boxAt(x1 - out, yA, y1 - out, x2 + out, yB, y1), mat);
-    sb.add(boxAt(x1 - out, yA, y2, x2 + out, yB, y2 + out), mat);
-    sb.add(boxAt(x1 - out, yA, y1, x1, yB, y2), mat);
-    sb.add(boxAt(x2, yA, y1, x2 + out, yB, y2), mat);
-  };
-  // plinth, interrupted at the front and garden doors
-  const P = 0.32;
-  const o = 0.04;
-  const fr = resolvedDoors.find((d) => d.id === "front")!.rect;
-  const gd = resolvedDoors.find((d) => d.id === "garden")!.rect;
-  sb.add(boxAt(x1 - o, 0, y1 - o, x2 + o, P, y1), "stoneTrim");
-  sb.add(boxAt(x1 - o, 0, y2, fr.x1 - 0.45, P, y2 + o), "stoneTrim");
-  sb.add(boxAt(fr.x2 + 0.45, 0, y2, x2 + o, P, y2 + o), "stoneTrim");
-  sb.add(boxAt(x1 - o, 0, y1, x1, P, y2), "stoneTrim");
-  sb.add(boxAt(x2, 0, y1, x2 + o, P, gd.y1), "stoneTrim");
-  sb.add(boxAt(x2, 0, gd.y2, x2 + o, P, y2), "stoneTrim");
-  band(FLOOR_TO_FLOOR - 0.12, FLOOR_TO_FLOOR + 0.06, 0.05, "stoneTrim");
-  sb.add(boxAt(x1, ROOF, y1, x2, ROOF + 0.25, y2), "plaster");
-  band(ROOF + 0.25, ROOF + 0.85, 0, "plaster");
-  sb.add(boxAt(x1 + 0.35, ROOF + 0.25, y1 + 0.35, x2 - 0.35, ROOF + 0.85, y1 + 0.35 + 0.001), "plaster");
-  band(ROOF + 0.85, ROOF + 0.93, 0.06, "stoneTrim");
-  // central bay: vertical oak cladding on the south face, where the wall is solid
-  for (const floor of [0, 1] as FloorId[]) {
-    const level = FLOOR_LEVEL[floor];
-    for (const b of wallBoxes(floor)) {
-      if (b.y2 !== y2 || b.x1 < 13 - 0.7 || b.x2 > 27 + 0.7) continue;
-      for (const [a, top] of b.segments) {
-        const lo = level + Math.max(a, floor === 0 ? 0.32 : 0.06);
-        const hi = level + Math.min(top, floor === 0 ? FLOOR_TO_FLOOR - 0.12 : FLOOR_TO_FLOOR);
-        if (hi - lo < 0.1) continue;
-        for (let x = b.x1 + 0.02; x + 0.09 <= b.x2; x += 0.13) sb.add(boxAt(x, lo, y2, x + 0.09, hi, y2 + 0.05), "oakVertical");
-      }
-    }
-  }
-  // stone portal around the front door
-  const front = resolvedDoors.find((d) => d.id === "front")!;
-  const fx1 = front.rect.x1;
-  const fx2 = front.rect.x2;
-  sb.add(boxAt(fx1 - 0.45, 0, y2, fx1, DOOR_HEAD + 0.55, y2 + 0.2), "stoneTrim");
-  sb.add(boxAt(fx2, 0, y2, fx2 + 0.45, DOOR_HEAD + 0.55, y2 + 0.2), "stoneTrim");
-  sb.add(boxAt(fx1 - 0.6, DOOR_HEAD, y2, fx2 + 0.6, DOOR_HEAD + 0.62, y2 + 0.28), "stoneTrim");
-  sb.add(boxAt(fx1 - 0.9, -0.02, y2, fx2 + 0.9, 0.06, y2 + 1.3), "stoneTrim");
-  // wall lanterns either side of the portal
-  for (const x of [fx1 - 0.85, fx2 + 0.85]) {
-    sb.add(boxAt(x - 0.09, 1.7, y2, x + 0.09, 2.15, y2 + 0.16), "bronze");
-    sb.add(boxAt(x - 0.06, 1.76, y2 + 0.02, x + 0.06, 2.08, y2 + 0.17), "glow");
-  }
-  // garden
-  for (const gf of gardenFeatures) {
-    if (gf.type === "boxBall") {
-      const g = new THREE.IcosahedronGeometry(gf.r, 2);
-      g.translate(gf.x, gf.r * 0.92, gf.y);
-      sb.add(g, "boxwood");
-      const pot = new THREE.CylinderGeometry(gf.r * 0.7, gf.r * 0.6, 0.12, 16);
-      pot.translate(gf.x, 0.06, gf.y);
-      sb.add(pot, "stoneTrim");
-    } else if (gf.type === "hedge") {
-      sb.add(boxAt(gf.x - gf.w! / 2, 0, gf.y - gf.d! / 2, gf.x + gf.w! / 2, 0.85, gf.y + gf.d! / 2), "boxwood");
-    } else {
-      const trunk = new THREE.CylinderGeometry(0.16, 0.24, 4.2, 8);
-      trunk.translate(gf.x, 2.1, gf.y);
-      sb.add(trunk, "bark");
-      for (let i = 0; i < 7; i++) {
-        const a = i * 2.3 + gf.x;
-        const c = new THREE.IcosahedronGeometry(1.5 + (i % 3) * 0.35, 1);
-        c.translate(gf.x + Math.cos(a) * 1.3, 5.2 + (i % 3) * 0.7, gf.y + Math.sin(a) * 1.3);
-        sb.add(c, "leaf");
-      }
-    }
-  }
-  // distant tree line
-  for (let i = 0; i < 46; i++) {
-    const a = (i / 46) * Math.PI * 2;
-    const r = 70 + ((i * 53) % 17);
-    const x = 20 + Math.cos(a) * r;
-    const z = 9 + Math.sin(a) * r;
-    const s = 3 + ((i * 31) % 5);
-    const c = new THREE.IcosahedronGeometry(s, 1);
-    c.scale(1, 1.25, 1);
-    c.translate(x, s * 1.1, z);
-    sb.add(c, i % 3 ? "leaf" : "olive");
-  }
-}
-
 /* ------------------------------------------------------------------ sky */
 
 export const SKY_PRESETS = {
-  day: { top: "#8fb3cf", horizon: "#f1e3cb", sun: "#fff1d6", sunDir: [-0.55, 0.42, 0.72] },
-  golden: { top: "#6a8fb5", horizon: "#f2c592", sun: "#ffd58f", sunDir: [-0.62, 0.2, 0.76] },
+  day: { top: "#7fa7c9", horizon: "#eee3cf", sun: "#fff1d6", sunDir: [-0.5, 0.55, 0.67] },
+  golden: { top: "#6a8fb5", horizon: "#f2c592", sun: "#ffd58f", sunDir: [-0.66, 0.26, 0.7] },
   dusk: { top: "#1d2a40", horizon: "#c98a6a", sun: "#ffb27a", sunDir: [-0.7, 0.03, 0.71] },
 };
 export type SkyPreset = keyof typeof SKY_PRESETS;
@@ -379,8 +338,8 @@ export function createSky(preset: SkyPreset = "day") {
         #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), mat);
-  sky.position.set(20, 0, 9);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), mat);
+  sky.position.set(12, 0, 9);
   sky.name = "sky";
   return sky;
 }
@@ -398,29 +357,44 @@ export function setSky(sky: THREE.Mesh, preset: SkyPreset) {
 
 export async function buildHouse(lib: MaterialLib, step: Step): Promise<HouseBuild> {
   const root = new THREE.Group();
-  root.name = "house";
+  root.name = "tower";
   const sb = new StaticBuilder();
   const ceilingRooms = new Set<string>();
 
-  buildFloorsAndCeilings(sb, ceilingRooms);
-  await step("Floors and ceilings");
-  buildWalls(sb);
-  await step("Walls, both floors");
-  buildWindows(sb);
-  await step("Bronze windows");
-  buildStair(sb);
-  await step("Oak staircase");
-  const lights = buildFurniture(sb, furniture.filter((f) => rooms.find((r) => r.id === f.room)!.floor === 0));
-  await step("Ground-floor furniture");
-  lights.push(...buildFurniture(sb, furniture.filter((f) => rooms.find((r) => r.id === f.room)!.floor === 1)));
-  await step("First-floor furniture");
-  buildExterior(sb);
-  await step("Garden and façade");
+  buildResidenceShell(sb, ceilingRooms);
+  await step("Residence 11A");
+  const { lights, swings: hanging } = buildFurniture(sb, furniture);
+  await step("Furniture and fittings");
+  for (let level = 1; level <= TOWER.storeys; level++) {
+    slab(sb, levelZ(level));
+    if (level === 1) buildLobby(sb);
+    else if (level !== TOWER.residenceLevel) buildStorey(sb, level, level * 7919);
+  }
+  balustrade(sb, E);
+  buildFins(sb);
+  buildRoof(sb);
+  await step("Fifteen storeys");
+  buildSite(sb);
+  await step("Gardens and city");
   const authoredMeshes = sb.meshCount;
   sb.build(lib, root);
+
+  // swings: hanging parts on their own pivots so they can sway
+  const swings: SwingRuntime[] = hanging.map((h, i) => {
+    const outer = new THREE.Group();
+    outer.applyMatrix4(placeMatrix(h.it.x, E + h.hookY, h.it.y, h.it.rot));
+    const pivot = new THREE.Group();
+    outer.add(pivot);
+    const part = new THREE.Group();
+    h.sb.build(lib, part);
+    pivot.add(part);
+    root.add(outer);
+    return { pivot, phase: i * 1.7, amp: h.it.type === "swingEgg" ? 0.05 : 0.07 };
+  });
+
   const leafRuntimes = buildDoors(lib, root);
   await step("Doors");
   const sky = createSky("day");
   root.add(sky);
-  return { root, leaves: leafRuntimes, lights, sky, authoredMeshes: authoredMeshes + leafRuntimes.length, ceilingRooms };
+  return { root, leaves: leafRuntimes, swings, lights, sky, authoredMeshes: authoredMeshes + leafRuntimes.length, ceilingRooms };
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Check, DoorOpen, HelpCircle, Layers, ListChecks, RotateCcw, X } from "lucide-react";
-import { FLOOR_NAMES, roomById, roomsOnFloor, type FloorId } from "../data/houseLayout";
+import { FLOOR_NAMES, RESIDENCE_NAME, roomById, rooms, type FloorId } from "../data/houseLayout";
 import { FloorPlanSvg } from "../components/FloorPlanSvg";
 import { TourEngine, type EngineState, type Quality } from "../tour/engine";
 import { runModelChecks, type CheckRow } from "../tour/checks";
@@ -90,7 +90,6 @@ export default function Tour() {
   const [loaded, setLoaded] = useState(false);
   const [state, setState] = useState<EngineState>({ floor: 0, roomId: null, roomName: "", doorAhead: false });
   const [panel, setPanel] = useState<Panel>(null);
-  const [panelFloor, setPanelFloor] = useState<FloorId>(0);
   const [fade, setFade] = useState(false);
   const [quality, setQuality] = useState<Quality>("high");
   const [checks, setChecks] = useState<CheckRow[] | null>(null);
@@ -99,7 +98,7 @@ export default function Tour() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Explore the 360° house — Haven · The Oak Mansion";
+    document.title = "Walk Residence 11A — Haven · The Oak Residences";
     setTouch(window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window);
   }, []);
 
@@ -112,14 +111,13 @@ export default function Tour() {
       .init((p, label) => alive && setProgress({ p, label }))
       .then(() => {
         if (!alive) return;
-        const start = roomParam && roomById(roomParam) ? roomParam : "entrance";
+        const start = roomParam && roomById(roomParam) ? roomParam : "lobby";
         eng.teleport(start);
         eng.start();
         eng.onState(setState);
         setEngine(eng);
         if (import.meta.env.DEV) (window as unknown as { __tour: TourEngine }).__tour = eng;
         setLoaded(true);
-        setPanelFloor(roomById(start)!.floor);
         // the self-test is heavier than a frame; run it once the house is on screen
         setTimeout(() => alive && setChecks(runModelChecks({ meshes: eng.sceneMeshCount(), authored: eng.house.authoredMeshes, ceilingRooms: eng.house.ceilingRooms })), 400);
       })
@@ -160,7 +158,6 @@ export default function Tour() {
 
   const toggle = (p: Panel) => {
     setPanel((cur) => (cur === p ? null : p));
-    if (p === "rooms") setPanelFloor(state.floor);
   };
 
   const setQ = (q: Quality) => {
@@ -171,7 +168,7 @@ export default function Tour() {
   if (!webgl) {
     return (
       <main className={styles.fallback}>
-        <p className="eyebrow">Haven · The Oak Mansion</p>
+        <p className="eyebrow">Haven · The Oak Residences</p>
         <h1>WebGL not supported</h1>
         <p>Your browser cannot display the 3D model. You can still read the house through its floor plans.</p>
         <Link to="/#plans" className={styles.fallbackLink}>View floor plans instead</Link>
@@ -183,15 +180,15 @@ export default function Tour() {
 
   return (
     <main className={styles.tour}>
-      <h1 className="visually-hidden">Explore The Oak Mansion in 3D</h1>
+      <h1 className="visually-hidden">Walk Residence 11A in 3D</h1>
       <div ref={host} className={styles.canvasHost} />
 
       {/* loader */}
       <div className={`${styles.loader} ${loaded ? styles.loaderDone : ""}`} role="status" aria-live="polite">
-        <p className="eyebrow">Haven · The Oak Mansion</p>
-        <h2 className={styles.loaderTitle}>Building the house</h2>
+        <p className="eyebrow">Haven · The Oak Residences</p>
+        <h2 className={styles.loaderTitle}>Building the tower</h2>
         <div className={styles.loaderTrack}><span style={{ transform: `scaleX(${progress.p})` }} /></div>
-        <p className={styles.loaderSub}>{error ? `Something went wrong: ${error}` : "Loading the model and baked lighting"}</p>
+        <p className={styles.loaderSub}>{error ? `Something went wrong: ${error}` : "Fifteen storeys, then Residence 11A on level 11"}</p>
         <p className={`mono ${styles.loaderStep}`}>{Math.round(progress.p * 100)}% · {progress.label}</p>
       </div>
 
@@ -202,14 +199,14 @@ export default function Tour() {
           <span className={styles.crosshair} aria-hidden="true" />
 
           <div className={`${styles.glass} ${styles.where}`} aria-live="polite">
-            <p className={styles.whereFloor}>{FLOOR_NAMES[state.floor]}</p>
+            <p className={styles.whereFloor}>{RESIDENCE_NAME} · {FLOOR_NAMES[state.floor]}</p>
             <p className={styles.whereRoom}>{state.roomName || "—"}</p>
           </div>
 
           <div className={styles.topRight}>
             <div className={styles.toolbar} role="toolbar" aria-label="Tour controls">
               <button className={`${styles.glass} ${styles.tool} ${panel === "rooms" ? styles.toolOn : ""}`} onClick={() => toggle("rooms")} aria-expanded={panel === "rooms"} aria-controls="panel-rooms">
-                <Layers size={16} strokeWidth={1.6} aria-hidden="true" /> <span>Floors &amp; rooms</span>
+                <Layers size={16} strokeWidth={1.6} aria-hidden="true" /> <span>Rooms</span>
               </button>
               <button className={`${styles.glass} ${styles.iconTool} ${panel === "help" ? styles.toolOn : ""}`} onClick={() => toggle("help")} aria-expanded={panel === "help"} aria-controls="panel-help" aria-label="Help: controls">
                 <HelpCircle size={17} strokeWidth={1.6} />
@@ -226,25 +223,19 @@ export default function Tour() {
             </Link>
 
             {panel === "rooms" && (
-              <section id="panel-rooms" className={`${styles.glass} ${styles.panel}`} aria-label="Floors and rooms">
+              <section id="panel-rooms" className={`${styles.glass} ${styles.panel}`} aria-label="Rooms">
                 <div className={styles.panelHead}>
-                  <div className={styles.segment} role="tablist" aria-label="Floor">
-                    {([0, 1] as FloorId[]).map((f) => (
-                      <button key={f} role="tab" aria-selected={panelFloor === f} className={panelFloor === f ? styles.segOn : ""} onClick={() => setPanelFloor(f)}>
-                        {FLOOR_NAMES[f]}
-                      </button>
-                    ))}
-                  </div>
+                  <h2 className={styles.panelTitle}>{RESIDENCE_NAME} <span className="mono">Level 11 of 15</span></h2>
                   <button className={styles.close} onClick={() => setPanel(null)} aria-label="Close panel"><X size={16} /></button>
                 </div>
                 <div className={styles.roomGrid}>
-                  {roomsOnFloor(panelFloor).map((rm) => (
+                  {rooms.map((rm) => (
                     <button key={rm.id} className={`${styles.roomBtn} ${rm.id === state.roomId ? styles.roomHere : ""}`} onClick={() => jump(rm.id)} aria-current={rm.id === state.roomId ? "location" : undefined}>
                       {rm.name}
                     </button>
                   ))}
                 </div>
-                <p className={styles.foot}>Jumping between floors is a shortcut — the staircase in the stair hall is fully walkable.</p>
+                <p className={styles.foot}>Jumping is a shortcut — every room, and the balcony with both swings, is reachable on foot from the lift.</p>
               </section>
             )}
 

@@ -1,10 +1,7 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { FLOOR_LEVEL, FLOOR_TO_FLOOR, FOOTPRINT, roomById, type FloorId } from "../data/houseLayout";
-import {
-  buildObstacles, flight1Lane, flight2Lane, inRect, leafDir, roomAt, stairHeight, stairZone,
-  type MoveMode, type Obstacle,
-} from "../data/layoutGeometry";
+import { RESIDENCE_ELEVATION, roomById, type FloorId } from "../data/houseLayout";
+import { buildObstacles, leafDir, roomAt, type Obstacle } from "../data/layoutGeometry";
 import { createMaterials, type MaterialLib } from "./materials";
 import { buildHouse, easeInOut, poseLeaf, type DoorLeafRuntime, type HouseBuild } from "./buildHouse";
 
@@ -27,7 +24,6 @@ export interface Pose {
 
 const EYE = 1.65;
 const RADIUS = 0.3;
-const HALF = FLOOR_TO_FLOOR / 2;
 const DEG = Math.PI / 180;
 const PITCH_LIMIT = 80 * DEG;
 const REACH = 2.0;
@@ -84,14 +80,12 @@ export class TourEngine {
   sun!: THREE.DirectionalLight;
   hemi!: THREE.HemisphereLight;
   pointLights: THREE.PointLight[] = [];
-  obstacles = buildObstacles();
+  obstacles: Obstacle[] = buildObstacles();
   quality: Quality = "high";
 
-  // player
-  x = 20;
-  y = 17;
-  h = 0;
-  mode: MoveMode = "ground";
+  // player (plan coordinates; height is the residence floor)
+  x = 12.6;
+  y = 2.4;
   yaw = 0;
   pitch = 0;
 
@@ -104,6 +98,7 @@ export class TourEngine {
   private raf = 0;
   private running = false;
   private last = 0;
+  private time = 0;
   private state: EngineState = { floor: 0, roomId: null, roomName: "", doorAhead: false };
   private stateListeners = new Set<(s: EngineState) => void>();
   private frameListeners = new Set<(p: Pose) => void>();
@@ -122,10 +117,10 @@ export class TourEngine {
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.domElement.style.touchAction = "none";
-    this.renderer.domElement.setAttribute("aria-label", "First-person 3D view of The Oak Mansion");
+    this.renderer.domElement.setAttribute("aria-label", "First-person 3D view of Residence 11A");
     this.renderer.domElement.setAttribute("role", "img");
     container.appendChild(this.renderer.domElement);
-    this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 500);
+    this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 900);
     this.camera.rotation.order = "YXZ";
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     this.ro = new ResizeObserver(() => this.resize());
@@ -139,8 +134,8 @@ export class TourEngine {
   async init(onProgress?: (p: number, label: string) => void) {
     const manager = new THREE.LoadingManager();
     const stages = [
-      "Procedural textures", "Floors and ceilings", "Walls, both floors", "Bronze windows", "Oak staircase",
-      "Ground-floor furniture", "First-floor furniture", "Garden and façade", "Doors", "Lighting", "Compiling shaders",
+      "Procedural textures", "Residence 11A", "Furniture and fittings", "Fifteen storeys", "Gardens and city",
+      "Doors", "Lighting", "Compiling shaders",
     ];
     manager.onProgress = (url, loaded, total) => onProgress?.(loaded / total, url);
     stages.forEach((s) => manager.itemStart(s));
@@ -167,39 +162,46 @@ export class TourEngine {
   }
 
   private setupLights() {
-    const env = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environment = env;
-    this.scene.environmentIntensity = 0.42;
-    this.scene.fog = new THREE.Fog(0xe9dfcf, 90, 260);
+    this.scene.environment = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.45;
+    this.scene.fog = new THREE.Fog(0xe6e0d4, 160, 620);
 
-    this.hemi = new THREE.HemisphereLight(0xfff2de, 0x8a7058, 0.85);
+    this.hemi = new THREE.HemisphereLight(0xfff2de, 0x8a7058, 0.9);
     this.scene.add(this.hemi);
 
     const sun = new THREE.DirectionalLight(0xffe0b0, 3.2);
-    sun.position.set(20 - 34, 26, 9 + 40);
-    sun.target.position.set(20, 0, 9.5);
+    sun.target.position.set(12, RESIDENCE_ELEVATION, 10);
+    this.sun = sun;
+    this.aimSun(new THREE.Vector3(-0.5, 0.55, 0.67));
     sun.shadow.mapSize.set(2048, 2048);
-    const cam = sun.shadow.camera;
-    cam.left = -34;
-    cam.right = 34;
-    cam.top = 26;
-    cam.bottom = -26;
-    cam.near = 10;
-    cam.far = 120;
+    this.setShadowBounds(20);
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.035;
     this.scene.add(sun, sun.target);
-    this.sun = sun;
 
-    // warm pendants: one light per room, the strongest fixture
-    const byRoom = new Map<string, (typeof this.house.lights)[number]>();
-    for (const l of this.house.lights) if (!byRoom.has(l.room) || l.strength > byRoom.get(l.room)!.strength) byRoom.set(l.room, l);
-    for (const l of byRoom.values()) {
-      const p = new THREE.PointLight(0xffc98f, 9 * l.strength, 10, 2);
+    for (const l of this.house.lights) {
+      const p = new THREE.PointLight(0xffc98f, 6 * l.strength, 8, 2);
       p.position.set(l.x, l.y, l.z);
       this.scene.add(p);
       this.pointLights.push(p);
     }
+  }
+
+  /** Point the sun along a direction (towards the sun), keeping it framed on its target. */
+  aimSun(dir: THREE.Vector3) {
+    this.sun.position.copy(this.sun.target.position).addScaledVector(dir.clone().normalize(), 80);
+  }
+
+  setShadowBounds(half: number, target?: THREE.Vector3) {
+    if (target) this.sun.target.position.copy(target);
+    const cam = this.sun.shadow.camera;
+    cam.left = -half;
+    cam.right = half;
+    cam.top = half;
+    cam.bottom = -half;
+    cam.near = 1;
+    cam.far = 220;
+    cam.updateProjectionMatrix();
   }
 
   /* ---------------------------------------------------------------- quality */
@@ -366,8 +368,6 @@ export class TourEngine {
     if (!rm) return false;
     this.x = rm.arrival.x;
     this.y = rm.arrival.y;
-    this.mode = rm.floor === 0 ? "ground" : "first";
-    this.h = FLOOR_LEVEL[rm.floor];
     this.yaw = rm.arrival.yaw * DEG + Math.PI;
     this.pitch = -0.04;
     this.placeCamera();
@@ -376,7 +376,7 @@ export class TourEngine {
   }
 
   resetView() {
-    this.teleport(this.state.roomId && roomById(this.state.roomId) ? this.state.roomId : "entrance");
+    this.teleport(this.state.roomId && roomById(this.state.roomId) ? this.state.roomId : "lobby");
   }
 
   /** Toggle the leaf the player is facing. */
@@ -388,7 +388,7 @@ export class TourEngine {
   }
 
   get floor(): FloorId {
-    return this.mode === "ground" ? 0 : this.mode === "first" ? 1 : this.h < HALF ? 0 : 1;
+    return 0;
   }
 
   private leafSegment(l: DoorLeafRuntime, s = l.s): [number, number, number, number] {
@@ -398,7 +398,6 @@ export class TourEngine {
   }
 
   private findDoorAhead(): DoorLeafRuntime | null {
-    if (this.mode === "stair") return null;
     const fx = -Math.sin(this.yaw);
     const fy = -Math.cos(this.yaw);
     let best: DoorLeafRuntime | null = null;
@@ -409,12 +408,11 @@ export class TourEngine {
       const dx = fx * c - fy * s;
       const dy = fx * s + fy * c;
       for (const l of this.house.leaves) {
-        if (l.geom.floor !== this.floor) continue;
         const [ax, ay, bx, by] = this.leafSegment(l);
         const t = raySeg(this.x, this.y, dx, dy, ax, ay, bx, by);
         if (t !== null && t < bestT) {
           // make sure no wall sits between the player and the leaf
-          const blocked = this.obstacles[this.mode].some((o) => {
+          const blocked = this.obstacles.some((o) => {
             if (o.kind !== "wall") return false;
             const tb = rayBox(this.x, this.y, dx, dy, o);
             return tb !== null && tb < t - 0.08;
@@ -433,11 +431,13 @@ export class TourEngine {
 
   private update(dt: number) {
     if (!this.house) return;
+    this.time += dt;
     if (this.interactive) {
       this.updateLook(dt);
       this.updateMove(dt);
     }
     this.updateDoors(dt);
+    for (const s of this.house.swings) s.pivot.rotation.x = Math.sin(this.time * 1.35 + s.phase) * s.amp;
     this.placeCamera();
     this.doorTarget = this.interactive ? this.findDoorAhead() : null;
     this.updateState();
@@ -474,27 +474,20 @@ export class TourEngine {
     const mx = (fx * fwd + rx * str) * speed * dt;
     const my = (fy * fwd + ry * str) * speed * dt;
     const len = Math.hypot(mx, my);
-    if (len > 1e-5) {
-      const n = Math.ceil(len / 0.06);
-      for (let i = 0; i < n; i++) {
-        this.x += mx / n;
-        this.y += my / n;
-        this.resolveCollisions();
-        this.updateMode();
-      }
+    if (len < 1e-5) return;
+    const n = Math.ceil(len / 0.06);
+    for (let i = 0; i < n; i++) {
+      this.x += mx / n;
+      this.y += my / n;
+      this.resolveCollisions();
     }
-    // height follows floor / stair surface
-    let target = this.mode === "ground" ? 0 : this.mode === "first" ? FLOOR_TO_FLOOR : stairHeight(this.x, this.y) ?? this.h;
-    if (this.mode === "stair") target = Math.max(0, Math.min(FLOOR_TO_FLOOR, target));
-    this.h += (target - this.h) * Math.min(1, dt * (this.mode === "stair" ? 18 : 12));
   }
 
   private resolveCollisions() {
     const r = RADIUS;
-    const obs = this.obstacles[this.mode];
     for (let iter = 0; iter < 3; iter++) {
       let moved = false;
-      for (const o of obs) {
+      for (const o of this.obstacles) {
         if (this.x < o.x1 - r || this.x > o.x2 + r || this.y < o.y1 - r || this.y > o.y2 + r) continue;
         const cx = Math.max(o.x1, Math.min(this.x, o.x2));
         const cy = Math.max(o.y1, Math.min(this.y, o.y2));
@@ -516,33 +509,21 @@ export class TourEngine {
         }
         moved = true;
       }
-      if (this.mode !== "stair") {
-        for (const l of this.house.leaves) {
-          if (l.geom.floor !== this.floor) continue;
-          const [ax, ay, bx, by] = this.leafSegment(l);
-          const [cx, cy] = closestOnSeg(this.x, this.y, ax, ay, bx, by);
-          const dx = this.x - cx;
-          const dy = this.y - cy;
-          const lim = r + LEAF_HALF_T;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < lim * lim && d2 > 1e-10) {
-            const d = Math.sqrt(d2);
-            this.x += (dx / d) * (lim - d);
-            this.y += (dy / d) * (lim - d);
-            moved = true;
-          }
+      for (const l of this.house.leaves) {
+        const [ax, ay, bx, by] = this.leafSegment(l);
+        const [cx, cy] = closestOnSeg(this.x, this.y, ax, ay, bx, by);
+        const dx = this.x - cx;
+        const dy = this.y - cy;
+        const lim = r + LEAF_HALF_T;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < lim * lim && d2 > 1e-10) {
+          const d = Math.sqrt(d2);
+          this.x += (dx / d) * (lim - d);
+          this.y += (dy / d) * (lim - d);
+          moved = true;
         }
       }
       if (!moved) break;
-    }
-  }
-
-  private updateMode() {
-    if (this.mode === "ground" && inRect(this.x, this.y, flight1Lane)) this.mode = "stair";
-    else if (this.mode === "first" && inRect(this.x, this.y, flight2Lane)) this.mode = "stair";
-    else if (this.mode === "stair" && !inRect(this.x, this.y, stairZone)) {
-      this.mode = this.h < HALF ? "ground" : "first";
-      this.h = this.mode === "ground" ? Math.min(this.h, 0.2) : Math.max(this.h, FLOOR_TO_FLOOR - 0.2);
     }
   }
 
@@ -551,7 +532,7 @@ export class TourEngine {
     for (const l of this.house.leaves) {
       if (l.s === l.target) continue;
       const next = l.target > l.s ? Math.min(1, l.s + step) : Math.max(0, l.s - step);
-      if (this.interactive && l.geom.floor === this.floor && this.mode !== "stair") {
+      if (this.interactive) {
         const [ax, ay, bx, by] = this.leafSegment(l, next);
         const [cx, cy] = closestOnSeg(this.x, this.y, ax, ay, bx, by);
         // the player is standing in the swing: pause until they step clear
@@ -570,33 +551,29 @@ export class TourEngine {
     }
   }
 
-  setDoorsOpen(ids: string[]) {
-    for (const l of this.house.leaves) if (ids.includes(l.geom.doorId)) {
-      l.s = l.target = 1;
-      poseLeaf(l);
-    }
+  /** Advance the animated parts (swings, doors) without input — used by the studio. */
+  tick(dt: number) {
+    this.update(dt);
   }
 
   placeCamera() {
     if (!this.interactive) return;
-    this.camera.position.set(this.x, this.h + EYE, this.y);
+    this.camera.position.set(this.x, RESIDENCE_ELEVATION + EYE, this.y);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
   }
 
   private updateState(force = false) {
-    const floor = this.floor;
-    const inside = inRect(this.x, this.y, FOOTPRINT);
-    const rm = roomAt(floor, this.x, this.y);
-    const roomId = rm ? rm.id : inside ? this.state.roomId : null;
-    const roomName = rm ? rm.name : inside ? this.state.roomName : "Garden";
+    const rm = roomAt(0, this.x, this.y);
+    const roomId = rm ? rm.id : this.state.roomId;
+    const roomName = rm ? rm.name : this.state.roomName;
     const doorAhead = !!this.doorTarget;
     const s = this.state;
-    if (!force && s.floor === floor && s.roomId === roomId && s.roomName === roomName && s.doorAhead === doorAhead) return;
-    this.state = { floor, roomId, roomName, doorAhead };
+    if (!force && s.roomId === roomId && s.roomName === roomName && s.doorAhead === doorAhead) return;
+    this.state = { floor: 0, roomId, roomName, doorAhead };
     this.stateListeners.forEach((cb) => cb(this.state));
   }
 
-  /** Count of meshes currently in the scene graph (merged batches + door parts). */
+  /** Count of meshes currently in the scene graph (merged batches + door and swing parts). */
   sceneMeshCount() {
     let n = 0;
     this.scene.traverse((o) => {

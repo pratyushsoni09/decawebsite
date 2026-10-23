@@ -1,23 +1,23 @@
 import { useState } from "react";
-import { roomById, roomsOnFloor, dimsOf, type FloorId } from "../../data/houseLayout";
+import { AREAS, PLAN_BOUNDS, roomById, rooms, dimsOf } from "../../data/houseLayout";
 import { FloorPlanSvg } from "../FloorPlanSvg";
 import styles from "./FloorPlans.module.css";
 
-const TABS: { floor: FloorId; label: string; sheet: string }[] = [
-  { floor: 0, label: "Ground floor", sheet: "A-201" },
-  { floor: 1, label: "First floor", sheet: "A-202" },
-];
+const VIEWS = [
+  { id: "furnished", label: "Furnished" },
+  { id: "dimensions", label: "Dimensions only" },
+] as const;
 
 export function FloorPlans() {
-  const [floor, setFloor] = useState<FloorId>(0);
+  const [view, setView] = useState<(typeof VIEWS)[number]["id"]>("furnished");
   const [hover, setHover] = useState<string | null>(null);
-  const tab = TABS[floor];
   const hovered = hover ? roomById(hover) : null;
+  const barY = PLAN_BOUNDS.y2 + 0.9;
 
   const onKeyTabs = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-      const next = (floor === 0 ? 1 : 0) as FloorId;
-      setFloor(next);
+      const next = view === "furnished" ? "dimensions" : "furnished";
+      setView(next);
       document.getElementById(`plan-tab-${next}`)?.focus();
     }
   };
@@ -26,24 +26,24 @@ export function FloorPlans() {
     <section id="plans" className={styles.section} aria-labelledby="plans-title">
       <header className={`${styles.head} reveal`}>
         <div>
-          <p className="eyebrow">Floor plans</p>
+          <p className="eyebrow">Floor plan · Level 11</p>
           <h2 id="plans-title" className={styles.title}>Drawn from the same model you can walk.</h2>
         </div>
         <p className={styles.sub}>Select any room on the plan to stand in it in 3D.</p>
       </header>
 
       <div className={`${styles.sheet} reveal`}>
-        <div className={styles.tabs} role="tablist" aria-label="Floor" onKeyDown={onKeyTabs}>
-          {TABS.map((t) => (
+        <div className={styles.tabs} role="tablist" aria-label="Plan view" onKeyDown={onKeyTabs}>
+          {VIEWS.map((t) => (
             <button
-              key={t.floor}
-              id={`plan-tab-${t.floor}`}
+              key={t.id}
+              id={`plan-tab-${t.id}`}
               role="tab"
-              aria-selected={floor === t.floor}
+              aria-selected={view === t.id}
               aria-controls="plan-panel"
-              tabIndex={floor === t.floor ? 0 : -1}
-              className={`${styles.tab} ${floor === t.floor ? styles.tabActive : ""}`}
-              onClick={() => setFloor(t.floor)}
+              tabIndex={view === t.id ? 0 : -1}
+              className={`${styles.tab} ${view === t.id ? styles.tabActive : ""}`}
+              onClick={() => setView(t.id)}
             >
               {t.label}
             </button>
@@ -56,27 +56,34 @@ export function FloorPlans() {
                 <span className={styles.enter}> · Enter to walk in</span>
               </>
             ) : (
-              <span>{roomsOnFloor(floor).length} rooms on this floor</span>
+              <span>{rooms.length} spaces · {Math.round(AREAS.internal)} m² inside + {Math.round(AREAS.balcony)} m² balcony</span>
             )}
           </span>
         </div>
 
-        <div id="plan-panel" role="tabpanel" aria-labelledby={`plan-tab-${floor}`} className={styles.panel}>
+        <div id="plan-panel" role="tabpanel" aria-labelledby={`plan-tab-${view}`} className={styles.panel}>
           <div className={styles.planScroll}>
-            <FloorPlanSvg key={floor} floor={floor} interactive highlight={hover} onRoomEnter={setHover} className={styles.svg}>
+            <FloorPlanSvg
+              interactive
+              highlight={hover}
+              onRoomEnter={setHover}
+              showFurniture={view === "furnished"}
+              className={styles.svg}
+              title="Residence 11A floor plan"
+            >
               {/* Scale bar and north point, drawn in plan metres */}
               <g aria-hidden="true" className={styles.annot}>
-                {[0, 2, 4, 6].map((m, i) => (
-                  <rect key={m} x={m} y={20.15} width={2} height={0.22} className={i % 2 ? styles.barLight : styles.barDark} />
+                {[0, 1, 2, 3].map((m, i) => (
+                  <rect key={m} x={m} y={barY} width={1} height={0.16} className={i % 2 ? styles.barLight : styles.barDark} />
                 ))}
-                {[0, 2, 4, 6, 8].map((m) => (
-                  <text key={m} x={m} y={20.95} className={styles.barText}>{m}</text>
+                {[0, 2, 4].map((m) => (
+                  <text key={m} x={m} y={barY + 0.62} className={styles.barText}>{m}</text>
                 ))}
-                <text x={8.5} y={20.95} className={styles.barText} textAnchor="start">m</text>
-                <g transform="translate(39 20.2)">
-                  <circle r={0.75} className={styles.northRing} />
-                  <path d="M0 -0.6 L0.32 0.42 L0 0.24 L-0.32 0.42 Z" className={styles.barDark} />
-                  <text y={-0.95} className={styles.barText}>N</text>
+                <text x={4.4} y={barY + 0.62} className={styles.barText} textAnchor="start">m</text>
+                <g transform={`translate(23.2 ${barY + 0.1})`}>
+                  <circle r={0.6} className={styles.northRing} />
+                  <path d="M0 -0.48 L0.26 0.34 L0 0.2 L-0.26 0.34 Z" className={styles.barDark} />
+                  <text y={-0.75} className={styles.barText}>N</text>
                 </g>
               </g>
             </FloorPlanSvg>
@@ -84,10 +91,10 @@ export function FloorPlans() {
         </div>
 
         <footer className={styles.titleBlock}>
-          <div><span>Project</span>The Oak Mansion</div>
-          <div><span>Drawing</span>{tab.label} plan</div>
-          <div><span>Scale</span>1:200 @ A1</div>
-          <div><span>Sheet</span><b className="mono">{tab.sheet}</b></div>
+          <div><span>Project</span>The Oak Residences</div>
+          <div><span>Drawing</span>Residence 11A plan</div>
+          <div><span>Scale</span>1:100 @ A1</div>
+          <div><span>Sheet</span><b className="mono">A-211</b></div>
         </footer>
       </div>
     </section>
