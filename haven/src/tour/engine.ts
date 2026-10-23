@@ -355,9 +355,10 @@ export class TourEngine {
 
   private onPointerMove = (e: PointerEvent) => {
     if (!this.drag || e.pointerId !== this.drag.id) return;
+    // the view turns the way you drag: right looks right, up looks up
     const k = e.pointerType === "touch" ? 0.0055 : 0.0038;
-    this.yaw += (e.clientX - this.drag.x) * k;
-    this.pitch += (e.clientY - this.drag.y) * k;
+    this.yaw -= (e.clientX - this.drag.x) * k;
+    this.pitch -= (e.clientY - this.drag.y) * k;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
     this.drag.x = e.clientX;
     this.drag.y = e.clientY;
