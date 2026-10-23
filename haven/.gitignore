@@ -5,3 +5,5 @@ data/
 blender/export/
 blender/out/
 blender/assets/
+.vercel
+.env*
