@@ -21,7 +21,7 @@ export interface Rect {
 }
 
 export type RoomKind = "living" | "bedroom" | "bathroom" | "hall" | "service" | "kitchen" | "outdoor";
-export type FloorFinish = "oak" | "herringbone" | "stone" | "marble" | "tile" | "teak";
+export type FloorFinish = "oak" | "darkPlank" | "polished" | "herringbone" | "stone" | "marble" | "tile" | "teak";
 /** A = the walkable home, B = the mirrored neighbour (shell only), common = the lift lobby. */
 export type Flat = "A" | "B" | "common";
 
@@ -82,7 +82,7 @@ export type FurnitureType =
   | "bath" | "vanity" | "shower" | "wc" | "sideboard" | "console" | "dresser" | "bench"
   | "plant" | "floorLamp" | "rug" | "art" | "mirror" | "pendant" | "chandelier" | "washer"
   | "tv" | "lift" | "planter" | "swingEgg" | "swingBench"
-  | "tvWall" | "poojaUnit" | "chimney" | "cove";
+  | "tvWall" | "poojaUnit" | "chimney" | "cove" | "accentWall";
 
 export interface FurnitureDef {
   id: string;
@@ -138,14 +138,14 @@ const mirrorRect = (rc: Rect): Rect => r(FOOTPRINT.x2 - rc.x2, rc.y1, FOOTPRINT.
 
 /** Residence 11A — a simple 3BHK: hall, dining hall (with an open pooja unit), kitchen, three bedrooms, two bathrooms. */
 const homeA: RoomDef[] = [
-  { id: "kitchen", floor: 0, flat: "A", name: "Kitchen", rects: [r(6.8, 0.3, 10.6, 3.6)], kind: "kitchen", finish: "stone", arrival: { x: 10.15, y: 1.7, yaw: 270 } },
+  { id: "kitchen", floor: 0, flat: "A", name: "Kitchen", rects: [r(6.8, 0.3, 10.6, 3.6)], kind: "kitchen", finish: "darkPlank", arrival: { x: 10.15, y: 1.7, yaw: 270 } },
   { id: "bath", floor: 0, flat: "A", name: "Bathroom", rects: [r(4.85, 0.3, 6.55, 3.6)], kind: "bathroom", finish: "tile", arrival: { x: 6.1, y: 2.0, yaw: 180 }, hideDims: true },
   { id: "bed2", floor: 0, flat: "A", name: "Bedroom two", rects: [r(0.3, 0.3, 4.6, 4.9)], kind: "bedroom", finish: "oak", arrival: { x: 2.9, y: 4.2, yaw: 300 } },
   { id: "bed3", floor: 0, flat: "A", name: "Bedroom three", rects: [r(0.3, 5.15, 4.6, 8.9)], kind: "bedroom", finish: "oak", arrival: { x: 2.8, y: 6.3, yaw: 240 } },
-  { id: "dining", floor: 0, flat: "A", name: "Dining hall", rects: [r(4.85, 3.85, 10.6, 8.9), r(10.6, 5.75, 11.875, 8.9)], kind: "living", finish: "stone", arrival: { x: 9.9, y: 6.4, yaw: 270 } },
-  { id: "living", floor: 0, flat: "A", name: "Hall", rects: [r(4.85, 9.15, 11.875, 15.7)], kind: "living", finish: "stone", arrival: { x: 5.8, y: 10.4, yaw: 150 } },
+  { id: "dining", floor: 0, flat: "A", name: "Dining hall", rects: [r(4.85, 3.85, 10.6, 8.9), r(10.6, 5.75, 11.875, 8.9)], kind: "living", finish: "darkPlank", arrival: { x: 9.9, y: 6.4, yaw: 270 } },
+  { id: "living", floor: 0, flat: "A", name: "Hall", rects: [r(4.85, 9.15, 11.875, 15.7)], kind: "living", finish: "darkPlank", arrival: { x: 5.8, y: 10.4, yaw: 150 } },
   { id: "master-bath", floor: 0, flat: "A", name: "Master bath", rects: [r(0.3, 9.15, 2.4, 11.15)], kind: "bathroom", finish: "tile", arrival: { x: 1.75, y: 10.25, yaw: 180 }, hideDims: true },
-  { id: "master", floor: 0, flat: "A", name: "Master bedroom", rects: [r(0.3, 11.4, 4.6, 15.7), r(2.65, 9.15, 4.6, 11.4)], kind: "bedroom", finish: "oak", arrival: { x: 3.6, y: 14.4, yaw: 300 } },
+  { id: "master", floor: 0, flat: "A", name: "Master bedroom", rects: [r(0.3, 11.4, 4.6, 15.7), r(2.65, 9.15, 4.6, 11.4)], kind: "bedroom", finish: "polished", arrival: { x: 3.6, y: 14.4, yaw: 300 } },
   { id: "balcony", floor: 0, flat: "A", name: "Balcony", rects: [BALCONY], kind: "outdoor", finish: "teak", arrival: { x: 8.0, y: 17.8, yaw: 0 } },
 ];
 
@@ -252,12 +252,13 @@ const SIZES: Record<FurnitureType, [number, number, number]> = {
   poojaUnit: [1.4, 0.6, 2.2],
   chimney: [0.9, 0.5, 0.5],
   cove: [6, 6, 0.25],
+  accentWall: [3, 0.04, 2.9],
 };
 
 export const SEAT_TYPES: FurnitureType[] = ["sofa", "loungeChair", "readingChair", "chair", "deskChair", "stool"];
-export const WALL_TYPES: FurnitureType[] = ["art", "mirror", "tv", "lift", "tvWall", "chimney"];
+export const WALL_TYPES: FurnitureType[] = ["art", "mirror", "tv", "lift", "tvWall", "chimney", "accentWall"];
 export const SWING_TYPES: FurnitureType[] = ["swingEgg", "swingBench"];
-export const NON_BLOCKING: FurnitureType[] = ["rug", "art", "mirror", "pendant", "chandelier", "tv", "lift", "tvWall", "chimney", "cove"];
+export const NON_BLOCKING: FurnitureType[] = ["rug", "art", "mirror", "pendant", "chandelier", "tv", "lift", "tvWall", "chimney", "cove", "accentWall"];
 
 let counter = 0;
 function f(
@@ -285,6 +286,7 @@ export const furniture: FurnitureDef[] = [
   f("kitchen", "island", 9.0, 2.4, 0, { w: 1.5, d: 0.7, variant: "luxury", group: "k-island", anchor: true }),
   f("kitchen", "stool", 8.62, 2.98, 180, { group: "k-island" }),
   f("kitchen", "stool", 9.38, 2.98, 180, { group: "k-island" }),
+  f("kitchen", "accentWall", 7.775, 0.32, 0, { variant: "charcoal", w: 1.9, elev: 1.95, h: 2.1 }),
   f("kitchen", "chimney", 7.95, 0.32, 0, { elev: 1.9 }),
   f("kitchen", "pendant", 8.6, 2.4, 0, { variant: "dome", w: 0.32, d: 0.32, h: 0.3 }),
   f("kitchen", "pendant", 9.4, 2.4, 0, { variant: "dome", w: 0.32, d: 0.32, h: 0.3 }),
@@ -295,56 +297,56 @@ export const furniture: FurnitureDef[] = [
   f("bath", "vanity", 5.1, 2.2, 90, { w: 0.8 }),
   f("bath", "mirror", 4.87, 2.2, 90, { elev: 1.5, w: 0.5 }),
 
-  /* Bedroom two 0.3..4.6 × 0.3..4.9 */
-  f("bed2", "rug", 2.0, 2.3, 0, { w: 2.2, d: 2.6 }),
-  f("bed2", "bed", 1.35, 2.3, 90, { w: 1.6, d: 2.0 }),
-  f("bed2", "nightstand", 0.55, 1.2, 90),
-  f("bed2", "nightstand", 0.55, 3.4, 90),
-  f("bed2", "art", 0.32, 2.3, 90, { elev: 1.45, w: 1.2, h: 0.6 }),
+  /* Bedroom two 0.3..4.6 × 0.3..4.9 — twin beds against an orange and cream feature wall */
+  f("bed2", "accentWall", 0.32, 2.4, 90, { variant: "orangeArc", w: 4.2, elev: 1.45, h: 2.9 }),
+  f("bed2", "rug", 2.0, 2.3, 0, { variant: "round", w: 2.8, d: 2.8 }),
+  f("bed2", "bed", 1.3, 1.25, 90, { variant: "twin", w: 1.0, d: 2.0 }),
+  f("bed2", "bed", 1.3, 3.35, 90, { variant: "twin", w: 1.0, d: 2.0 }),
+  f("bed2", "nightstand", 0.55, 2.3, 90, { variant: "cream" }),
   f("bed2", "wardrobe", 4.3, 1.8, 270, { w: 2.2 }),
   f("bed2", "dresser", 3.3, 0.55, 0, { w: 0.9, d: 0.45 }),
 
-  /* Bedroom three 0.3..4.6 × 5.15..8.9 */
-  f("bed3", "rug", 2.2, 7.4, 0, { w: 2.2, d: 2.4 }),
-  f("bed3", "desk", 0.6, 5.9, 90, { group: "b3-desk", anchor: true }),
-  f("bed3", "deskChair", 1.25, 5.9, 270, { group: "b3-desk" }),
-  f("bed3", "bed", 1.35, 7.85, 90, { w: 1.4, d: 2.0 }),
-  f("bed3", "nightstand", 0.55, 6.85, 90),
+  /* Bedroom three 0.3..4.6 × 5.15..8.9 — study bedroom: terracotta shelf wall, long desk along the window */
+  f("bed3", "accentWall", 2.1, 8.88, 180, { variant: "terracotta", w: 3.6, elev: 1.45, h: 2.9 }),
+  f("bed3", "rug", 2.0, 7.2, 0, { w: 2.2, d: 2.0 }),
+  f("bed3", "desk", 0.62, 6.15, 90, { variant: "long", w: 1.8, group: "b3-desk", anchor: true }),
+  f("bed3", "deskChair", 1.3, 6.15, 270, { variant: "orange", group: "b3-desk" }),
+  f("bed3", "bed", 2.0, 7.9, 180, { variant: "grey", w: 1.4, d: 2.0 }),
+  f("bed3", "nightstand", 0.95, 8.65, 180, { w: 0.45, d: 0.4 }),
+  f("bed3", "plant", 0.6, 7.5, 0, { variant: "fig", w: 0.5, d: 0.5, h: 1.2 }),
   f("bed3", "wardrobe", 4.3, 8.2, 270, { w: 1.4 }),
-  f("bed3", "art", 0.32, 7.85, 90, { elev: 1.45, w: 0.9, h: 0.6 }),
 
   /* Dining hall 4.85..10.6 × 3.85..8.9 (+ 10.6..11.875 × 5.75..8.9) — table for six, open pooja unit, crockery, shoe cabinet */
   f("dining", "rug", 7.7, 6.35, 0, { w: 3.2, d: 2.4 }),
-  f("dining", "table", 7.7, 6.35, 0, { group: "dining", anchor: true }),
+  f("dining", "table", 7.7, 6.35, 0, { variant: "slab", w: 1.9, d: 0.95, group: "dining", anchor: true }),
   ...[7.2, 8.2].flatMap((x) => [
     f("dining", "chair", x, 5.45, 0, { group: "dining" }),
     f("dining", "chair", x, 7.25, 180, { group: "dining" }),
   ]),
   f("dining", "chair", 6.4, 6.35, 90, { group: "dining" }),
   f("dining", "chair", 9.0, 6.35, 270, { group: "dining" }),
-  f("dining", "pendant", 7.25, 6.35, 0, { variant: "dome" }),
-  f("dining", "pendant", 8.15, 6.35, 0, { variant: "dome" }),
+  f("dining", "pendant", 7.7, 6.35, 0, { variant: "cluster", w: 1.3, d: 0.3, h: 0.45 }),
   f("dining", "poojaUnit", 5.15, 8.15, 90, { w: 1.2 }),
   f("dining", "sideboard", 10.3, 8.65, 180),
   f("dining", "art", 10.3, 8.88, 180, { elev: 1.6, w: 1.0, h: 0.7 }),
   f("dining", "console", 11.665, 7.3, 270, { variant: "shoe", w: 1.2 }),
   f("dining", "mirror", 11.86, 7.3, 270, { elev: 1.55, w: 0.7, h: 0.8 }),
 
-  /* Hall 4.85..11.875 × 9.15..15.7 */
+  /* Hall 4.85..11.875 × 9.15..15.7 — two sofas face each other in front of a wood-panelled feature wall */
   f("living", "cove", 8.36, 12.43, 0, { w: 6.6, d: 6.1 }),
-  f("living", "tvWall", 4.87, 13.3, 90, { elev: 1.3 }),
-  f("living", "console", 5.08, 13.3, 90, { variant: "media", w: 2.4, d: 0.45, h: 0.55 }),
-  f("living", "rug", 6.9, 13.3, 0, { w: 3.4, d: 3.6 }),
-  f("living", "coffeeTable", 6.6, 13.3, 90, { group: "living", anchor: true }),
-  f("living", "sofa", 8.3, 13.3, 270, { group: "living", w: 2.8, variant: "linen" }),
-  f("living", "loungeChair", 6.6, 11.4, 0, { group: "living", variant: "cream" }),
-  f("living", "readingChair", 10.8, 12.0, 270, { group: "living-read" }),
-  f("living", "sideTable", 9.95, 12.0, 0, { group: "living-read", anchor: true }),
-  f("living", "floorLamp", 11.45, 14.3),
-  f("living", "plant", 11.4, 15.2, 0, { variant: "olive" }),
+  f("living", "tvWall", 4.87, 13.3, 90, { variant: "panel", w: 3.6, elev: 1.45, h: 2.9 }),
+  f("living", "console", 5.08, 13.3, 90, { variant: "media", w: 2.4, d: 0.45, h: 0.45 }),
+  f("living", "rug", 6.9, 13.25, 0, { variant: "grey", w: 3.0, d: 3.4 }),
+  f("living", "coffeeTable", 6.9, 13.25, 0, { variant: "round", w: 0.9, d: 0.9, h: 0.42, group: "living", anchor: true }),
+  f("living", "sofa", 6.9, 11.9, 0, { group: "living", w: 2.3, variant: "tan" }),
+  f("living", "sofa", 6.9, 14.6, 180, { group: "living", w: 2.3, variant: "tan" }),
+  f("living", "floorLamp", 8.4, 11.5, 90, { variant: "arc" }),
+  f("living", "plant", 5.35, 11.4, 0, { variant: "fig" }),
+  f("living", "plant", 5.35, 15.25, 0, { variant: "olive" }),
   f("living", "plant", 11.4, 9.6, 0, { variant: "fig" }),
   f("living", "art", 11.86, 13.6, 270, { elev: 1.6, w: 1.4, h: 1.0 }),
-  f("living", "pendant", 6.6, 13.3, 0, { variant: "dome" }),
+  f("living", "pendant", 5.45, 12.0, 0, { variant: "bulb", w: 0.12, d: 0.12, h: 1.4 }),
+  f("living", "pendant", 5.45, 14.6, 0, { variant: "bulb", w: 0.12, d: 0.12, h: 1.4 }),
 
   /* Master bath 0.3..2.4 × 9.15..11.15 */
   f("master-bath", "shower", 0.85, 9.7, 0, { w: 1.1, d: 1.1 }),
@@ -352,18 +354,16 @@ export const furniture: FurnitureDef[] = [
   f("master-bath", "vanity", 1.75, 10.9, 180, { w: 0.8 }),
   f("master-bath", "mirror", 1.75, 11.13, 180, { elev: 1.5, w: 0.5 }),
 
-  /* Master bedroom 0.3..4.6 × 11.4..15.7 (+ wardrobe bay 2.65..4.6 × 9.15..11.4) */
+  /* Master bedroom 0.3..4.6 × 11.4..15.7 (+ wardrobe bay 2.65..4.6 × 9.15..11.4) — sculpted bed under a lit canopy */
   f("master", "wardrobe", 2.95, 10.55, 90, { w: 1.4 }),
   f("master", "cove", 2.45, 13.55, 0, { w: 3.8, d: 3.8 }),
-  f("master", "rug", 1.6, 13.3, 0, { w: 2.6, d: 3.0 }),
-  f("master", "bed", 1.6, 12.5, 0, { w: 1.8, d: 2.1 }),
-  f("master", "nightstand", 0.5, 11.65, 0, { w: 0.4 }),
-  f("master", "nightstand", 2.8, 11.65, 0),
-  f("master", "art", 1.6, 11.42, 0, { elev: 1.6, w: 1.3, h: 0.6 }),
-  f("master", "bench", 1.6, 13.85, 0),
+  f("master", "bed", 1.6, 12.55, 0, { variant: "sculpted", w: 2.4, d: 2.3 }),
+  f("master", "rug", 1.35, 14.75, 0, { variant: "rose", w: 1.9, d: 1.6 }),
+  f("master", "loungeChair", 0.85, 15.0, 135, { variant: "pink", group: "master-lounge" }),
+  f("master", "bench", 1.5, 14.35, 0, { variant: "ottoman", w: 0.6, d: 0.6, h: 0.42, group: "master-lounge", anchor: true }),
   f("master", "dresser", 4.35, 13.6, 270),
   f("master", "mirror", 4.58, 13.6, 270, { elev: 1.45, w: 0.7, h: 0.8 }),
-  f("master", "pendant", 2.4, 13.6, 0, { variant: "dome" }),
+  f("master", "plant", 0.65, 13.85, 0, { variant: "olive", w: 0.5, d: 0.5, h: 1.3 }),
 
   /* Balcony 0.3..11.875 × 16..19.0 */
   f("balcony", "planter", 0.9, 18.75, 0, { w: 1.0 }),

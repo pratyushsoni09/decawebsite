@@ -125,8 +125,10 @@ def set_input(node, names, value):
             return
 
 
-FABRICS = {"leather", "linen", "cream", "teal", "upholstery", "duvet", "bedLinen", "rug", "rugTeal", "rugSand"}
-WOODS = {"oak", "herringbone", "teak", "oakWood", "walnut", "oakVertical"}
+FABRICS = {"leather", "linen", "cream", "teal", "upholstery", "duvet", "bedLinen", "rug", "rugTeal", "rugSand",
+           "tan", "mustard", "maroon", "rugGrey", "rugRose", "blackLeather", "pinkLeather"}
+PAINTS = {"terracotta", "orangePaint", "charcoal"}
+WOODS = {"oak", "herringbone", "teak", "oakWood", "walnut", "oakVertical", "driftwood"}
 
 
 def tune_materials():
@@ -157,6 +159,12 @@ def tune_materials():
         elif k == "glow":
             set_input(b, ["Emission Color", "Emission"], (1.0, 0.82, 0.58, 1))
             set_input(b, "Emission Strength", 30.0)
+        elif k == "glowWarm":
+            set_input(b, ["Emission Color", "Emission"], (1.0, 0.72, 0.32, 1))
+            set_input(b, "Emission Strength", 0.9)
+        elif k in PAINTS:
+            set_input(b, "Roughness", 0.9)
+            set_input(b, ["Sheen Weight", "Sheen"], 0.0)
         elif k == "shade":
             set_input(b, ["Emission Color", "Emission"], (1.0, 0.8, 0.55, 1))
             set_input(b, "Emission Strength", 2.5)
@@ -169,9 +177,10 @@ def tune_materials():
             set_input(b, "Roughness", 0.02)
             set_input(b, ["Coat Weight"], 0.6)
         elif k in FABRICS:
-            set_input(b, ["Sheen Weight", "Sheen"], 0.35 if k != "leather" else 0.0)
-            set_input(b, "Roughness", 0.55 if k == "leather" else 0.92)
-            if k == "leather":
+            leather = k in ("leather", "blackLeather", "pinkLeather")
+            set_input(b, ["Sheen Weight", "Sheen"], 0.0 if leather else 0.35)
+            set_input(b, "Roughness", 0.5 if leather else 0.92)
+            if leather:
                 set_input(b, ["Coat Weight"], 0.15)
         elif k in WOODS:
             set_input(b, "Roughness", 0.55)
@@ -312,7 +321,7 @@ def add_lamps(lights):
 
 OUTDOOR_VIEWS = {"balcony", "swing"}
 # north-facing rooms only get skylight: open them up further, as a photographer would
-EXTRA_EV = {"bed2": 1.2, "bed3": 0.8, "kitchen": 0.0, "pooja": 0.9, "dining": 0.9, "living": 0.8}
+EXTRA_EV = {"bed2": 1.2, "bed3": 0.8, "kitchen": 0.0, "master": 0.6, "pooja": 0.9, "dining": 0.9, "living": 0.8}
 
 PRESET = {
     "day": {"elev": 42, "air": 1.0, "dust": 1.0, "sun": 4.2, "sky": 1.0, "exposure": 0.0},

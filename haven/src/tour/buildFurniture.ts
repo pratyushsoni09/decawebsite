@@ -77,12 +77,32 @@ function legs(c: Ctx, mat: MatKey, w: number, d: number, h: number, t = 0.04, in
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) B(c, mat, t, h, t, sx * (w / 2 - inset - t / 2), 0, sz * (d / 2 - inset - t / 2));
 }
 
+/** the same surface facing the other way, so curved shells show from inside too */
+function flipped(g: THREE.BufferGeometry) {
+  const f = g.toNonIndexed();
+  const pos = f.attributes.position as THREE.BufferAttribute;
+  const nor = f.attributes.normal as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i += 3) {
+    for (const a of [pos, nor]) {
+      const x = a.getX(i + 1), y = a.getY(i + 1), z = a.getZ(i + 1);
+      a.setXYZ(i + 1, a.getX(i + 2), a.getY(i + 2), a.getZ(i + 2));
+      a.setXYZ(i + 2, x, y, z);
+    }
+  }
+  for (let i = 0; i < nor.count; i++) nor.setXYZ(i, -nor.getX(i), -nor.getY(i), -nor.getZ(i));
+  return f;
+}
+/** add a geometry in the item's local frame */
+function G(c: Ctx, g: THREE.BufferGeometry, mat: MatKey) {
+  c.sb.add(g, mat, c.M);
+}
+
 const hash = (s: string) => [...s].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
 
 const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   sofa(c) {
     const { w, d } = c.it;
-    const mat: MatKey = c.it.variant === "cognac" ? "leather" : c.it.variant === "linen" ? "linen" : "cream";
+    const mat: MatKey = c.it.variant === "cognac" ? "leather" : c.it.variant === "linen" ? "linen" : c.it.variant === "tan" ? "tan" : "cream";
     if (c.it.variant === "outdoor") {
       legs(c, "teak", w - 0.04, d - 0.04, 0.3, 0.06, 0.0);
       B(c, "teak", w, 0.06, d, 0, 0.24, 0);
@@ -102,10 +122,22 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     B(c, mat, w, 0.42, 0.22, 0, 0.38, -d / 2 + 0.11);
     for (let i = 0; i < n; i++) B(c, mat, cw - 0.04, 0.34, 0.14, -w / 2 + 0.2 + cw * (i + 0.5), 0.52, -d / 2 + 0.28);
     for (const sx of [-1, 1]) B(c, mat, 0.2, 0.32, d, sx * (w / 2 - 0.1), 0.38, 0);
-    if (mat !== "leather") for (const sx of [-1, 1]) B(c, "teal", 0.42, 0.36, 0.12, sx * (w / 2 - 0.42), 0.56, -d / 2 + 0.36);
+    if (mat !== "leather") for (const sx of [-1, 1]) B(c, mat === "tan" ? (sx < 0 ? "charcoal" : "cream") : "teal", 0.42, 0.36, 0.12, sx * (w / 2 - 0.42), 0.56, -d / 2 + 0.36);
   },
   loungeChair(c) {
     const { w, d } = c.it;
+    if (c.it.variant === "pink") {
+      C(c, "pinkLeather", 0.3, 0.32, 0.03, 0, 0, 0, 32);
+      C(c, "pinkLeather", 0.035, 0.05, 0.28, 0, 0.03, 0, 12);
+      C(c, "pinkLeather", 0.36, 0.3, 0.16, 0, 0.3, 0.02, 32);
+      const r = Math.min(w, d) / 2 - 0.02;
+      const shell = new THREE.CylinderGeometry(r, r * 0.82, 0.5, 32, 1, true, Math.PI * 0.62, Math.PI * 0.76);
+      shell.translate(0, 0.55, 0);
+      G(c, shell, "pinkLeather");
+      G(c, flipped(shell), "pinkLeather");
+      B(c, "rugRose", 0.36, 0.3, 0.1, 0, 0.5, -0.18);
+      return;
+    }
     legs(c, "oakWood", w - 0.1, d - 0.1, 0.18, 0.04);
     B(c, "cream", w, 0.24, d, 0, 0.16, 0);
     B(c, "teal", w - 0.3, 0.12, d - 0.28, 0, 0.4, 0.06);
@@ -122,12 +154,19 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     for (const sx of [-1, 1]) B(c, "leather", 0.14, 0.3, d, sx * (w / 2 - 0.07), 0.4, 0);
   },
   chair(c) {
-    const seat: MatKey = c.it.room === "dining" ? "upholstery" : c.it.room === "kitchen" ? "oakWood" : "linen";
-    legs(c, "walnut", 0.44, 0.44, 0.44, 0.035, 0.01);
+    const seat: MatKey = c.it.room === "dining" ? "blackLeather" : c.it.room === "kitchen" ? "oakWood" : "linen";
+    legs(c, c.it.room === "dining" ? "darkMetal" : "walnut", 0.44, 0.44, 0.44, c.it.room === "dining" ? 0.02 : 0.035, 0.01);
     B(c, seat, 0.46, 0.06, 0.46, 0, 0.44, 0);
     B(c, seat, 0.46, 0.46, 0.05, 0, 0.5, -0.21);
   },
   deskChair(c) {
+    if (c.it.variant === "orange") {
+      C(c, "darkMetal", 0.26, 0.26, 0.02, 0, 0.03, 0, 5);
+      C(c, "darkMetal", 0.025, 0.025, 0.4, 0, 0.05, 0, 8);
+      B(c, "orangePaint", 0.48, 0.07, 0.46, 0, 0.45, 0);
+      B(c, "orangePaint", 0.46, 0.4, 0.05, 0, 0.52, -0.21);
+      return;
+    }
     legs(c, "walnut", 0.46, 0.46, 0.44, 0.035, 0.01);
     B(c, "leather", 0.5, 0.07, 0.48, 0, 0.44, 0);
     B(c, "walnut", 0.5, 0.36, 0.04, 0, 0.6, -0.22);
@@ -149,6 +188,20 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   coffeeTable(c) {
     const { w, d, h } = c.it;
+    if (c.it.variant === "round") {
+      const r = w / 2;
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
+        C(c, "darkMetal", 0.012, 0.012, h - 0.04, Math.cos(a) * r * 0.8, 0.02, Math.sin(a) * r * 0.8, 8);
+      }
+      const ring = new THREE.TorusGeometry(r * 0.8, 0.012, 6, 40);
+      ring.rotateX(Math.PI / 2);
+      ring.translate(0, 0.08, 0);
+      G(c, ring, "darkMetal");
+      C(c, "charcoal", r, r, 0.03, 0, h - 0.04, 0, 40);
+      C(c, "darkMetal", r + 0.008, r + 0.008, 0.012, 0, h - 0.045, 0, 40);
+      return;
+    }
     B(c, "oakWood", w - 0.3, h - 0.05, d - 0.3, 0, 0, 0);
     B(c, "oakWood", w, 0.05, d, 0, h - 0.05, 0);
     B(c, "pot", 0.16, 0.1, 0.16, w * 0.22, h, -0.05);
@@ -161,6 +214,14 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   table(c) {
     const { w, d } = c.it;
+    if (c.it.variant === "slab") {
+      for (const sx of [-1, 1]) B(c, "driftwood", 0.07, 0.68, d - 0.25, sx * (w / 2 - 0.4), 0, 0);
+      B(c, "driftwood", w - 0.8, 0.05, d - 0.35, 0, 0.22, 0);
+      B(c, "driftwood", w, 0.08, d, 0, 0.68, 0);
+      C(c, "pot", 0.12, 0.08, 0.1, 0, 0.76, 0, 16);
+      for (const x of [-0.45, 0.35]) C(c, "glowWarm", 0.03, 0.03, 0.18, x, 0.76, 0.12, 10);
+      return;
+    }
     for (const sx of [-1, 1]) B(c, "walnut", 0.1, 0.7, d - 0.4, sx * (w / 2 - 0.45), 0, 0);
     B(c, "walnut", w - 0.9, 0.08, 0.1, 0, 0.55, 0);
     B(c, "walnut", w, 0.06, d, 0, 0.7, 0);
@@ -187,10 +248,10 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       const base = d - 0.28;
       const bz = -d / 2 + base / 2;
       B(c, "darkMetal", w - 0.2, 0.08, base - 0.08, 0, 0, bz);
-      B(c, "greige", w - 0.12, h - 0.13, base, 0, 0.08, bz);
+      B(c, "driftwood", w - 0.12, h - 0.13, base, 0, 0.08, bz);
       for (const y of [0.35, 0.6]) B(c, "darkMetal", w - 0.16, 0.004, 0.005, 0, y, -d / 2 + 0.002);
       const ribs = Math.floor((w - 0.16) / 0.04);
-      for (let i = 0; i < ribs; i++) C(c, "walnut", 0.014, 0.014, h - 0.18, -w / 2 + 0.1 + i * 0.04, 0.08, bz + base / 2 + 0.01, 8);
+      for (let i = 0; i < ribs; i++) C(c, "driftwood", 0.014, 0.014, h - 0.18, -w / 2 + 0.1 + i * 0.04, 0.08, bz + base / 2 + 0.01, 8);
       B(c, "marble", w, 0.05, d, 0, h - 0.05, 0);
       for (const sx of [-1, 1]) B(c, "marble", 0.05, h - 0.05, d, sx * (w / 2 - 0.025), 0, 0);
       B(c, "glow", w - 0.14, 0.006, 0.02, 0, h - 0.056, d / 2 - 0.05);
@@ -207,7 +268,7 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       // handleless greige run with a gola channel, quartz top and full-height quartz splashback;
       // undermount sink with a black gooseneck under the window, hob under the chimney
       B(c, "darkMetal", w - 0.02, 0.1, d - 0.1, 0, 0, -0.05);
-      B(c, "greige", w, 0.68, d - 0.03, 0, 0.1, -0.015);
+      B(c, "driftwood", w, 0.68, d - 0.03, 0, 0.1, -0.015);
       B(c, "darkMetal", w, 0.05, d - 0.07, 0, 0.78, -0.035);
       const n = Math.max(1, Math.round(w / 0.6));
       for (let i = 1; i < n; i++) B(c, "darkMetal", 0.004, 0.66, 0.005, -w / 2 + (w / n) * i, 0.11, d / 2 - 0.028);
@@ -239,7 +300,7 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     if (c.it.variant === "column") {
       // walnut appliance column: integrated fridge-freezer, built-in oven and combi microwave
       B(c, "darkMetal", w - 0.04, 0.1, d - 0.08, 0, 0, -0.04);
-      B(c, "walnut", w, h - 0.1, d - 0.02, 0, 0.1, -0.01);
+      B(c, "driftwood", w, h - 0.1, d - 0.02, 0, 0.1, -0.01);
       const f = d / 2 + 0.001;
       B(c, "darkMetal", 0.004, h - 0.14, 0.005, 0, 0.12, f);
       B(c, "darkMetal", w / 2 - 0.02, 0.004, 0.005, -w / 4, 0.85, f);
@@ -263,6 +324,57 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   bed(c) {
     const { w, d } = c.it;
+    if (c.it.variant === "sculpted") {
+      // pink leather platform with integrated side ledges, under a lit canopy arching over the head
+      const mw = w - 0.6;
+      B(c, "pinkLeather", w, 0.3, d - 0.25, 0, 0.02, 0.125);
+      B(c, "mustard", mw, 0.2, d - 0.45, 0, 0.32, 0.15);
+      B(c, "maroon", mw + 0.04, 0.05, d * 0.42, 0, 0.5, d * 0.2);
+      for (const sx of [-1, 1]) {
+        B(c, "pinkLeather", 0.42, 0.4, 0.4, sx * (w / 2 - 0.21), 0.02, -d / 2 + 0.45);
+        B(c, "maroon", mw * 0.4, 0.15, 0.32, sx * mw * 0.24, 0.52, -d / 2 + 0.5);
+      }
+      B(c, "pinkLeather", mw * 0.35, 0.3, 0.12, 0, 0.55, -d / 2 + 0.6);
+      const R = w / 2 - 0.05;
+      const L = 0.75;
+      const y0 = 0.32;
+      const outer = new THREE.CylinderGeometry(R, R, L, 40, 1, true, Math.PI / 2, Math.PI);
+      outer.rotateX(Math.PI / 2);
+      outer.translate(0, y0, -d / 2 + L / 2);
+      G(c, outer, "pinkLeather");
+      const inner = new THREE.CylinderGeometry(R - 0.05, R - 0.05, L, 40, 1, true, Math.PI / 2, Math.PI);
+      inner.rotateX(Math.PI / 2);
+      inner.translate(0, y0, -d / 2 + L / 2);
+      G(c, flipped(inner), "glowWarm");
+      for (const z of [-d / 2 + 0.02, -d / 2 + L]) {
+        const rim = new THREE.TorusGeometry(R - 0.025, 0.035, 8, 40, Math.PI);
+        rim.translate(0, y0, z);
+        G(c, rim, "pinkLeather");
+      }
+      const back = new THREE.CircleGeometry(R - 0.05, 40, 0, Math.PI);
+      back.translate(0, y0, -d / 2 + 0.03);
+      G(c, back, "glowWarm");
+      return;
+    }
+    if (c.it.variant === "twin" || c.it.variant === "grey") {
+      const twin = c.it.variant === "twin";
+      const frame: MatKey = twin ? "white" : "rugGrey";
+      B(c, frame, w + 0.06, 0.34, d, 0, 0.04, 0);
+      B(c, "bedLinen", w - 0.04, 0.18, d - 0.12, 0, 0.36, 0.03);
+      B(c, twin ? "linen" : "greige", w + 0.02, 0.07, d * 0.62, 0, 0.5, d * 0.17);
+      const pw = twin ? w - 0.3 : (w - 0.25) / 2;
+      for (const x of twin ? [0] : [-pw / 2 - 0.04, pw / 2 + 0.04]) B(c, twin ? "orangePaint" : "bedLinen", pw, 0.16, 0.36, x, 0.54, -d / 2 + 0.3);
+      if (twin) B(c, "cream", w * 0.45, 0.14, 0.12, 0, 0.6, -d / 2 + 0.5);
+      // headboard: a panel with a rounded top
+      const hb = 0.72;
+      B(c, frame, w + 0.06, hb, 0.08, 0, 0.04, -d / 2 - 0.04);
+      // half disc arching up: theta pi/2..3pi/2 lands above the axis once the cylinder lies along z
+      const top = new THREE.CylinderGeometry((w + 0.06) / 2, (w + 0.06) / 2, 0.08, 32, 1, false, Math.PI / 2, Math.PI);
+      top.rotateX(Math.PI / 2);
+      top.translate(0, 0.04 + hb, -d / 2 - 0.04);
+      if (twin) G(c, top, frame);
+      return;
+    }
     B(c, "walnut", w, 0.28, d, 0, 0.04, 0);
     B(c, "bedLinen", w - 0.06, 0.2, d - 0.08, 0, 0.32, 0.02);
     B(c, "duvet", w + 0.02, 0.07, d * 0.62, 0, 0.47, d * 0.18);
@@ -274,6 +386,13 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   nightstand(c) {
     const { w, d, h } = c.it;
+    if (c.it.variant === "cream") {
+      B(c, "white", w, h, d);
+      B(c, "greige", w - 0.12, 0.14, 0.01, 0, 0.1, d / 2 + 0.001);
+      B(c, "darkMetal", w - 0.12, 0.004, 0.005, 0, h * 0.62, d / 2 + 0.002);
+      C(c, "glowWarm", 0.07, 0.07, 0.14, 0, h, -0.05, 16);
+      return;
+    }
     B(c, "oakWood", w, h, d);
     B(c, "darkMetal", w - 0.06, 0.004, 0.005, 0, h * 0.55, d / 2);
     C(c, "brass", 0.06, 0.07, 0.24, 0.05, h, -0.04, 12);
@@ -281,6 +400,17 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   desk(c) {
     const { w, d } = c.it;
+    if (c.it.variant === "long") {
+      for (const sx of [-1, 1]) {
+        B(c, "oakWood", 0.42, 0.7, d - 0.04, sx * (w / 2 - 0.21), 0, 0);
+        for (const y of [0.24, 0.47]) B(c, "darkMetal", 0.36, 0.004, 0.005, sx * (w / 2 - 0.21), y, d / 2 - 0.018);
+      }
+      B(c, "oakWood", w, 0.04, d, 0, 0.72, 0);
+      B(c, "darkGlass", 0.34, 0.22, 0.015, w * 0.12, 0.76, -d / 2 + 0.16);
+      C(c, "darkMetal", 0.06, 0.06, 0.02, -w * 0.3, 0.76, -d / 2 + 0.12, 12);
+      C(c, "darkMetal", 0.01, 0.01, 0.42, -w * 0.3, 0.78, -d / 2 + 0.12, 6);
+      return;
+    }
     for (const sx of [-1, 1]) B(c, "walnut", 0.05, 0.72, d - 0.06, sx * (w / 2 - 0.05), 0, 0);
     B(c, "walnut", w, 0.04, d, 0, 0.72, 0);
     B(c, "leather", w * 0.5, 0.004, d * 0.45, 0, 0.76, 0.06);
@@ -376,9 +506,9 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       return;
     }
     if (c.it.variant === "media") {
-      B(c, "walnut", w, 0.42, d, 0, 0.1, 0);
-      legs(c, "brass", w - 0.1, d - 0.06, 0.1, 0.03);
-      for (let i = 1; i < 4; i++) B(c, "darkMetal", 0.006, 0.36, 0.005, -w / 2 + (w / 4) * i, 0.13, d / 2);
+      B(c, "darkMetal", w - 0.06, 0.06, d - 0.06, 0, 0, 0);
+      B(c, "charcoal", w, c.it.h - 0.06, d, 0, 0.06, 0);
+      B(c, "darkGlass", w - 0.12, (c.it.h - 0.06) * 0.5, 0.01, 0, 0.1, d / 2 + 0.001);
       B(c, "pot", 0.14, 0.22, 0.14, w * 0.36, 0.52, 0);
       B(c, "oakWood", 0.3, 0.06, 0.22, -w * 0.32, 0.52, 0);
       return;
@@ -398,6 +528,13 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     for (let i = 1; i < 3; i++) B(c, "darkMetal", w - 0.04, 0.005, 0.005, 0, 0.12 + ((h - 0.12) / 3) * i, d / 2);
   },
   bench(c) {
+    if (c.it.variant === "ottoman") {
+      const r = c.it.w / 2;
+      C(c, "pinkLeather", r - 0.04, r - 0.04, 0.06, 0, 0, 0, 32);
+      C(c, "pinkLeather", r, r, c.it.h - 0.14, 0, 0.06, 0, 32);
+      C(c, "pinkLeather", r - 0.01, r - 0.04, 0.08, 0, c.it.h - 0.08, 0, 32);
+      return;
+    }
     const { w, d } = c.it;
     legs(c, "oakWood", w, d, 0.34, 0.045);
     B(c, c.it.room === "primary-bed" ? "teal" : "linen", w, 0.11, d, 0, 0.34, 0);
@@ -417,13 +554,21 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     }
   },
   floorLamp(c) {
+    if (c.it.variant === "arc") {
+      C(c, "darkMetal", 0.16, 0.16, 0.03, 0, 0, 0, 20);
+      beam(c, "darkMetal", 0.02, new THREE.Vector3(0, 0.03, 0), new THREE.Vector3(0, 1.55, -0.05));
+      beam(c, "darkMetal", 0.02, new THREE.Vector3(0, 1.55, -0.05), new THREE.Vector3(0, 1.62, -0.45));
+      C(c, "darkMetal", 0.04, 0.11, 0.16, 0, 1.47, -0.48, 16);
+      S(c, "glow", 0.04, 0, 1.47, -0.48);
+      return;
+    }
     C(c, "brass", 0.16, 0.16, 0.025, 0, 0, 0, 20);
     C(c, "brass", 0.012, 0.012, 1.3, 0, 0.02, 0, 8);
     C(c, "shade", 0.15, 0.2, 0.28, 0, 1.3, 0, 20);
   },
   rug(c) {
     const { w, d } = c.it;
-    const mat: MatKey = c.it.room === "entrance" || c.it.room === "lounge" ? "rugSand" : c.it.room === "library" || c.it.room === "bed4" ? "rugTeal" : "rug";
+    const mat: MatKey = c.it.variant === "grey" ? "rugGrey" : c.it.variant === "rose" ? "rugRose" : c.it.room === "entrance" || c.it.room === "lounge" ? "rugSand" : c.it.room === "library" || c.it.room === "bed4" ? "rugTeal" : "rug";
     if (c.it.variant === "round") C(c, mat, w / 2, w / 2, 0.012, 0, 0.002, 0, 48);
     else B(c, mat, w, 0.012, d, 0, 0.002, 0);
   },
@@ -438,6 +583,26 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     B(c, "mirror", w - 0.02, h - 0.02, 0.01, 0, -h / 2 + 0.01, 0.027);
   },
   pendant(c) {
+    if (c.it.variant === "bulb") {
+      const low = CEILING_HEIGHT - c.it.h;
+      C(c, "darkMetal", 0.004, 0.004, c.it.h - 0.06, 0, low + 0.06, 0, 4);
+      C(c, "darkMetal", 0.02, 0.02, 0.05, 0, low + 0.03, 0, 10);
+      S(c, "glow", 0.035, 0, low, 0, 0.8, 1.4, 0.8);
+      return;
+    }
+    if (c.it.variant === "cluster") {
+      const { w } = c.it;
+      B(c, "darkMetal", w, 0.03, 0.06, 0, CEILING_HEIGHT - 0.03, 0);
+      const low = 1.95;
+      for (let i = 0; i < 4; i++) {
+        const x = -w / 2 + 0.15 + ((w - 0.3) / 3) * i;
+        const drop = low + (i % 2) * 0.08;
+        C(c, "darkMetal", 0.003, 0.003, CEILING_HEIGHT - drop - 0.2, x, drop + 0.2, 0, 4);
+        C(c, "glass", 0.04, 0.12, 0.2, x, drop, 0, 18);
+        S(c, "glow", 0.035, x, drop + 0.05, 0);
+      }
+      return;
+    }
     // island pendants hang lower, about 0.8 m over the counter
     const low = c.it.room === "kitchen" ? 1.75 : 2.35;
     const r = 0.28 * Math.min(1, c.it.w / 0.6);
@@ -544,6 +709,22 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   tvWall(c) {
     // fluted oak feature wall with the TV set into it and a warm LED line at the base
     const { w, h } = c.it;
+    if (c.it.variant === "panel") {
+      const base = -(c.it.elev ?? 1.45);
+      const cw = Math.min(2.0, w * 0.55);
+      B(c, "walnut", w, h, 0.03, 0, base, 0.015);
+      B(c, "oakWood", cw, h, 0.05, 0, base, 0.025);
+      B(c, "darkMetal", 1.26, 1.36, 0.03, 0, base + 1.1, 0.065);
+      P(c, "art2", 1.2, 1.3, 0, base + 1.75, 0.081);
+      const sx = -(cw / 2 + (w - cw) / 4);
+      for (const y of [1.0, 1.45, 1.9]) {
+        B(c, "walnut", (w - cw) / 2 - 0.2, 0.03, 0.22, sx, base + y, 0.11);
+        B(c, "glow", (w - cw) / 2 - 0.3, 0.006, 0.01, sx, base + y - 0.008, 0.2);
+      }
+      C(c, "pot", 0.05, 0.05, 0.12, sx - 0.15, base + 1.03, 0.11, 12);
+      B(c, "white", 0.18, 0.1, 0.14, sx + 0.15, base + 1.48, 0.11);
+      return;
+    }
     const base = -(c.it.elev ?? 1.3); // floor, relative to the wall item's centre height
     B(c, "walnut", w, h, 0.03, 0, base, 0.015);
     const tvW = 1.65;
@@ -555,6 +736,41 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     B(c, "darkMetal", tvW, 0.95, 0.04, 0, base + 0.95, 0.062);
     B(c, "darkGlass", tvW - 0.03, 0.92, 0.005, 0, base + 0.965, 0.085);
     B(c, "glow", w - 0.1, 0.012, 0.012, 0, base + 0.62, 0.05);
+  },
+  accentWall(c) {
+    // a painted or panelled feature wall; origin on the wall face at its centre height
+    const { w, h } = c.it;
+    const v = c.it.variant;
+    const base = -h / 2;
+    if (v === "charcoal") {
+      B(c, "charcoal", w, h, 0.012, 0, base, 0.006);
+      return;
+    }
+    if (v === "terracotta") {
+      // terracotta wall with long open shelves above the bed
+      B(c, "terracotta", w, h, 0.012, 0, base, 0.006);
+      const sw = 2.6;
+      for (const y of [1.75, 2.18]) B(c, "white", sw, 0.025, 0.28, 0.1, base + y, 0.15);
+      for (let i = 0; i <= 5; i++) B(c, "white", 0.025, 0.43, 0.28, 0.1 - sw / 2 + (sw / 5) * i, base + 1.75, 0.15);
+      for (const y of [1.775, 2.205]) P(c, "books", sw - 0.6, 0.24, -0.1, base + y + 0.12, 0.18, true);
+      return;
+    }
+    if (v === "orangeArc") {
+      // cream panelling with an orange arch behind each bed and a reading light either side
+      B(c, "white", w, h, 0.012, 0, base, 0.006);
+      for (const x of [1.15, -0.95]) {
+        const aw = 1.35;
+        B(c, "orangePaint", aw, 1.45, 0.018, x, base, 0.012);
+        const arch = new THREE.CircleGeometry(aw / 2, 40, 0, Math.PI);
+        arch.translate(x, base + 1.45, 0.021);
+        G(c, arch, "orangePaint");
+        for (const sx of [-0.45, 0.45]) {
+          B(c, "white", 0.08, 0.12, 0.1, x + sx, base + 1.2, 0.06);
+          B(c, "glow", 0.06, 0.02, 0.06, x + sx, base + 1.18, 0.08);
+        }
+      }
+      return;
+    }
   },
   poojaUnit(c) {
     // open wooden mandir: drawers below, an arched, back-lit shrine above, brass bells and diyas

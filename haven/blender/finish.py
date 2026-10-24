@@ -22,6 +22,8 @@ TEX = os.path.join(HERE, "assets", "tex")
 
 # web material key -> (texture id, roughness scale, tile joints in metres or None)
 SURFACES = {
+    "darkPlank": ("laminate_floor_02", 0.7, None, (0.42, 0.3, 0.22)),  # dark-stained wood: hall, dining hall, kitchen
+    "polished": ("marble_01", 0.25, None, (0.07, 0.07, 0.075)),          # dark polished floor: master bedroom
     "stone": ("marble_01", 0.3, (1.6, 0.8)),
     "herringbone": ("marble_01", 0.3, (1.6, 0.8)),
     "oak": ("laminate_floor_02", 0.8, None),
@@ -40,7 +42,7 @@ def _image(path, colour):
     return img
 
 
-def textured(mat, tex_id, rough_scale=1.0, joints=None, box=False, normal_strength=0.6):
+def textured(mat, tex_id, rough_scale=1.0, joints=None, box=False, normal_strength=0.6, tint=None):
     """Rewire a material's Principled BSDF to a photo-scanned texture, mapped in metres."""
     folder = os.path.join(TEX, tex_id)
     if not os.path.isdir(folder):
@@ -95,6 +97,15 @@ def textured(mat, tex_id, rough_scale=1.0, joints=None, box=False, normal_streng
         nt.links.new(colour_out, mul.inputs["A"])
         nt.links.new(brick.outputs["Color"], mul.inputs["B"])
         colour_out = mul.outputs["Result"]
+    if tint:
+        # stain: multiply the scan's colour (dark wood, dark polished stone)
+        stain = nt.nodes.new("ShaderNodeMix")
+        stain.data_type = "RGBA"
+        stain.blend_type = "MULTIPLY"
+        stain.inputs["Factor"].default_value = 1.0
+        nt.links.new(colour_out, stain.inputs["A"])
+        stain.inputs["B"].default_value = (*tint, 1)
+        colour_out = stain.outputs["Result"]
     nt.links.new(colour_out, bsdf.inputs["Base Color"])
     rough = tex("rough.jpg", False)
     scale = nt.nodes.new("ShaderNodeMath")
@@ -107,7 +118,7 @@ def textured(mat, tex_id, rough_scale=1.0, joints=None, box=False, normal_streng
     nmap.inputs["Strength"].default_value = normal_strength
     nt.links.new(nor.outputs["Color"], nmap.inputs["Color"])
     nt.links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
-    if "Coat Weight" in bsdf.inputs and tex_id == "marble_01":
+    if "Coat Weight" in bsdf.inputs and (tex_id == "marble_01" or tint):
         bsdf.inputs["Coat Weight"].default_value = 0.35
         bsdf.inputs["Coat Roughness"].default_value = 0.04
 
@@ -134,8 +145,8 @@ def upgrade_surfaces():
             painted(mat, key)
             done += 1
         elif key in SURFACES:
-            tex_id, rough, joints = SURFACES[key]
-            textured(mat, tex_id, rough, joints, normal_strength=0.25 if key in ("plaster", "ceiling") else 0.6)
+            tex_id, rough, joints, *tint = SURFACES[key]
+            textured(mat, tex_id, rough, joints, normal_strength=0.25 if key in ("plaster", "ceiling") else 0.6, tint=tint[0] if tint else None)
             done += 1
     print(f"[finish] photo-scanned textures on {done} materials")
 
@@ -294,7 +305,7 @@ def finish(layout):
     for room in rooms:
         if room["kind"] == "bathroom":
             continue
-        target = white_sk if room["finish"] == "oak" else marble_sk
+        target = white_sk if room["finish"] in ("oak", "darkPlank") else marble_sk
         for side, fixed, a, b in wall_runs(room, door_cuts):
             for s0, s1 in _split(side, fixed, a, b, low_sills):
                 along(target, side, fixed, s0, s1, 0.012, 0.0, 0.1 if target is marble_sk else 0.09)
@@ -335,13 +346,7 @@ def finish(layout):
             frames.box(r["x1"], r["y1"], top - 0.03, r["x2"], r["y2"], top)
     frames.done()
 
-    # accent wall behind the master bed: warm greige paint, the rest of the home stays ivory
-    accent = Mesh("finish_accent_wall", simple_material("paint_greige", (0.5, 0.45, 0.39), 0.9), e)
-    master = next((r for r in rooms if r["id"] == "master"), None)
-    if master:
-        r = master["rects"][0]
-        accent.box(r["x1"], r["y1"], 0.1, 2.4, r["y1"] + 0.004, ceiling - 0.005)
-    accent.done()
+    # feature walls (wood panelling, terracotta, orange arches, charcoal) come with the furniture as accentWall items
 
     spotlights(rooms, e, ceiling)
     curtains(layout, rooms, e, ceiling)

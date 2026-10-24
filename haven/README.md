@@ -31,7 +31,9 @@ The room and tower photos are Blender Cycles renders of the same model you walk:
    dresser, desk, bench, sideboard, bathroom fittings and the kitchen (greige handleless run, walnut
    appliance column, quartz waterfall island, counter stools, island pendants) with contemporary pieces
    modelled in Blender (Poly Haven's furniture is mostly vintage); the CC0 lounge chairs, room pendants,
-   plants and decor stay.
+   plants and decor stay. Room styling follows the client's interior concept images: wood-panelled hall
+   with facing tan sofas, driftwood kitchen-dining, pink canopy bed in the master, twin beds against orange
+   arches, and a terracotta study bedroom (`variant` on each furniture item in `src/data/houseLayout.ts`).
    It also downloads photo-scanned CC0 surface textures (polished marble, laminate, bathroom and wall
    tiles, plaster relief, deck). `blender/finish.py` then finishes the home from `layout.json` the way
    Indian 3BHK homes are typically finished: marble floors with tile skirting in the hall, dining hall

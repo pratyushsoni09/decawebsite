@@ -344,7 +344,9 @@ export type MatKey =
   | "darkMetal" | "rug" | "rugTeal" | "rugSand" | "books" | "leaf" | "olive" | "pot" | "glow" | "shade"
   | "bedLinen" | "duvet" | "grass" | "pathStone" | "boxwood" | "terrace" | "stoneTrim" | "mirror"
   | "darkGlass" | "water" | "bark" | "art0" | "art1" | "art2" | "art3" | "art4" | "art5" | "white"
-  | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor" | "greige";
+  | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor" | "greige"
+  | "darkPlank" | "polished" | "driftwood" | "tan" | "blackLeather" | "pinkLeather" | "mustard" | "maroon"
+  | "terracotta" | "orangePaint" | "charcoal" | "rugGrey" | "rugRose" | "glowWarm";
 
 export type MaterialLib = Record<MatKey, THREE.MeshStandardMaterial>;
 
@@ -386,6 +388,21 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     mirror: std({ color: 0xe8e6e0, metalness: 1, roughness: 0.04 }),
     porcelain: std({ color: 0xfbfaf7, roughness: 0.18 }),
     greige: std({ color: 0x8a8278, roughness: 0.55 }),
+    // restyle palette, after the client's concept images
+    darkPlank: std({ map: tx("dark oak floor", 1024, paintPlanks, 71, [2, 2]), roughness: 0.5, color: 0x8a6448 }),
+    polished: std({ color: 0x2a292b, roughness: 0.12, metalness: 0.1 }),
+    driftwood: std({ map: tx("driftwood", 512, paintPlanks, 75, [1.4, 1.4]), roughness: 0.6, color: 0xa8968a }),
+    tan: std({ map: tx("tan", 256, paintFabric(24, 38, 52), 77, [0.3, 0.3]), roughness: 0.92 }),
+    blackLeather: std({ color: 0x1e1d1f, roughness: 0.5 }),
+    pinkLeather: std({ color: 0xdba29a, roughness: 0.42 }),
+    mustard: std({ map: tx("mustard", 256, paintFabric(40, 70, 52), 79, [0.4, 0.4]), roughness: 0.9 }),
+    maroon: std({ map: tx("maroon", 256, paintFabric(352, 32, 30), 81, [0.3, 0.3]), roughness: 0.95 }),
+    terracotta: std({ color: 0xc66f4c, roughness: 0.9 }),
+    orangePaint: std({ color: 0xee8a4e, roughness: 0.85 }),
+    charcoal: std({ color: 0x2c2b2d, roughness: 0.8 }),
+    rugGrey: std({ map: tx("grey rug", 256, paintFabric(30, 4, 66), 85, [0.5, 0.5]), roughness: 1 }),
+    rugRose: std({ map: tx("rose rug", 256, paintFabric(350, 34, 48), 87, [0.5, 0.5]), roughness: 1 }),
+    glowWarm: std({ color: 0xffe3a6, emissive: 0xffc95e, emissiveIntensity: 1.1, roughness: 0.9 }),
     glass: std({ color: 0xcfe0e4, metalness: 0, roughness: 0.04, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
     darkGlass: std({ color: 0x15130f, metalness: 0.4, roughness: 0.15 }),
     water: std({ color: 0xdfe9ea, roughness: 0.05, metalness: 0.1 }),

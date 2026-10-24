@@ -30,11 +30,11 @@ const NEIGHBOUR_BLOCK = [
   { x1: PARTY_X + 0.06, y1: 15.75, x2: 14, y2: 18.6 },
   { x1: 13.4, y1: -0.2, x2: 14, y2: 5.75 },
 ];
-const SKIP: FurnitureDef["type"][] = ["art", "mirror", "pendant", "chandelier", "tv", "lift"];
+const SKIP: FurnitureDef["type"][] = ["art", "mirror", "pendant", "chandelier", "tv", "lift", "accentWall"];
 
 function FurnitureMark({ it }: { it: FurnitureDef }) {
   const fp = footprint(it);
-  if (it.type === "roundTable" || it.type === "plant" || it.type === "floorLamp" || it.type === "swingEgg") {
+  if (it.type === "roundTable" || it.type === "plant" || it.type === "floorLamp" || it.type === "swingEgg" || it.variant === "round" || it.variant === "ottoman") {
     return <circle cx={it.x} cy={it.y} r={(fp.x2 - fp.x1) / 2} className={styles.furn} />;
   }
   if (it.type === "rug") {
