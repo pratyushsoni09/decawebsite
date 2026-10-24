@@ -5,7 +5,6 @@ import { Overview } from "../components/home/Overview";
 import { RoomsWalk } from "../components/home/RoomsWalk";
 import { FloorPlans } from "../components/home/FloorPlans";
 import { Gallery } from "../components/home/Gallery";
-import { Inspiration } from "../components/home/Inspiration";
 import { TourCta } from "../components/home/TourCta";
 import { Enquiry } from "../components/home/Enquiry";
 import { SiteFooter } from "../components/home/SiteFooter";
@@ -32,7 +31,6 @@ export default function Home() {
         <RoomsWalk />
         <FloorPlans />
         <Gallery />
-        <Inspiration />
         <TourCta />
         <Enquiry />
       </main>
