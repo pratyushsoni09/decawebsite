@@ -359,7 +359,7 @@ def finish(layout):
     # wooden architraves around every internal door and archway, both faces
     frames = Mesh("finish_door_frames", simple_material("frame_teak", (0.33, 0.2, 0.11), 0.45), e)
     for d in layout["doors"] + layout["openings"]:
-        if d.get("glazed"):
+        if d.get("glazed") or d.get("id") == "kitchen-dining":  # the open kitchen has no frame, as in the photo
             continue
         r = d["rect"]
         top = d.get("head", head)
@@ -408,6 +408,12 @@ def finish(layout):
     grey_wall.done()
     frame_white.done()
     master_arches(layout, rooms, e)
+    dark = Mesh("finish_charcoal_walls", simple_material("paint_charcoal", (0.03, 0.03, 0.032), 0.85), e)
+    for room in rooms:
+        if room["id"] in ("kitchen", "dining"):
+            for side, fixed, a, b in wall_runs(room, door_cuts + window_cuts):
+                along(dark, side, fixed, a, b, 0.003, 0.0, layout["ceilingHeight"])
+    dark.done()
 
     spotlights(rooms, e, ceiling)
     curtains(layout, rooms, e, ceiling)

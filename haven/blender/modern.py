@@ -147,7 +147,7 @@ def palette():
         "shade": solid("m_lamp_shade", (0.92, 0.88, 0.8), 0.9, emit=(1.0, 0.82, 0.6), strength=1.2, transmission=0.3),
         "stone": solid("m_lamp_stone", (0.75, 0.7, 0.64), 0.6),
         "brass": existing("brass", solid("m_brass", (0.8, 0.62, 0.35), 0.25, metal=1.0)),
-        "greige": wood("m_kitchen_driftwood", (0.1, 0.08, 0.065), (0.2, 0.165, 0.14)),
+        "greige": wood("m_kitchen_driftwood", (0.05, 0.038, 0.03), (0.13, 0.1, 0.08)),
         "dark_glass": solid("m_appliance_glass", (0.015, 0.015, 0.018), 0.04, coat=1.0),
         "steel": solid("m_brushed_steel", (0.55, 0.55, 0.55), 0.3, metal=1.0),
         "led": solid("m_led_strip", (1.0, 0.9, 0.75), 0.5, emit=(1.0, 0.82, 0.6), strength=12.0),
@@ -165,7 +165,7 @@ def palette():
         "orange": fabric("m_fabric_orange", (0.75, 0.22, 0.05), sheen=0.4),
         "cream": solid("m_cream_lacquer", (0.75, 0.7, 0.62), 0.35, coat=0.3),
         "stone_dark": solid("m_stone_dark", (0.06, 0.06, 0.065), 0.25, coat=0.4),
-        "driftwood": wood("m_driftwood", (0.12, 0.095, 0.08), (0.24, 0.2, 0.17)),
+        "driftwood": wood("m_driftwood", (0.055, 0.038, 0.028), (0.14, 0.1, 0.075)),
         "light_oak": wood("m_light_oak", (0.42, 0.28, 0.16), (0.62, 0.45, 0.28)),
         "glow_warm": solid("m_glow_warm", (0.95, 0.55, 0.06), 0.8, emit=(1.0, 0.55, 0.06), strength=0.8),
         "veneer": wood("m_veneer_warm", (0.3, 0.15, 0.075), (0.46, 0.25, 0.13)),
@@ -179,6 +179,7 @@ def palette():
         "book_b": solid("m_book_b", (0.7, 0.68, 0.64), 0.6),
         "book_c": solid("m_book_c", (0.3, 0.06, 0.03), 0.6),
         "book_d": solid("m_book_d", (0.18, 0.2, 0.24), 0.6),
+        "placemat": fabric("m_placemat", (0.03, 0.03, 0.03), sheen=0.2, weave=0.8),
         "bulb": solid("m_bulb", (1.0, 0.9, 0.7), 0.3, emit=(1.0, 0.78, 0.5), strength=25.0),
     }
 
@@ -398,8 +399,9 @@ def dining_chair(p, it, M):
     if it["room"] == "dining":
         # black upholstered chair on slim black-metal legs
         for sx in (-1, 1):
+            p.box(M["black"], sx * 0.2, 0, 0, 0.016, 0.46, 0.016)  # sled runner
             for sy in (-1, 1):
-                p.box(M["black"], sx * 0.2, sy * 0.19, 0, 0.018, 0.018, 0.44)
+                p.box(M["black"], sx * 0.2, sy * 0.21, 0, 0.016, 0.016, 0.44)
         p.box(M["black_leather"], 0, 0.0, 0.42, 0.5, 0.48, 0.08, r=0.025, seg=4)
         p.box(M["black_leather"], 0, 0.23, 0.48, 0.5, 0.06, 0.48, r=0.025, seg=4, tilt=-0.08)
         return
@@ -436,10 +438,25 @@ def table(p, it, M):
         for sx in (-1, 1):
             p.box(M["driftwood"], sx * (w / 2 - 0.4), 0, 0, 0.07, d - 0.25, h - 0.08, r=0.004)
         p.box(M["driftwood"], 0, 0, 0.2, w - 0.8, d - 0.35, 0.05, r=0.004)
-        p.box(M["driftwood"], 0, 0, h - 0.08, w, d, 0.08, r=0.01)
-        p.ellipsoid(M["ceramic"], 0.0, 0.0, h + 0.04, 0.16, 0.1, 0.05)
-        for x in (-0.45, 0.35):
-            p.cyl(M["glow_warm"], x, -0.12, h, 0.03, 0.03, 0.18, seg=16)
+        p.box(M["driftwood"], 0, 0, h - 0.1, w, d, 0.1, r=0.01)
+        for sx in (-1, 1):
+            p.box(M["black"], sx * (w / 2 - 0.4), 0, 0, 0.09, d - 0.2, h - 0.1)
+        p.box(M["black"], 0, 0, 0.2, w - 0.8, d - 0.3, 0.06)
+        places = [(-0.5, -0.3), (0.5, -0.3), (-0.5, 0.3), (0.5, 0.3), (-w / 2 + 0.25, 0.0), (w / 2 - 0.25, 0.0)]
+        for x, y in places:
+            p.box(M["placemat"], x, y, h, 0.42, 0.32, 0.004, r=0.01)
+            p.cyl(M["ceramic"], x, y, h + 0.004, 0.13, 0.135, 0.016, seg=32)
+            p.cyl(M["ceramic"], x, y, h + 0.02, 0.05, 0.075, 0.055, seg=28)
+            gx, gy = x + (0.17 if x <= 0 else -0.17), y * 0.55
+            p.cyl(M["glass"], gx, gy, h, 0.035, 0.035, 0.008, seg=20)
+            p.cyl(M["glass"], gx, gy, h + 0.008, 0.005, 0.005, 0.09, seg=10)
+            p.cyl(M["glass"], gx, gy, h + 0.098, 0.025, 0.04, 0.1, seg=24)
+        p.cyl(M["black"], -0.05, 0.0, h, 0.12, 0.17, 0.07, seg=32)
+        for x, y in ((-0.1, 0.03), (0.0, -0.04), (0.05, 0.05), (-0.02, 0.08)):
+            p.ellipsoid(M["orange"], x, y, h + 0.1, 0.045, 0.045, 0.045)
+        for x, ch in ((0.28, 0.22), (0.38, 0.15), (0.33, 0.1)):
+            p.cyl(M["glow_warm"], x, 0.05, h, 0.03, 0.03, ch, seg=20)
+            lamp_light(p.frame, x, 0.05, h + ch + 0.03, watts=1.0)
         return
     outdoor = it["room"] == "balcony"
     wood = M["teak"] if outdoor else M["walnut"]
@@ -762,6 +779,34 @@ def kitchen_run(p, it, M):
     p.box(M["quartz"], 0, 0, h - 0.07, w, d, 0.05, r=0.004)
     p.box(M["quartz"], 0, d / 2 - 0.01, h - 0.02, w, 0.02, 0.62)  # splashback
     p.box(M["led"], 0, d / 2 - 0.035, h + 0.58, w - 0.04, 0.012, 0.008)
+    # uppers: a black-framed glass cabinet lit inside with stacked dishes (left), a plain wood cabinet (right)
+    ud, uz0, uh = 0.35, 1.5, 0.85
+    uy = d / 2 - ud / 2
+    gx = -w / 2 + 0.34
+    for x, wd in ((gx, 0.66),):
+        p.box(M["black"], x, uy, uz0, wd, ud, 0.025)
+        p.box(M["black"], x, uy, uz0 + uh - 0.025, wd, ud, 0.025)
+        for sx2 in (-1, 1):
+            p.box(M["black"], x + sx2 * (wd / 2 - 0.0125), uy, uz0, 0.025, ud, uh)
+        p.box(M["black"], x, d / 2 - 0.01, uz0, wd, 0.02, uh)
+        p.box(M["black"], x, uy, uz0 + uh / 2, wd - 0.04, ud - 0.04, 0.015)
+        p.box(M["glass"], x, d / 2 - ud - 0.003, uz0 + 0.02, wd - 0.04, 0.006, uh - 0.04)
+        for z in (uz0 + 0.03, uz0 + uh / 2 + 0.017):
+            for k in range(4):
+                p.cyl(M["ceramic"], x - 0.12, uy + 0.02, z + k * 0.012, 0.11, 0.11, 0.008, seg=28)
+            p.cyl(M["ceramic"], x + 0.14, uy + 0.02, z, 0.05, 0.08, 0.09, seg=24)
+        area_light(p.frame, x, uy, uz0 + uh - 0.05, 0.25, 6.0)
+        area_light(p.frame, x, uy, uz0 + uh / 2 - 0.01, 0.25, 4.0)
+    wx = w / 2 - 0.3
+    p.box(M["greige"], wx, uy, uz0, 0.58, ud, uh, r=0.003)
+    p.box(M["led"], gx, uy - 0.1, uz0 - 0.01, 0.6, 0.02, 0.008)
+    # counter: black kettle, grinders, a board and a pot of herbs
+    p.cyl(M["black"], -w / 2 + 0.9, -0.05, h - 0.02, 0.08, 0.07, 0.2, seg=24)
+    for k in range(3):
+        p.cyl(M["black"], -w / 2 + 1.2 + k * 0.07, 0.15, h - 0.02, 0.025, 0.025, 0.2, seg=16)
+    p.box(M["light_oak"], w / 2 - 0.5, 0.18, h - 0.02, 0.4, 0.04, 0.3, r=0.01, tilt=0.12)
+    p.cyl(M["stone"], w / 2 - 0.25, 0.1, h - 0.02, 0.06, 0.05, 0.1)
+    p.ellipsoid(M["sage"], w / 2 - 0.25, 0.1, h + 0.15, 0.09, 0.09, 0.08)
     if w >= 2.5:
         sx = w / 2 - 1.2  # under the kitchen window
         p.box(M["steel"], sx, -0.02, h - 0.24, 0.7, 0.42, 0.2)  # basin below the counter
@@ -793,7 +838,42 @@ def tall_units(p, it, M):
     p.box(M["led"], 0, front + 0.04, h - 0.01, w - 0.04, 0.02, 0.008)
 
 
+def wood_island(p, it, M):
+    """The photo's island: grey oak all round with long drawers, a thin white top, an induction hob with a pan,
+    and a built-in oven facing the dining table."""
+    w, d, h = it["w"], it["d"], it["h"]
+    p.box(M["black"], 0, 0, 0, w - 0.1, d - 0.1, 0.08)
+    p.box(M["greige"], 0, 0, 0.08, w, d, h - 0.12, r=0.003)
+    for z in (0.3, 0.58):
+        p.box(M["black"], 0.25, -d / 2 - 0.001, z, w - 0.6, 0.004, 0.004)
+    p.box(M["black"], -w / 2 + 0.45, -d / 2 - 0.002, 0.16, 0.64, 0.01, 0.58)
+    p.box(M["dark_glass"], -w / 2 + 0.45, -d / 2 - 0.006, 0.2, 0.58, 0.004, 0.36)
+    p.box(M["steel"], -w / 2 + 0.45, -d / 2 - 0.03, 0.6, 0.5, 0.016, 0.016, r=0.006)
+    p.box(M["quartz"], 0, 0, h - 0.04, w + 0.04, d + 0.04, 0.04, r=0.004)
+    p.box(M["dark_glass"], -0.2, 0.05, h, 0.6, 0.5, 0.004, r=0.006)
+    p.cyl(M["steel"], -0.35, 0.1, h + 0.004, 0.12, 0.12, 0.1, seg=32)
+    p.box(M["black"], -0.35, 0.3, h + 0.08, 0.025, 0.2, 0.02, r=0.006)
+    p.cyl(M["black"], 0.55, -0.1, h, 0.07, 0.07, 0.06, seg=24)
+    for k, (x, y) in enumerate(((0.52, -0.12), (0.58, -0.08), (0.55, -0.04))):
+        p.ellipsoid(M["orange"], x, y, h + 0.08, 0.04, 0.04, 0.04)
+
+
+def chimney(p, it, M):
+    """Stainless T-shaped hood: a flat canopy over the hob and a flue box to the ceiling; glass hob on the counter."""
+    elev = it.get("elev", 1.9)
+    w = it["w"]
+    p.box(M["steel"], 0, -0.25, elev, w, 0.5, 0.06, r=0.004)
+    p.box(M["steel"], 0, -0.125, elev + 0.06, 0.3, 0.25, 3.0 - elev - 0.06)
+    p.box(M["led"], 0, -0.35, elev - 0.002, 0.5, 0.02, 0.004)
+    p.box(M["dark_glass"], 0, -0.3, 0.88, 0.6, 0.5, 0.006, r=0.006)
+    for x, y in ((-0.15, -0.2), (0.15, -0.2), (-0.15, -0.4), (0.15, -0.4)):
+        p.cyl(M["black"], x, y, 0.886, 0.08, 0.08, 0.002, seg=24)
+    lamp_light(p.frame, 0, -0.3, elev - 0.05, watts=6.0)
+
+
 def island(p, it, M):
+    if it.get("variant") == "wood":
+        return wood_island(p, it, M)
     """Quartz waterfall island: greige drawers to the hob side, fluted walnut and a breakfast overhang to the front."""
     w, d, h = it["w"], it["d"], it["h"]
     base = d - 0.28
@@ -981,6 +1061,7 @@ BUILDERS = {
     "accentWall": terracotta_wall,
     "rug": shag_rug,
     "floorLamp": arc_lamp,
+    "chimney": chimney,
     "kitchenRun": kitchen_run,
     "tallUnits": tall_units,
     "island": island,
@@ -1012,6 +1093,8 @@ def wants(it):
     only = {"tvWall": "panel", "console": "float", "accentWall": "terracotta", "rug": "grey", "floorLamp": "arc"}
     if it["type"] in only:
         return it.get("variant") == only[it["type"]]
+    if it["type"] == "chimney":
+        return it["room"] == "kitchen"
     return it["type"] != "pendant" or it["room"] == "kitchen" or it.get("variant") in ("bulb", "cluster")
 
 

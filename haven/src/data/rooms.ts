@@ -27,14 +27,14 @@ export const featuredRooms: FeaturedRoom[] = [
   },
   {
     num: "02", id: "dining", name: "Dining hall",
-    description: "You step straight into the dining hall: a thick driftwood slab table for six with black upholstered chairs under a bar of glass pendants, a crockery sideboard, a shoe cabinet by the door — and the family's pooja unit standing open against the wall.",
-    chips: ["5.75 × 5.05 m", "Dining for six", "Open pooja unit"],
+    description: "You step straight into the dining hall: a thick rustic wood table set for six with black chairs, under a bar of clear glass pendants, with charcoal walls and the kitchen open beyond — and the family's pooja unit standing open against the wall.",
+    chips: ["5.75 × 5.05 m", "Dining for six", "Open to the kitchen"],
     image: "/images/concepts/kitchen-dining.webp", alt: "Open kitchen and dining table under glass pendants, with the city lit up beyond the windows", label: CONCEPT_LABEL,
   },
   {
     num: "03", id: "kitchen", name: "Kitchen",
-    description: "Handleless grey-brown wood cabinets under a quartz counter, a charcoal wall behind the glass hob and chimney, a wood appliance column with a built-in fridge, oven and microwave, and a quartz waterfall island with two counter stools under twin pendants. A wide archway opens it to the dining hall.",
-    chips: ["3.8 × 3.3 m", "Quartz waterfall island", "Wood appliance column"],
+    description: "An open kitchen with charcoal walls: grey-oak cabinets under a white counter, a stainless steel hood, a lit glass-front cabinet with dishes, a wood appliance column with built-in ovens, and a long wood island with an induction hob and an oven facing the table.",
+    chips: ["3.8 × 3.3 m", "Open to the dining hall", "Wood island with hob"],
     image: "/images/kitchen.webp", alt: "Luxury kitchen with a quartz waterfall island, counter stools and a walnut appliance column",
   },
   {

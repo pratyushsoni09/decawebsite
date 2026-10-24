@@ -184,7 +184,7 @@ def dress(items, elevation):
             on(it, "ceramic_vase_02", w * 0.25, 0.0, h)
             if room != "balcony":
                 on(it, "book_encyclopedia_set_01", -w * 0.22, 0.0, h, rot=90)
-        elif t == "table":
+        elif t == "table" and it.get("variant") != "slab":  # the slab table is set for dinner instead
             on(it, "brass_candleholders", 0.0, 0.0, h, size=w * 0.42)
         elif t == "island":
             on(it, "wooden_bowl_01", w * 0.18, 0.0, h, size=0.34)

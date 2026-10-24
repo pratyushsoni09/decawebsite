@@ -181,7 +181,7 @@ export const doors: DoorDef[] = [
 
 /** The kitchen and the hall open off the dining hall without doors. */
 export const openings: OpeningDef[] = [
-  { id: "kitchen-dining", floor: 0, axis: "x", at: 8.6, pos: 3.72, width: 2.2, head: 2.4 },
+  { id: "kitchen-dining", floor: 0, axis: "x", at: 8.7, pos: 3.72, width: 3.5, head: 2.6 },
   { id: "dining-hall", floor: 0, axis: "x", at: 7.5, pos: 9.02, width: 3.0, head: 2.7 },
 ];
 
@@ -280,16 +280,15 @@ export const furniture: FurnitureDef[] = [
   f("lobby", "plant", 12.75, 4.9, 0, { variant: "fig", w: 0.5, d: 0.5, h: 1.3 }),
   f("lobby", "pendant", 12.0, 2.8, 0, { variant: "dome" }),
 
-  /* Kitchen 6.8..10.6 × 0.3..3.6 — luxury modular kitchen: run with sink, walnut appliance column, quartz island */
+  /* Kitchen 6.8..10.6 × 0.3..3.6 — after the client's dark kitchen-dining photo: open to the dining hall, charcoal walls,
+     grey-oak run with lit glass uppers and a steel hood, wood appliance column, long wood island with an induction hob */
   f("kitchen", "kitchenRun", 8.7, 0.63, 0, { w: 3.8, variant: "modular" }),
   f("kitchen", "tallUnits", 7.125, 1.8, 90, { w: 1.6, h: 2.4, variant: "column" }),
-  f("kitchen", "island", 9.0, 2.4, 0, { w: 1.5, d: 0.7, variant: "luxury", group: "k-island", anchor: true }),
-  f("kitchen", "stool", 8.62, 2.98, 180, { group: "k-island" }),
-  f("kitchen", "stool", 9.38, 2.98, 180, { group: "k-island" }),
+  f("kitchen", "island", 9.05, 2.4, 0, { w: 1.8, d: 0.9, variant: "wood" }),
   f("kitchen", "accentWall", 7.775, 0.32, 0, { variant: "charcoal", w: 1.9, elev: 1.95, h: 2.1 }),
+  f("kitchen", "accentWall", 10.58, 1.95, 270, { variant: "charcoal", w: 3.2, elev: 1.5, h: 3.0 }),
+  f("kitchen", "accentWall", 6.82, 1.95, 90, { variant: "charcoal", w: 3.2, elev: 1.5, h: 3.0 }),
   f("kitchen", "chimney", 7.95, 0.32, 0, { elev: 1.9 }),
-  f("kitchen", "pendant", 8.6, 2.4, 0, { variant: "dome", w: 0.32, d: 0.32, h: 0.3 }),
-  f("kitchen", "pendant", 9.4, 2.4, 0, { variant: "dome", w: 0.32, d: 0.32, h: 0.3 }),
 
   /* Bathroom 4.85..6.55 × 0.3..3.6 */
   f("bath", "shower", 6.05, 0.8, 0),
@@ -317,8 +316,7 @@ export const furniture: FurnitureDef[] = [
   f("bed3", "wardrobe", 4.3, 8.2, 270, { w: 1.4 }),
 
   /* Dining hall 4.85..10.6 × 3.85..8.9 (+ 10.6..11.875 × 5.75..8.9) — table for six, open pooja unit, crockery, shoe cabinet */
-  f("dining", "rug", 7.7, 6.35, 0, { w: 3.2, d: 2.4 }),
-  f("dining", "table", 7.7, 6.35, 0, { variant: "slab", w: 1.9, d: 0.95, group: "dining", anchor: true }),
+  f("dining", "table", 7.7, 6.35, 0, { variant: "slab", w: 1.95, d: 1.0, group: "dining", anchor: true }),
   ...[7.2, 8.2].flatMap((x) => [
     f("dining", "chair", x, 5.45, 0, { group: "dining" }),
     f("dining", "chair", x, 7.25, 180, { group: "dining" }),

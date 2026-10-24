@@ -222,8 +222,16 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       for (const sx of [-1, 1]) B(c, "driftwood", 0.07, 0.68, d - 0.25, sx * (w / 2 - 0.4), 0, 0);
       B(c, "driftwood", w - 0.8, 0.05, d - 0.35, 0, 0.22, 0);
       B(c, "driftwood", w, 0.08, d, 0, 0.68, 0);
-      C(c, "pot", 0.12, 0.08, 0.1, 0, 0.76, 0, 16);
-      for (const x of [-0.45, 0.35]) C(c, "glowWarm", 0.03, 0.03, 0.18, x, 0.76, 0.12, 10);
+      // set for six: plates and bowls at each place, glasses, candles and a bowl of oranges
+      const top = 0.76;
+      for (const [x, z] of [[-0.5, -0.32], [0.5, -0.32], [-0.5, 0.32], [0.5, 0.32], [-w / 2 + 0.22, 0], [w / 2 - 0.22, 0]]) {
+        C(c, "porcelain", 0.13, 0.13, 0.015, x, top, z, 24);
+        C(c, "porcelain", 0.07, 0.05, 0.05, x, top + 0.015, z, 16);
+        C(c, "glass", 0.035, 0.03, 0.18, x + 0.17, top, z * 0.7, 10);
+      }
+      C(c, "darkMetal", 0.16, 0.12, 0.06, -0.05, top, 0, 20);
+      for (const [x, z] of [[-0.1, 0.03], [0, -0.04], [0.05, 0.05]]) S(c, "orangePaint", 0.045, x, top + 0.08, z);
+      for (const [x, h2] of [[0.3, 0.2], [0.42, 0.14], [0.36, 0.1]]) C(c, "glowWarm", 0.03, 0.03, h2, x, top, 0.04, 12);
       return;
     }
     for (const sx of [-1, 1]) B(c, "walnut", 0.1, 0.7, d - 0.4, sx * (w / 2 - 0.45), 0, 0);
@@ -247,6 +255,16 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   island(c) {
     const { w, d, h } = c.it;
+    if (c.it.variant === "wood") {
+      B(c, "darkMetal", w - 0.1, 0.08, d - 0.1, 0, 0, 0);
+      B(c, "driftwood", w, h - 0.12, d, 0, 0.08, 0);
+      for (const y of [0.3, 0.58]) B(c, "darkMetal", w - 0.06, 0.004, 0.005, 0.25, y, d / 2 + 0.001);
+      B(c, "darkGlass", 0.6, 0.5, 0.012, -w / 2 + 0.45, 0.2, d / 2 + 0.002);
+      B(c, "white", w + 0.04, 0.04, d + 0.04, 0, h - 0.04, 0);
+      B(c, "darkGlass", 0.6, 0.006, 0.5, -0.2, h, 0);
+      C(c, "porcelain", 0.12, 0.12, 0.1, -0.35, h + 0.006, 0.05, 20);
+      return;
+    }
     if (c.it.variant === "luxury") {
       // quartz waterfall island: greige drawers to the hob side, fluted walnut and a breakfast overhang to the front
       const base = d - 0.28;
@@ -280,6 +298,16 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       B(c, "marble", w, 0.05, d, 0, 0.83, 0);
       B(c, "marble", w, 0.62, 0.02, 0, 0.88, -d / 2 + 0.01);
       B(c, "glow", w - 0.04, 0.008, 0.02, 0, 1.5, -d / 2 + 0.03);
+      // uppers either side of the hood and window: black-framed glass cabinet lit inside, plain wood cabinet
+      const ud = 0.35;
+      const uz = -d / 2 + ud / 2;
+      B(c, "darkMetal", 0.66, 0.85, ud, -w / 2 + 0.34, 1.52, uz);
+      B(c, "glowWarm", 0.6, 0.79, 0.01, -w / 2 + 0.34, 1.55, uz - ud / 2 + 0.03);
+      B(c, "glass", 0.62, 0.81, 0.01, -w / 2 + 0.34, 1.54, uz + ud / 2 + 0.006);
+      B(c, "white", 0.5, 0.02, 0.25, -w / 2 + 0.34, 1.88, uz);
+      B(c, "driftwood", 0.58, 0.85, ud, w / 2 - 0.3, 1.52, uz);
+      C(c, "darkMetal", 0.08, 0.07, 0.2, -w / 2 + 0.9, 0.88, -0.05, 14);
+      for (const x of [0.25, 0.32, 0.39]) C(c, "darkMetal", 0.025, 0.025, 0.2, -w / 2 + x + 0.8, 0.88, -0.15, 10);
       if (w >= 2.5) {
         const sx = w / 2 - 1.2;
         B(c, "darkGlass", 0.72, 0.004, 0.42, sx, 0.88, 0.02);
