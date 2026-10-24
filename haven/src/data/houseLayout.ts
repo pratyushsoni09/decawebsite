@@ -145,7 +145,7 @@ const homeA: RoomDef[] = [
   { id: "dining", floor: 0, flat: "A", name: "Dining hall", rects: [r(4.85, 3.85, 10.6, 8.9), r(10.6, 5.75, 11.875, 8.9)], kind: "living", finish: "darkPlank", arrival: { x: 9.9, y: 6.4, yaw: 270 } },
   { id: "living", floor: 0, flat: "A", name: "Hall", rects: [r(4.85, 9.15, 11.875, 15.7)], kind: "living", finish: "darkPlank", arrival: { x: 5.8, y: 10.4, yaw: 150 } },
   { id: "master-bath", floor: 0, flat: "A", name: "Master bath", rects: [r(0.3, 9.15, 2.4, 11.15)], kind: "bathroom", finish: "tile", arrival: { x: 1.75, y: 10.25, yaw: 180 }, hideDims: true },
-  { id: "master", floor: 0, flat: "A", name: "Master bedroom", rects: [r(0.3, 11.4, 4.6, 15.7), r(2.65, 9.15, 4.6, 11.4)], kind: "bedroom", finish: "polished", arrival: { x: 3.6, y: 14.4, yaw: 300 } },
+  { id: "master", floor: 0, flat: "A", name: "Master bedroom", rects: [r(0.3, 11.4, 4.6, 15.7), r(2.65, 9.15, 4.6, 11.4)], kind: "bedroom", finish: "polished", arrival: { x: 3.6, y: 13.4, yaw: 300 } },
   { id: "balcony", floor: 0, flat: "A", name: "Balcony", rects: [BALCONY], kind: "outdoor", finish: "teak", arrival: { x: 8.0, y: 17.8, yaw: 0 } },
 ];
 
@@ -361,13 +361,13 @@ export const furniture: FurnitureDef[] = [
   /* Master bedroom 0.3..4.6 × 11.4..15.7 (+ wardrobe bay 2.65..4.6 × 9.15..11.4) — sculpted bed under a lit canopy */
   f("master", "wardrobe", 2.95, 10.55, 90, { w: 1.4 }),
   f("master", "cove", 2.45, 13.55, 0, { w: 3.8, d: 3.8 }),
-  f("master", "bed", 1.6, 12.55, 0, { variant: "sculpted", w: 2.4, d: 2.3 }),
-  f("master", "rug", 1.35, 14.75, 0, { variant: "rose", w: 1.9, d: 1.6 }),
-  f("master", "loungeChair", 0.85, 15.0, 135, { variant: "pink", group: "master-lounge" }),
-  f("master", "bench", 1.5, 14.35, 0, { variant: "ottoman", w: 0.6, d: 0.6, h: 0.42, group: "master-lounge", anchor: true }),
+  f("master", "bed", 1.85, 12.55, 0, { variant: "sculpted", w: 2.6, d: 2.3 }),
+  f("master", "rug", 1.3, 14.7, 0, { variant: "rose", w: 2.0, d: 1.6 }),
+  f("master", "loungeChair", 0.95, 15.1, 135, { variant: "pink", w: 0.9, d: 0.9, group: "master-lounge" }),
+  f("master", "bench", 1.6, 14.45, 0, { variant: "ottoman", w: 0.7, d: 0.7, h: 0.45, group: "master-lounge", anchor: true }),
   f("master", "dresser", 4.35, 13.6, 270),
   f("master", "mirror", 4.58, 13.6, 270, { elev: 1.45, w: 0.7, h: 0.8 }),
-  f("master", "plant", 0.65, 13.85, 0, { variant: "olive", w: 0.5, d: 0.5, h: 1.3 }),
+  f("master", "plant", 0.6, 14.0, 0, { variant: "olive", w: 0.5, d: 0.5, h: 1.3 }),
 
   /* Balcony 0.3..11.875 × 16..19.0 */
   f("balcony", "planter", 0.9, 18.75, 0, { w: 1.0 }),

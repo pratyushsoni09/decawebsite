@@ -155,9 +155,11 @@ def palette():
         "tan": fabric("m_fabric_tan", (0.075, 0.042, 0.03), sheen=0.6),
         "tan_dark": fabric("m_fabric_tan_dark", (0.2, 0.12, 0.08), sheen=0.4),
         "black_leather": solid("m_black_leather", (0.018, 0.018, 0.02), 0.45, coat=0.2),
-        "pink_leather": solid("m_pink_leather", (0.62, 0.3, 0.27), 0.4, coat=0.25),
+        "pink_leather": solid("m_pink_leather", (0.86, 0.43, 0.37), 0.5, coat=0.08),
+        "gold": solid("m_gold", (0.85, 0.62, 0.32), 0.25, metal=1.0),
+        "flower": solid("m_flower_red", (0.6, 0.06, 0.05), 0.6),
         "mustard": fabric("m_fabric_mustard", (0.62, 0.36, 0.06), sheen=0.4),
-        "maroon": fabric("m_fabric_maroon", (0.2, 0.05, 0.05), sheen=0.6, weave=0.5),
+        "maroon": fabric("m_fabric_maroon", (0.11, 0.022, 0.025), sheen=0.25, weave=0.5),
         "rose": fabric("m_fabric_rose", (0.42, 0.13, 0.13), sheen=0.5),
         "grey": fabric("m_fabric_grey", (0.32, 0.31, 0.3), sheen=0.4),
         "orange": fabric("m_fabric_orange", (0.75, 0.22, 0.05), sheen=0.4),
@@ -165,7 +167,7 @@ def palette():
         "stone_dark": solid("m_stone_dark", (0.06, 0.06, 0.065), 0.25, coat=0.4),
         "driftwood": wood("m_driftwood", (0.12, 0.095, 0.08), (0.24, 0.2, 0.17)),
         "light_oak": wood("m_light_oak", (0.42, 0.28, 0.16), (0.62, 0.45, 0.28)),
-        "glow_warm": solid("m_glow_warm", (0.9, 0.62, 0.25), 0.8, emit=(1.0, 0.7, 0.3), strength=0.9),
+        "glow_warm": solid("m_glow_warm", (0.95, 0.55, 0.06), 0.8, emit=(1.0, 0.55, 0.06), strength=0.8),
         "veneer": wood("m_veneer_warm", (0.3, 0.15, 0.075), (0.46, 0.25, 0.13)),
         "walnut_dark": wood("m_walnut_recess", (0.07, 0.038, 0.022), (0.13, 0.072, 0.042)),
         "art_swirl": swirl_art(),
@@ -516,28 +518,63 @@ def bed(p, it, M):
 
 
 def sculpted_bed(p, it, M):
-    """Pink leather platform with side ledges under a canopy that arches over the head and glows warm inside."""
+    """The client's pink-bed photo: a low, soft pink-leather platform under a thick rounded hood that arches over the
+    head, lit warm yellow inside, with a tufted headboard pad, mustard sheet, maroon knit throw, a curving ledge with a
+    book niche on one side and a round tray on the other."""
     w, d = it["w"], it["d"]
-    mw = w - 0.6
-    head = d / 2  # local +Y is the back (wall side)
-    p.box(M["pink_leather"], 0, -0.12, 0.02, w, d - 0.25, 0.3, r=0.12, seg=6)
-    p.box(M["mustard"], 0, -0.15, 0.3, mw, d - 0.5, 0.2, r=0.06, seg=5)
-    p.box(M["maroon"], 0, -d * 0.2, 0.47, mw + 0.05, d * 0.42, 0.05, r=0.025, seg=4)
+    head = d / 2  # local +Y is the wall side
+    mw = w - 0.7
+    # platform: one soft rounded mass
+    p.box(M["pink_leather"], 0, -0.1, 0.02, w - 0.1, d - 0.2, 0.3, r=0.15, seg=8)
+    p.box(M["black"], 0, -0.1, 0.0, w - 0.4, d - 0.5, 0.03)
+    # mattress, sheet, knit throw, pillows
+    p.box(M["mustard"], 0, -0.12, 0.3, mw, d - 0.55, 0.2, r=0.07, seg=6)
+    throw = p.box(M["maroon"], 0, -d * 0.2, 0.43, mw + 0.12, d * 0.48, 0.1, r=0.04, seg=3)
+    p.rumple(throw, 0.035, 0.18)
     for sx in (-1, 1):
-        p.box(M["pink_leather"], sx * (w / 2 - 0.21), head - 0.45, 0.02, 0.4, 0.42, 0.4, r=0.12, seg=6)
-        p.box(M["maroon"], sx * mw * 0.24, head - 0.5, 0.48, mw * 0.4, 0.3, 0.16, r=0.07, seg=6, tilt=-0.3)
-    p.box(M["pink_leather"], 0, head - 0.62, 0.52, mw * 0.36, 0.13, 0.3, r=0.06, seg=6, tilt=-0.3)
-    R, L, z0 = w / 2 - 0.05, 0.75, 0.32
-    p.arch(M["pink_leather"], 0, head, head - L, z0, R, R - 0.07)
-    p.arch(M["glow_warm"], 0, head - 0.005, head - L + 0.02, z0, R - 0.07, R - 0.075)
-    p.arch(M["glow_warm"], 0, head - 0.02, head - 0.03, z0, R - 0.07, 0)
-    data = bpy.data.lights.new("canopy_light", "AREA")
-    data.energy = 12.0
-    data.color = (1.0, 0.75, 0.45)
-    data.size = 0.8
-    ob = bpy.data.objects.new(data.name, data)
-    ob.matrix_world = p.frame @ Matrix.Translation(Vector((0, head - L / 2, z0 + R - 0.15)))
-    bpy.context.scene.collection.objects.link(ob)
+        p.box(M["maroon"], sx * mw * 0.25, head - 0.52, 0.48, mw * 0.42, 0.3, 0.2, r=0.09, seg=6, tilt=-0.35)
+        p.box(M["pink_leather"], sx * mw * 0.18, head - 0.72, 0.5, mw * 0.3, 0.14, 0.32, r=0.07, seg=6, tilt=-0.3)
+    p.box(M["rose"], 0, head - 0.82, 0.52, mw * 0.28, 0.12, 0.3, r=0.07, seg=6, tilt=-0.25)
+    # tufted headboard pad inside the hood: three soft vertical cushions
+    for i in range(3):
+        p.box(M["pink_leather"], (i - 1) * mw * 0.33, head - 0.2, 0.42, mw * 0.32, 0.14, 0.62, r=0.07, seg=6)
+    # the hood: a thick rounded arch, pink outside, warm yellow inside
+    R, T, L, z0 = w / 2 - 0.02, 0.2, 0.95, 0.3
+    hood = p.arch(M["pink_leather"], 0, head, head - L, z0, R, R - T, seg=56)
+    lining = [p.arch(M["glow_warm"], 0, head - 0.01, head - L + 0.04, z0, R - T - 0.002, R - T - 0.012, seg=56),
+              p.arch(M["glow_warm"], 0, head - 0.06, head - 0.07, z0, R - T - 0.002, 0, seg=56),
+              p.arch(M["bulb"], 0, head - L + 0.1, head - L + 0.06, z0, R - T - 0.004, R - T - 0.02, seg=56)]
+    # a wide, low oval rather than a half circle, as in the photo
+    squash = Matrix.Translation(Vector((0, 0, z0))) @ Matrix.Diagonal((1.0, 1.0, 0.7, 1.0)) @ Matrix.Translation(Vector((0, 0, -z0)))
+    for ob in [hood] + lining:
+        ob.matrix_world = p.frame @ squash
+    mod = hood.modifiers.new("round", "BEVEL")
+    mod.width = 0.06
+    mod.segments = 6
+    mod.limit_method = "ANGLE"
+    # reading lamps inside the hood
+    for sx in (-1, 1):
+        p.cyl(M["gold"], sx * (R - T - 0.22), head - 0.35, z0 + 0.5, 0.05, 0.11, 0.12)
+        lamp_light(p.frame, sx * (R - T - 0.22), head - 0.35, z0 + 0.47, watts=3.0)
+    # right: a curving ledge out of the hood foot, with a book niche below
+    lx, ly = w / 2 - 0.17, head - L - 0.32
+    p.box(M["pink_leather"], lx, ly, 0.05, 0.34, 0.62, 0.42, r=0.15, seg=8)
+    p.box(M["stone_dark"], lx + 0.01, ly - 0.29, 0.12, 0.24, 0.04, 0.16, r=0.05, seg=4)
+    for i, mat in enumerate(("book_b", "book_d", "book_b")):
+        p.box(M[mat], lx, ly - 0.16, 0.13 + i * 0.025, 0.2, 0.22, 0.022)
+    p.cyl(M["black"], lx, ly + 0.12, 0.47, 0.04, 0.025, 0.24, seg=20)
+    p.box(M["book_b"], lx, ly - 0.12, 0.47, 0.16, 0.2, 0.04)
+    # left: round tray table with books and a pink vase of red flowers
+    tx, ty = -(w / 2 - 0.18), head - L - 0.25
+    p.cyl(M["gold"], tx, ty, 0.0, 0.02, 0.02, 0.5, seg=12)
+    p.cyl(M["pink_leather"], tx, ty, 0.5, 0.2, 0.2, 0.05, bevel=0.02, seg=48)
+    p.ellipsoid(M["pink_leather"], tx + 0.03, ty + 0.04, 0.68, 0.08, 0.08, 0.12)
+    for k in range(9):
+        a = k * 2.4
+        p.ellipsoid(M["flower"], tx + 0.03 + 0.11 * math.cos(a) * (k % 3) / 2, ty + 0.04 + 0.11 * math.sin(a) * (k % 3) / 2, 0.88 + 0.05 * (k % 4), 0.045, 0.045, 0.035)
+    for i, mat in enumerate(("book_c", "book_b")):
+        p.box(M[mat], tx - 0.06, ty - 0.08, 0.55 + i * 0.03, 0.14, 0.18, 0.028)
+    area_light(p.frame, 0, head - L / 2, z0 + (R - T) * 0.7 - 0.12, 0.9, 5.0, (1.0, 0.72, 0.35))
 
 
 def upholstered_bed(p, it, M):
@@ -652,12 +689,15 @@ def desk(p, it, M):
 def bench(p, it, M):
     w, d = it["w"], it["d"]
     if it.get("variant") == "ottoman":
+        # two-tier tufted pouf: a stout base drum, a deeper top cushion with four puffed quarters and a button
         r = w / 2
-        p.cyl(M["pink_leather"], 0, 0, 0, r - 0.04, r - 0.04, 0.06)
-        p.cyl(M["pink_leather"], 0, 0, 0.05, r, r, it["h"] - 0.12, bevel=0.02)
+        h = it["h"]
+        p.cyl(M["pink_leather"], 0, 0, 0, r - 0.02, r - 0.02, h * 0.35, bevel=0.04, seg=48)
+        p.cyl(M["pink_leather"], 0, 0, h * 0.35, r, r, h * 0.45, bevel=0.06, seg=48)
         for a in range(4):
             ang = a * math.pi / 2 + math.pi / 4
-            p.ellipsoid(M["pink_leather"], math.cos(ang) * r * 0.42, math.sin(ang) * r * 0.42, it["h"] - 0.06, r * 0.42, r * 0.42, 0.06)
+            p.ellipsoid(M["pink_leather"], math.cos(ang) * r * 0.4, math.sin(ang) * r * 0.4, h * 0.8, r * 0.46, r * 0.46, 0.07)
+        p.ellipsoid(M["gold"], 0, 0, h * 0.86, 0.02, 0.02, 0.012)
         return
     for sx in (-1, 1):
         p.box(M["black"], sx * (w / 2 - 0.06), 0, 0, 0.02, d - 0.06, 0.02)
@@ -883,14 +923,21 @@ def arc_lamp(p, it, M):
 
 
 def lounge_chair(p, it, M):
-    """Pink leather swivel bucket chair."""
+    """Pink leather swivel bucket chair on a trumpet base, channel-tufted inside, as in the client's photo."""
     w, d = it["w"], it["d"]
     r = min(w, d) / 2 - 0.02
-    p.cyl(M["pink_leather"], 0, 0, 0, 0.3, 0.32, 0.03)
-    p.cyl(M["pink_leather"], 0, 0, 0.03, 0.04, 0.06, 0.28)
-    p.cyl(M["pink_leather"], 0, -0.02, 0.3, 0.3, 0.36, 0.16, bevel=0.04)
-    p.sector(M["pink_leather"], 0, 0, 0.3, r, 0.08, 0.55, math.radians(-20), math.radians(200))
-    p.box(M["rose"], 0, 0.18, 0.48, 0.38, 0.12, 0.32, r=0.05, seg=5, tilt=-0.2)
+    p.cyl(M["pink_leather"], 0, 0, 0, 0.26, 0.28, 0.025, bevel=0.01)
+    p.cyl(M["pink_leather"], 0, 0, 0.025, 0.035, 0.18, 0.2)
+    p.cyl(M["pink_leather"], 0, 0, 0.22, 0.05, 0.05, 0.1)
+    p.ellipsoid(M["pink_leather"], 0, 0.0, 0.42, r, r, 0.12)
+    p.cyl(M["pink_leather"], 0, -0.03, 0.42, r - 0.06, r - 0.08, 0.14, bevel=0.05)
+    shell = p.sector(M["pink_leather"], 0, 0, 0.34, r, 0.12, 0.42, math.radians(-30), math.radians(210), seg=48)
+    shell.modifiers["round"].width = 0.04
+    shell.modifiers["round"].segments = 5
+    for k in range(7):
+        a = math.radians(5 + k * 24.0)
+        p.box(M["pink_leather"], math.cos(a) * (r - 0.15), math.sin(a) * (r - 0.15), 0.5, 0.12, 0.08, 0.3, r=0.04, seg=5)
+    p.box(M["rose"], 0, 0.14, 0.6, 0.36, 0.12, 0.3, r=0.06, seg=6, tilt=-0.25)
 
 
 def pendant(p, it, M):

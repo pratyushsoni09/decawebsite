@@ -407,10 +407,73 @@ def finish(layout):
                 frame_white.box(x0, yy - 0.015, s0 + (s1 - s0) * 0.72, x1, yy + 0.015, s1)
     grey_wall.done()
     frame_white.done()
+    master_arches(layout, rooms, e)
 
     spotlights(rooms, e, ceiling)
     curtains(layout, rooms, e, ceiling)
     print("[finish] skirting, bathroom tiles, door frames, spotlights and curtains added")
+
+
+def master_arches(layout, rooms, e):
+    """Arched white surrounds inside the master bedroom's tall windows: the window corners are filled with a curved
+    spandrel so each opening reads as a soft arch, like the sculpted glazing in the client's pink-bed photo."""
+    master = next((r for r in rooms if r["id"] == "master"), None)
+    if master is None:
+        return
+    mat = simple_material("arch_white", (0.86, 0.85, 0.82), 0.4)
+    bm = bmesh.new()
+    spans = [(w["side"], w["rect"], w["sill"], w["head"]) for w in layout["windows"] if w["sill"] < 0.2]
+    made = 0
+    for side, r, sill, head in spans:
+        if not any(_overlaps(r, rc, 0.05) for rc in master["rects"]):
+            continue
+        if side in "NS":
+            face = r["y2"] if side == "N" else r["y1"]
+            inward = 1 if side == "N" else -1
+            a, b = r["x1"], r["x2"]
+        else:
+            face = r["x2"] if side == "W" else r["x1"]
+            inward = 1 if side == "W" else -1
+            a, b = r["y1"], r["y2"]
+        span = b - a
+        rad = min(span / 2, 0.9)
+        seg = 24
+        for depth in (0.0, 0.08):
+            pass
+        # a closed ring: top edge, then the arch curve from right to left, all on one plane, extruded inward
+        prof = [(a, head), (b, head)]
+        for k in range(seg + 1):
+            t = math.pi * k / seg  # 0 at the right spring, pi at the left
+            cx = (a + b) / 2
+            prof.append((cx + (span / 2) * math.cos(t), head - rad + rad * math.sin(t) - 0.001))
+        rings = []
+        for off in (0.0, 0.1):
+            pos = face + inward * off
+            ring = []
+            for u, z in prof:
+                ring.append(bm.verts.new((u, -pos, e + z) if side in "NS" else (pos, -u, e + z)))
+            rings.append(ring)
+        n = len(prof)
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((rings[0][i], rings[0][j], rings[1][j], rings[1][i]))
+        for ring in rings:
+            try:
+                bm.faces.new(ring if ring is rings[0] else list(reversed(ring)))
+            except ValueError:
+                pass
+        made += 1
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new("finish_master_arches")
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(mat)
+    ob = bpy.data.objects.new("finish_master_arches", me)
+    bpy.context.scene.collection.objects.link(ob)
+    bev = ob.modifiers.new("round", "BEVEL")
+    bev.width = 0.02
+    bev.segments = 3
+    print(f"[finish] arched surrounds on {made} master windows")
 
 
 def _split(side, fixed, a, b, cuts):
@@ -487,7 +550,7 @@ def curtains(layout, rooms, e, ceiling):
     rod_mat = simple_material("curtain_rod", (0.12, 0.11, 0.1), 0.35, metal=0.8)
     bm = bmesh.new()
     rods = Mesh("finish_curtain_rods", rod_mat, e)
-    lived = [r for r in rooms if r["kind"] in ("living", "bedroom")]
+    lived = [r for r in rooms if r["kind"] in ("living", "bedroom") and r["id"] != "master"]
     spans = [(w["side"], w["rect"]) for w in layout["windows"] if w["sill"] < 1.2]
     spans += [("S", d["rect"]) for d in layout["doors"] if d.get("glazed")]
     made = 0

@@ -329,35 +329,40 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   bed(c) {
     const { w, d } = c.it;
     if (c.it.variant === "sculpted") {
-      // pink leather platform with integrated side ledges, under a lit canopy arching over the head
-      const mw = w - 0.6;
-      B(c, "pinkLeather", w, 0.3, d - 0.25, 0, 0.02, 0.125);
-      B(c, "mustard", mw, 0.2, d - 0.45, 0, 0.32, 0.15);
-      B(c, "maroon", mw + 0.04, 0.05, d * 0.42, 0, 0.5, d * 0.2);
-      for (const sx of [-1, 1]) {
-        B(c, "pinkLeather", 0.42, 0.4, 0.4, sx * (w / 2 - 0.21), 0.02, -d / 2 + 0.45);
-        B(c, "maroon", mw * 0.4, 0.15, 0.32, sx * mw * 0.24, 0.52, -d / 2 + 0.5);
-      }
-      B(c, "pinkLeather", mw * 0.35, 0.3, 0.12, 0, 0.55, -d / 2 + 0.6);
-      const R = w / 2 - 0.05;
-      const L = 0.75;
-      const y0 = 0.32;
-      const outer = new THREE.CylinderGeometry(R, R, L, 40, 1, true, Math.PI / 2, Math.PI);
+      // the client's pink-bed photo: soft pink platform under a thick hood lit warm inside, side ledge and tray
+      const mw = w - 0.7;
+      const head = -d / 2;
+      B(c, "pinkLeather", w - 0.1, 0.3, d - 0.2, 0, 0.02, 0.1);
+      B(c, "mustard", mw, 0.2, d - 0.55, 0, 0.3, 0.12);
+      B(c, "maroon", mw + 0.12, 0.1, d * 0.48, 0, 0.43, d * 0.2);
+      for (const sx of [-1, 1]) B(c, "maroon", mw * 0.42, 0.2, 0.3, sx * mw * 0.25, 0.5, head + 0.55);
+      for (let i = 0; i < 3; i++) B(c, "pinkLeather", mw * 0.32, 0.62, 0.14, (i - 1) * mw * 0.33, 0.42, head + 0.2);
+      const R = w / 2 - 0.02;
+      const T = 0.2;
+      const L = 0.95;
+      const y0 = 0.3;
+      const outer = new THREE.CylinderGeometry(R, R, L, 48, 1, true, Math.PI / 2, Math.PI);
       outer.rotateX(Math.PI / 2);
-      outer.translate(0, y0, -d / 2 + L / 2);
+      outer.scale(1, 0.7, 1);
+      outer.translate(0, y0, head + L / 2);
       G(c, outer, "pinkLeather");
-      const inner = new THREE.CylinderGeometry(R - 0.05, R - 0.05, L, 40, 1, true, Math.PI / 2, Math.PI);
+      const inner = new THREE.CylinderGeometry(R - T, R - T, L, 48, 1, true, Math.PI / 2, Math.PI);
       inner.rotateX(Math.PI / 2);
-      inner.translate(0, y0, -d / 2 + L / 2);
+      inner.scale(1, 0.7, 1);
+      inner.translate(0, y0, head + L / 2);
       G(c, flipped(inner), "glowWarm");
-      for (const z of [-d / 2 + 0.02, -d / 2 + L]) {
-        const rim = new THREE.TorusGeometry(R - 0.025, 0.035, 8, 40, Math.PI);
-        rim.translate(0, y0, z);
-        G(c, rim, "pinkLeather");
-      }
-      const back = new THREE.CircleGeometry(R - 0.05, 40, 0, Math.PI);
-      back.translate(0, y0, -d / 2 + 0.03);
+      const lip = new THREE.TorusGeometry(R - T / 2, T / 2, 10, 48, Math.PI);
+      lip.scale(1, 0.7, 1);
+      lip.translate(0, y0, head + L);
+      G(c, lip, "pinkLeather");
+      const back = new THREE.CircleGeometry(R - T, 48, 0, Math.PI);
+      back.scale(1, 0.7, 1);
+      back.translate(0, y0, head + 0.06);
       G(c, back, "glowWarm");
+      B(c, "pinkLeather", 0.34, 0.42, 0.62, w / 2 - 0.17, 0.05, head + L + 0.32);
+      C(c, "brass", 0.02, 0.02, 0.5, -(w / 2 - 0.18), 0, head + L + 0.25, 8);
+      C(c, "pinkLeather", 0.2, 0.2, 0.05, -(w / 2 - 0.18), 0.5, head + L + 0.25, 32);
+      S(c, "pinkLeather", 0.09, -(w / 2 - 0.15), 0.66, head + L + 0.21, 1, 1.3, 1);
       return;
     }
     if (c.it.variant === "twin" || c.it.variant === "grey") {
