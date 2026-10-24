@@ -22,7 +22,7 @@ export const gallery: GalleryImage[] = [
   { src: "/images/concepts/kitchen-dining.webp", caption: "Kitchen and dining", alt: "Open kitchen and dining table under glass pendants, with the city lit up beyond the windows", shape: "wide", label: C },
   { src: "/images/concepts/twin-bedroom.webp", caption: "Bedroom two", alt: "Children's bedroom with twin beds against a curved orange feature wall", shape: "square", label: C },
   { src: "/images/concepts/study-bedroom.webp", caption: "Bedroom three", alt: "Bedroom with a study desk along the window and shelves on an orange wall", shape: "square", label: C },
-  { src: "/images/bed2.webp", caption: "Bedroom two · 3D model", alt: "Bedroom two of the 3D model with twin beds against orange arches", shape: "square" },
+  { src: "/images/bed2.webp", caption: "Bedroom two · 3D model", alt: "Bedroom two of the 3D model: twin beds with arched cream headboards against an orange and cream feature wall", shape: "square" },
   { src: "/images/bed3.webp", caption: "Bedroom three · 3D model", alt: "Bedroom three of the 3D model: grey bed below a terracotta wall with open shelf boxes, desk under a wide window", shape: "square" },
   { src: "/images/dining.webp", caption: "Dining hall · 3D model", alt: "Dining hall of the 3D model in the evening: a set wood table with black chairs under glass pendants, the open kitchen beyond", shape: "wide" },
   { src: "/images/concepts/living-white.webp", caption: "Living · marble and light", alt: "White living room with marble walls, a low sectional sofa and full-height windows", shape: "wide", label: C },

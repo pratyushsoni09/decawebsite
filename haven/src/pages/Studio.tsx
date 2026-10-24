@@ -55,7 +55,8 @@ export const VIEWS: View[] = [
   room("pooja", [6.7, 1.5, 8.05], [4.9, 1.3, 8.15], { fov: 56 }),
   room("kitchen", [10.3, 1.6, 3.35], [7.4, 1.0, 0.9], { fov: 72 }),
   room("master", [4.45, 1.35, 15.5], [1.0, 0.95, 12.9], { w: 2000, h: 1414, fov: 58, sun: { intensity: 6.0, color: 0xffc489, dir: [-0.9, 0.22, 0.35] } }),
-  room("bed2", [3.4, 1.6, 4.6], [0.6, 0.8, 1.6], { fov: 70 }),
+  // facing the twin beds square on, as in the client's photo
+  room("bed2", [3.95, 1.3, 2.3], [0.3, 1.2, 2.3], { w: 2000, h: 1500, fov: 56 }),
   room("bed3", [4.1, 1.35, 5.35], [0.3, 1.1, 7.6], { w: 2000, h: 1125, fov: 56, sun: { intensity: 5.0, color: 0xffd09a, dir: [-0.85, 0.28, 0.15] } }),
   room("balcony", [9.0, 1.6, 16.45], [3.5, 1.0, 18.2], { doors: "closed", fov: 62 }),
   room("swing", [7.4, 1.6, 16.6], [11.5, 0.9, 18.9], { doors: "closed", w: 2000, h: 1125, fov: 64 }),

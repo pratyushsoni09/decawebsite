@@ -180,6 +180,10 @@ def palette():
         "book_c": solid("m_book_c", (0.3, 0.06, 0.03), 0.6),
         "book_d": solid("m_book_d", (0.18, 0.2, 0.24), 0.6),
         "placemat": fabric("m_placemat", (0.03, 0.03, 0.03), sheen=0.2, weave=0.8),
+        "orange_paint": solid("m_paint_orange", (0.85, 0.24, 0.06), 0.85),
+        "cream_wall": solid("m_paint_cream", (0.74, 0.69, 0.6), 0.8),
+        "groove": solid("m_groove", (0.3, 0.26, 0.22), 0.8),
+        "taupe_duvet": fabric("m_fabric_duvet_taupe", (0.32, 0.27, 0.22), sheen=0.5),
         "bulb": solid("m_bulb", (1.0, 0.9, 0.7), 0.3, emit=(1.0, 0.78, 0.5), strength=25.0),
     }
 
@@ -310,6 +314,20 @@ class Piece:
         smooth = ob.modifiers.new("smooth", "SMOOTH")
         smooth.iterations = 2
         return ob
+
+    def prism(self, mat, pts, y0, y1):
+        """A flat shape drawn in the x-z plane (list of (x, z)), extruded along y from y0 to y1."""
+        bm = bmesh.new()
+        f = [bm.verts.new((x, y0, z)) for x, z in pts]
+        b = [bm.verts.new((x, y1, z)) for x, z in pts]
+        bm.faces.new(f)
+        bm.faces.new(list(reversed(b)))
+        n = len(pts)
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((f[i], f[j], b[j], b[i]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        return self._add(bm, mat, smooth=False)
 
     def panel_y(self, mat, cx, cy, cz, r, depth, seg=40):
         """Upright disc facing -y (front), centre (cx, cy, cz)."""
@@ -602,12 +620,7 @@ def upholstered_bed(p, it, M):
     p.box(frame, 0, 0, 0.04, w + 0.06, d, 0.34, r=0.08 if twin else 0.03, seg=5)
     p.box(M["linen"], 0, -0.03, 0.36, w - 0.04, d - 0.12, 0.18, r=0.05, seg=5)
     if twin:
-        p.box(M["oat"], 0, -d * 0.16, 0.5, w + 0.02, d * 0.64, 0.07, r=0.035, seg=4)
-    if twin:
-        p.box(M["orange"], 0, d / 2 - 0.3, 0.52, w - 0.3, 0.36, 0.16, r=0.07, seg=6, tilt=-0.35)
-        p.box(M["oat"], 0, d / 2 - 0.48, 0.56, w * 0.45, 0.12, 0.3, r=0.06, seg=5, tilt=-0.3)
-        p.box(frame, 0, d / 2 + 0.04, 0.04, w + 0.06, 0.08, 0.72, r=0.02)
-        p.panel_y(frame, 0, d / 2 + 0.04, 0.76, (w + 0.06) / 2, 0.08)
+        return twin_bed(p, it, M)
     else:
         pw = (w - 0.25) / 2
         for x in (-pw / 2 - 0.04, pw / 2 + 0.04):
@@ -616,6 +629,37 @@ def upholstered_bed(p, it, M):
         duvet = p.box(M["grey"], 0, -d * 0.12, 0.28, w + 0.14, d * 0.78, 0.31, r=0.05, seg=3)
         p.rumple(duvet, 0.08, 0.28)
         p.box(frame, 0, d / 2 + 0.05, 0.04, w + 0.14, 0.1, 0.95, r=0.03, seg=4)
+
+
+def twin_bed(p, it, M):
+    """The client's twin-bed photo: a soft cream tub with geometric groove lines, a tall arched headboard with seams,
+    taupe duvet folded at the foot, a flat orange pillow and a textured cream cushion."""
+    w, d = it["w"], it["d"]
+    base_h = 0.42
+    tub = p.box(M["cream"], 0, -0.06, 0.0, w + 0.08, d - 0.12, base_h, r=0.14, seg=8)
+    # groove lines: a stepped band round the foot and the sides
+    for z in (0.12, 0.3):
+        p.box(M["groove"], 0, -d / 2 - 0.002, z, w - 0.1, 0.006, 0.006)
+    p.box(M["groove"], -w * 0.18, -d / 2 - 0.002, 0.12, 0.006, 0.006, 0.18)
+    p.box(M["groove"], w * 0.22, -d / 2 - 0.002, 0.2, 0.25, 0.006, 0.006)
+    p.box(M["groove"], w * 0.22 + 0.125, -d / 2 - 0.002, 0.12, 0.006, 0.006, 0.08)
+    for sx in (-1, 1):
+        p.box(M["groove"], sx * (w / 2 + 0.042), -d * 0.1, 0.2, 0.006, d * 0.55, 0.006)
+        p.box(M["groove"], sx * (w / 2 + 0.042), -d * 0.37, 0.12, 0.006, 0.006, 0.08)
+    p.box(M["linen"], 0, 0.02, base_h, w - 0.06, d - 0.14, 0.14, r=0.05, seg=5)
+    duvet = p.box(M["taupe_duvet"], 0, -d * 0.14, base_h + 0.02, w + 0.04, d * 0.66, 0.15, r=0.05, seg=3)
+    p.rumple(duvet, 0.03, 0.2)
+    p.box(M["taupe_duvet"], 0, d * 0.17, base_h + 0.14, w + 0.02, 0.22, 0.06, r=0.03, seg=3)
+    p.box(M["orange"], 0, d / 2 - 0.25, base_h + 0.12, w - 0.2, 0.18, 0.4, r=0.06, seg=6, tilt=-0.25)
+    cush = p.box(M["oat"], 0, d / 2 - 0.45, base_h + 0.14, w * 0.45, 0.14, 0.34, r=0.08, seg=6, tilt=-0.2)
+    p.rumple(cush, 0.012, 0.05)
+    # headboard: upright panel with an arched top and two seams
+    hw, ht = w + 0.08, 0.85
+    hy = d / 2 - 0.05
+    p.box(M["cream"], 0, hy, 0.0, hw, 0.1, ht, r=0.03, seg=4)
+    p.panel_y(M["cream"], 0, hy, ht, hw / 2, 0.1, seg=48)
+    for x in (-hw / 4, hw / 4):
+        p.box(M["groove"], x, hy - 0.052, base_h + 0.15, 0.006, 0.006, ht + hw / 2 - base_h - 0.25)
 
 
 def nightstand(p, it, M):
@@ -633,10 +677,17 @@ def nightstand(p, it, M):
         p.box(M["book_a"], 0.1, -0.02, h, 0.14, 0.2, 0.03)
         return
     if it.get("variant") == "cream":
-        p.box(M["cream"], 0, 0, 0, w, d, it["h"], r=0.04, seg=5)
-        p.box(M["stone_dark"], 0, -d / 2 + 0.01, 0.1, w - 0.12, 0.02, 0.14, r=0.02)
-        p.ellipsoid(M["ceramic"], 0.0, 0.05, it["h"] + 0.08, 0.07, 0.07, 0.08)
-        lamp_light(p.frame, 0.0, 0.05, it["h"] + 0.3, watts=3.0)
+        h = it["h"]
+        p.box(M["cream"], 0, 0, 0, w, d, h, r=0.06, seg=6)
+        p.box(M["groove"], 0, -d / 2 - 0.002, h * 0.62, w - 0.1, 0.006, 0.006)
+        p.box(M["groove"], 0, -d / 2 + 0.08, 0.06, w - 0.12, 0.16, 0.2, r=0.04, seg=4)  # open cubby
+        p.box(M["orange"], -0.06, -d / 2 + 0.1, 0.07, 0.2, 0.14, 0.03)
+        p.box(M["book_b"], -0.06, -d / 2 + 0.1, 0.1, 0.18, 0.13, 0.025)
+        p.ellipsoid(M["ceramic"], 0.0, 0.05, h + 0.07, 0.08, 0.08, 0.07)
+        stem = p.cyl(M["ceramic"], 0, 0, 0, 0.008, 0.008, 0.38, seg=8)
+        stem.matrix_world = p.frame @ Matrix.Translation(Vector((0, 0.05, h + 0.12))) @ Matrix.Rotation(-0.25, 4, "X")
+        p.cyl(M["ceramic"], 0, -0.06, h + 0.44, 0.06, 0.03, 0.08, seg=20)
+        lamp_light(p.frame, 0.0, -0.06, h + 0.42, watts=3.0)
         return
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -705,6 +756,13 @@ def desk(p, it, M):
 
 def bench(p, it, M):
     w, d = it["w"], it["d"]
+    if it.get("variant") == "windowSeat":
+        h = it["h"]
+        p.box(M["cream"], 0, 0, 0, w, d, h - 0.08, r=0.02)
+        p.box(M["linen"], 0, 0, h - 0.08, w - 0.04, d - 0.04, 0.08, r=0.03, seg=4)
+        for x, mat in ((-0.6, M["orange"]), (-0.28, M["oat"])):
+            p.box(mat, x, d / 2 - 0.1, h, 0.32, 0.12, 0.28, r=0.06, seg=5, tilt=0.25)
+        return
     if it.get("variant") == "ottoman":
         # two-tier tufted pouf: a stout base drum, a deeper top cushion with four puffed quarters and a button
         r = w / 2
@@ -949,6 +1007,77 @@ def float_console(p, it, M):
     p.ellipsoid(M["ceramic"], 0.9, 0.0, h + 0.06, 0.07, 0.07, 0.07)
 
 
+def feature_panel(p, it, M):
+    v = it.get("variant")
+    if v == "terracotta":
+        return terracotta_wall(p, it, M)
+    if v == "orangeArc":
+        return orange_arc_wall(p, it, M)
+    if v == "shelfNiche":
+        return shelf_niche(p, it, M)
+
+
+def orange_arc_wall(p, it, M):
+    """Bedroom two after the client's photo: cream panelling with geometric grooves, an orange field behind both beds
+    and a cream heart between them, and two angled white sconces over each bed."""
+    w, h = it["w"], it["h"]
+    p.box(M["cream_wall"], 0, -0.005, 0, w, 0.01, h)
+    # the cream centre is a wide bowl: broad at the ceiling, narrowing to a rounded bottom over the nightstand
+    H, ow, top = 2.85, 1.75, 0.95
+    for sx in (-1, 1):
+        pts = [(sx * ow, 0.0), (sx * ow, H), (sx * top, H)]
+        for i in range(1, 32):
+            t = (math.pi / 2) * i / 32
+            pts.append((sx * top * math.cos(t), H - (H - 0.85) * math.sin(t)))
+        pts.append((0.0, 0.85))
+        pts.append((0.0, 0.0))
+        if sx < 0:
+            pts = list(reversed(pts))
+        p.prism(M["orange_paint"], pts, -0.012, -0.022)
+        # grooves on the cream beyond the orange
+        for z in (0.95, 1.9):
+            p.box(M["groove"], sx * (ow + (w / 2 - ow) / 2), -0.012, z, w / 2 - ow - 0.06, 0.004, 0.004)
+        for dx, z in ((-0.38 * sx, 1.85), (0.38 * sx, 1.55)):  # inner sconce higher, outer lower
+            x = sx * 1.05 + dx
+            p.box(M["ceramic"], x, -0.04, z + 0.03, 0.05, 0.06, 0.08, r=0.01)
+            head = p.cyl(M["ceramic"], 0, 0, -0.06, 0.045, 0.03, 0.12, seg=20)
+            head.matrix_world = p.frame @ Matrix.Translation(Vector((x, -0.12, z))) @ Matrix.Rotation(0.7, 4, "X")
+            data = bpy.data.lights.new("sconce", "SPOT")
+            data.energy = 5.0
+            data.color = (1.0, 0.78, 0.55)
+            data.spot_size = math.radians(70)
+            data.shadow_soft_size = 0.04
+            ob = bpy.data.objects.new(data.name, data)
+            ob.matrix_world = p.frame @ Matrix.Translation(Vector((x, -0.16, z - 0.05))) @ Matrix.Rotation(0.7, 4, "X")
+            bpy.context.scene.collection.objects.link(ob)
+    # geometric panel grooves inside the cream bowl
+    for z, wd in ((2.3, 1.9), (1.75, 1.1)):
+        p.box(M["groove"], 0, -0.012, z, wd, 0.004, 0.004)
+    for x in (-0.55, -0.15, 0.25, 0.6):
+        p.box(M["groove"], x, -0.012, 1.75, 0.004, 0.004, 0.55)
+
+
+def shelf_niche(p, it, M):
+    """Cream built-in with grooves and a recessed niche of shelves holding books and small art."""
+    w, h = it["w"], it["h"]
+    p.box(M["cream_wall"], 0, -0.02, 0, w, 0.04, h)
+    nw = w - 0.3
+    p.box(M["groove"], 0, -0.04, 0.9, nw, 0.004, 1.32)
+    for z in (0.9, 1.22, 1.54, 1.86, 2.2):
+        p.box(M["cream"], 0, -0.17, z, nw, 0.26, 0.025)
+    for side in (-1, 1):
+        p.box(M["cream"], side * nw / 2, -0.17, 0.9, 0.025, 0.26, 1.32)
+    for row, z in enumerate((0.925, 1.565)):
+        bx = -nw / 2 + 0.06
+        for k in range(6):
+            bw = 0.03 + (k % 3) * 0.008
+            p.box(M[("book_b", "book_d", "orange", "book_b", "book_a", "book_b")[(k + row) % 6]], bx, -0.15, z, bw, 0.18, 0.18 + (k % 2) * 0.04)
+            bx += bw + 0.005
+    p.box(M["black"], 0.3, -0.12, 1.245, 0.24, 0.015, 0.2, tilt=-0.15)
+    p.box(M["orange"], 0.3, -0.13, 1.26, 0.18, 0.004, 0.14, tilt=-0.15)
+    p.ellipsoid(M["ceramic"], -0.2, -0.15, 1.95, 0.05, 0.05, 0.08)
+
+
 def terracotta_wall(p, it, M):
     """Bedroom three, after the client's photo: terracotta wall with a row of open white shelf boxes hung on rods."""
     w, h = it["w"], it["h"]
@@ -1058,7 +1187,7 @@ BUILDERS = {
     "loungeChair": lounge_chair,
     "tvWall": feature_wall,
     "console": float_console,
-    "accentWall": terracotta_wall,
+    "accentWall": feature_panel,
     "rug": shag_rug,
     "floorLamp": arc_lamp,
     "chimney": chimney,
@@ -1090,9 +1219,11 @@ def wants(it):
     """Whether this item is modelled here (pendants only over the kitchen island; the rest use CC0 lamps)."""
     if it["type"] not in BUILDERS or it.get("variant") == "outdoor":
         return False
-    only = {"tvWall": "panel", "console": "float", "accentWall": "terracotta", "rug": "grey", "floorLamp": "arc"}
+    only = {"tvWall": "panel", "console": "float", "rug": "grey", "floorLamp": "arc"}
     if it["type"] in only:
         return it.get("variant") == only[it["type"]]
+    if it["type"] == "accentWall":
+        return it.get("variant") in ("terracotta", "orangeArc", "shelfNiche")
     if it["type"] == "chimney":
         return it["room"] == "kitchen"
     return it["type"] != "pendant" or it["room"] == "kitchen" or it.get("variant") in ("bulb", "cluster")

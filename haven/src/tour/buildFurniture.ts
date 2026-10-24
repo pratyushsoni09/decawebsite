@@ -404,11 +404,11 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       if (twin) B(c, "cream", w * 0.45, 0.14, 0.12, 0, 0.6, -d / 2 + 0.5);
       // headboard: a panel with a rounded top
       const hb = 0.72;
-      B(c, frame, w + 0.06, hb, 0.08, 0, 0.04, -d / 2 - 0.04);
+      B(c, frame, w + 0.06, hb, 0.08, 0, 0.04, -d / 2 + 0.04);
       // half disc arching up: theta pi/2..3pi/2 lands above the axis once the cylinder lies along z
       const top = new THREE.CylinderGeometry((w + 0.06) / 2, (w + 0.06) / 2, 0.08, 32, 1, false, Math.PI / 2, Math.PI);
       top.rotateX(Math.PI / 2);
-      top.translate(0, 0.04 + hb, -d / 2 - 0.04);
+      top.translate(0, 0.04 + hb, -d / 2 + 0.04);
       if (twin) G(c, top, frame);
       return;
     }
@@ -583,6 +583,12 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     for (let i = 1; i < 3; i++) B(c, "darkMetal", w - 0.04, 0.005, 0.005, 0, 0.12 + ((h - 0.12) / 3) * i, d / 2);
   },
   bench(c) {
+    if (c.it.variant === "windowSeat") {
+      B(c, "white", c.it.w, c.it.h - 0.08, c.it.d, 0, 0, 0);
+      B(c, "linen", c.it.w - 0.04, 0.08, c.it.d - 0.04, 0, c.it.h - 0.08, 0);
+      for (const x of [-0.6, -0.25]) B(c, "orangePaint", 0.32, 0.28, 0.1, x, c.it.h, -c.it.d / 2 + 0.08);
+      return;
+    }
     if (c.it.variant === "ottoman") {
       const r = c.it.w / 2;
       C(c, "pinkLeather", r - 0.04, r - 0.04, 0.06, 0, 0, 0, 32);
@@ -825,19 +831,41 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       return;
     }
     if (v === "orangeArc") {
-      // cream panelling with an orange arch behind each bed and a reading light either side
+      // cream panelling; an orange field behind both beds with a cream heart between them (the client's photo)
       B(c, "white", w, h, 0.012, 0, base, 0.006);
-      for (const x of [1.15, -0.95]) {
-        const aw = 1.35;
-        B(c, "orangePaint", aw, 1.45, 0.018, x, base, 0.012);
-        const arch = new THREE.CircleGeometry(aw / 2, 40, 0, Math.PI);
-        arch.translate(x, base + 1.45, 0.021);
-        G(c, arch, "orangePaint");
-        for (const sx of [-0.45, 0.45]) {
-          B(c, "white", 0.08, 0.12, 0.1, x + sx, base + 1.2, 0.06);
-          B(c, "glow", 0.06, 0.02, 0.06, x + sx, base + 1.18, 0.08);
+      const H = 2.85;
+      const ow = 1.75;
+      const top = 0.95;
+      for (const sx of [-1, 1]) {
+        // the cream centre is a bowl: wide at the ceiling, narrowing to a rounded bottom over the nightstand
+        const sh = new THREE.Shape();
+        sh.moveTo(sx * ow, 0);
+        sh.lineTo(sx * ow, H);
+        sh.lineTo(sx * top, H);
+        for (let i = 1; i <= 32; i++) {
+          const t = (Math.PI / 2) * (i / 32);
+          sh.lineTo(sx * top * Math.cos(t), H - (H - 0.85) * Math.sin(t));
+        }
+        sh.lineTo(0, 0);
+        // ShapeGeometry always faces +z (into the room), whichever way the outline winds
+        const g = new THREE.ShapeGeometry(sh, 4);
+        g.translate(0, base, 0.016);
+        G(c, g, "orangePaint");
+        for (const [dx, z] of [[-0.38 * sx, 1.85], [0.38 * sx, 1.55]]) {
+          B(c, "white", 0.06, 0.06, 0.12, sx * 1.05 + dx, base + z + 0.08, 0.07);
+          C(c, "white", 0.03, 0.06, 0.12, sx * 1.05 + dx, base + z, 0.12, 12);
+          S(c, "glow", 0.025, sx * 1.05 + dx, base + z, 0.12);
         }
       }
+      return;
+    }
+    if (v === "shelfNiche") {
+      // cream built-in with a recessed shelf niche
+      B(c, "white", w, h, 0.04, 0, base, 0.02);
+      B(c, "greige", w - 0.3, 1.3, 0.01, 0, base + 0.9, 0.045);
+      for (const y of [0.9, 1.22, 1.54, 1.86, 2.2]) B(c, "white", w - 0.3, 0.025, 0.26, 0, base + y, 0.15);
+      for (const y of [0.925, 1.565]) P(c, "books", w - 0.6, 0.22, -0.1, base + y + 0.12, 0.2, true);
+      B(c, "orangePaint", 0.25, 0.2, 0.02, 0.3, base + 1.25, 0.18);
       return;
     }
   },

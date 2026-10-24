@@ -45,8 +45,8 @@ export const featuredRooms: FeaturedRoom[] = [
   },
   {
     num: "05", id: "bed2", name: "Bedroom two",
-    description: "Twin beds for two children against cream panelling, with an orange arch and a reading light behind each bed, a nightstand between them, a north window and a full-height wardrobe.",
-    chips: ["4.3 × 4.6 m", "Twin beds", "Wardrobe with loft"],
+    description: "Twin beds for two children: cream beds with tall arched headboards against a feature wall of orange fields and a cream bowl that curves down to the nightstand, two reading sconces per bed, a coffered ceiling with light strips, a cushioned window seat, a shelf niche and a full-height wardrobe.",
+    chips: ["4.3 × 4.6 m", "Twin beds", "Window seat"],
     image: "/images/concepts/twin-bedroom.webp", alt: "Children's bedroom with twin beds against a curved orange feature wall", label: CONCEPT_LABEL,
   },
   {

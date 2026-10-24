@@ -296,14 +296,17 @@ export const furniture: FurnitureDef[] = [
   f("bath", "vanity", 5.1, 2.2, 90, { w: 0.8 }),
   f("bath", "mirror", 4.87, 2.2, 90, { elev: 1.5, w: 0.5 }),
 
-  /* Bedroom two 0.3..4.6 × 0.3..4.9 — twin beds against an orange and cream feature wall */
-  f("bed2", "accentWall", 0.32, 2.4, 90, { variant: "orangeArc", w: 4.2, elev: 1.45, h: 2.9 }),
-  f("bed2", "rug", 2.0, 2.3, 0, { variant: "round", w: 2.8, d: 2.8 }),
-  f("bed2", "bed", 1.3, 1.25, 90, { variant: "twin", w: 1.0, d: 2.0 }),
-  f("bed2", "bed", 1.3, 3.35, 90, { variant: "twin", w: 1.0, d: 2.0 }),
-  f("bed2", "nightstand", 0.55, 2.3, 90, { variant: "cream" }),
+  /* Bedroom two 0.3..4.6 × 0.3..4.9 — after the client's twin-bed photo: two cream single beds with arched headboards against
+     an orange-and-cream feature wall (a cream heart between orange fields), sconces, a coffered ceiling, window seat, shelf niche */
+  f("bed2", "cove", 2.45, 2.6, 0, { w: 4.1, d: 4.4 }),
+  f("bed2", "accentWall", 0.32, 2.3, 90, { variant: "orangeArc", w: 4.0, elev: 1.45, h: 2.9 }),
+  f("bed2", "accentWall", 1.25, 4.88, 180, { variant: "shelfNiche", w: 1.3, elev: 1.45, h: 2.9 }),
+  f("bed2", "rug", 2.4, 2.3, 0, { variant: "round", w: 2.6, d: 2.6 }),
+  f("bed2", "bed", 1.33, 1.25, 90, { variant: "twin", w: 1.0, d: 2.0 }),
+  f("bed2", "bed", 1.33, 3.35, 90, { variant: "twin", w: 1.0, d: 2.0 }),
+  f("bed2", "nightstand", 0.55, 2.3, 90, { variant: "cream", w: 0.5, d: 0.42, h: 0.55 }),
+  f("bed2", "bench", 2.3, 0.55, 0, { variant: "windowSeat", w: 1.8, d: 0.45, h: 0.45 }),
   f("bed2", "wardrobe", 4.3, 1.8, 270, { w: 2.2 }),
-  f("bed2", "dresser", 3.3, 0.55, 0, { w: 0.9, d: 0.45 }),
 
   /* Bedroom three 0.3..4.6 × 5.15..8.9 — after the client's photo: terracotta wall with a row of open shelf boxes over a
      grey bed, a long wood desk under a wide window, orange chair, carpet tiles */
