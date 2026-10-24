@@ -1,6 +1,8 @@
 import { AREAS, CEILING_HEIGHT, TOWER } from "./houseLayout";
 
 export const RENDER_LABEL = "Illustrative render of the 3D model";
+/** Mood images that set the intended style of a room; they are not of Residence 11A itself. */
+export const CONCEPT_LABEL = "Interior concept image";
 
 export interface FeaturedRoom {
   num: string;
@@ -10,6 +12,10 @@ export interface FeaturedRoom {
   chips: [string, string, string];
   image: string;
   alt: string;
+  /** badge for the image; defaults to RENDER_LABEL */
+  label?: string;
+  /** CSS object-position when the image is cropped to the portrait frame */
+  focus?: string;
 }
 
 export const featuredRooms: FeaturedRoom[] = [
@@ -17,13 +23,13 @@ export const featuredRooms: FeaturedRoom[] = [
     num: "01", id: "living", name: "Hall",
     description: "The heart of the home: a linen sofa and an armchair face a fluted oak TV wall, a false ceiling with a warm cove glows overhead, and a reading chair waits by the window. Wide glass doors open onto the balcony.",
     chips: ["7.03 × 6.55 m", "Fluted TV wall, cove ceiling", "Opens to the balcony"],
-    image: "/images/living.webp", alt: "Hall with a linen sofa facing a fluted oak TV wall under a cove-lit false ceiling",
+    image: "/images/concepts/hall-warm.webp", alt: "Living room with two sofas facing a warm wood-panelled wall with a large abstract painting", label: CONCEPT_LABEL,
   },
   {
     num: "02", id: "dining", name: "Dining hall",
     description: "You step straight into the dining hall: a six-seater table under two pendants, a crockery sideboard, a shoe cabinet by the door — and the family's pooja unit standing open against the wall, with no room or door around it.",
     chips: ["5.75 × 5.05 m", "Dining for six", "Open pooja unit"],
-    image: "/images/dining.webp", alt: "Dining hall with a six-seater table and an open teak pooja unit against the wall",
+    image: "/images/concepts/kitchen-dining.webp", alt: "Open kitchen and dining table under glass pendants, with the city lit up beyond the windows", label: CONCEPT_LABEL,
   },
   {
     num: "03", id: "kitchen", name: "Kitchen",
@@ -35,19 +41,19 @@ export const featuredRooms: FeaturedRoom[] = [
     num: "04", id: "master", name: "Master bedroom",
     description: "A king bed under a cove-lit false ceiling, a wardrobe bay at the entrance, its own bathroom with a glass shower, and glass doors to the balcony.",
     chips: ["4.3 × 4.3 m", "Attached bathroom", "Opens to the balcony"],
-    image: "/images/master.webp", alt: "Master bedroom with a king bed and cove-lit ceiling",
+    image: "/images/concepts/master-bedroom.webp", alt: "Bedroom with a sculpted pink bed under arched windows looking over hills", label: CONCEPT_LABEL, focus: "62% 50%",
   },
   {
     num: "05", id: "bed2", name: "Bedroom two",
     description: "A calm double bedroom with a north window and a full-height wardrobe with loft storage, next to the common bathroom.",
     chips: ["4.3 × 4.6 m", "Double bed", "Wardrobe with loft"],
-    image: "/images/bed2.webp", alt: "Bedroom with a double bed and a full-height wardrobe",
+    image: "/images/concepts/twin-bedroom.webp", alt: "Children's bedroom with twin beds against a curved orange feature wall", label: CONCEPT_LABEL,
   },
   {
     num: "06", id: "bed3", name: "Bedroom three",
     description: "A study bedroom for a child or a home office: a desk under the west window, a single bed and a wardrobe.",
     chips: ["4.3 × 3.75 m", "Study desk by the window", "Bed and wardrobe"],
-    image: "/images/bed3.webp", alt: "Bedroom with a study desk under the window and a single bed",
+    image: "/images/concepts/study-bedroom.webp", alt: "Bedroom with a study desk along the window and shelves on an orange wall", label: CONCEPT_LABEL,
   },
   {
     num: "07", id: "balcony", name: "Balcony & swings",

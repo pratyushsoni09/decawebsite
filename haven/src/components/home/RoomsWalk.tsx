@@ -47,9 +47,10 @@ export function RoomsWalk() {
                 height={1500}
                 loading="lazy"
                 className={`${styles.stageImg} ${i === active ? styles.on : ""}`}
+                style={rm.focus ? { objectPosition: rm.focus } : undefined}
               />
             ))}
-            <span className={styles.badge}>{RENDER_LABEL}</span>
+            <span className={styles.badge}>{current.label ?? RENDER_LABEL}</span>
             <div className={styles.counter}>
               <span className={styles.counterNum}>{current.num}</span>
               <span className="mono">/ 07</span>
@@ -75,8 +76,8 @@ export function RoomsWalk() {
               }}
             >
               <figure className={styles.mobileFig}>
-                <img src={rm.image} alt={rm.alt} width={1200} height={1500} loading="lazy" />
-                <figcaption className={styles.badge}>{RENDER_LABEL}</figcaption>
+                <img src={rm.image} alt={rm.alt} width={1200} height={1500} loading="lazy" style={rm.focus ? { objectPosition: rm.focus } : undefined} />
+                <figcaption className={styles.badge}>{rm.label ?? RENDER_LABEL}</figcaption>
               </figure>
               <p className="eyebrow">
                 {rm.num} · Residence 11A

@@ -52,7 +52,7 @@ function Lightbox({ index, onClose, onStep }: { index: number; onClose: () => vo
         <figcaption className={styles.lbCaption}>
           <span>{img.caption}</span>
           <span className="mono">{index + 1} / {gallery.length}</span>
-          <span className={styles.lbNote}>{RENDER_LABEL}</span>
+          <span className={styles.lbNote}>{img.label ?? RENDER_LABEL}</span>
         </figcaption>
       </figure>
       <button className={`${styles.nav} ${styles.next}`} onClick={() => onStep(1)} aria-label="Next image">
@@ -72,7 +72,7 @@ export function Gallery() {
       <header className={`${styles.head} reveal`}>
         <p className="eyebrow">Interior gallery</p>
         <h2 id="gallery-title" className={styles.title}>Inside and out.</h2>
-        <p className={styles.note}>All gallery images are illustrative renders of the 3D model, not photographs.</p>
+        <p className={styles.note}>Renders of the 3D model, with interior concept images that set the intended style of each room. None are photographs of Residence 11A.</p>
       </header>
       <ul className={styles.grid}>
         {gallery.map((g, i) => (
