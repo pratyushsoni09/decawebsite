@@ -102,7 +102,7 @@ const hash = (s: string) => [...s].reduce((a, ch) => (a * 31 + ch.charCodeAt(0))
 const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   sofa(c) {
     const { w, d } = c.it;
-    const mat: MatKey = c.it.variant === "cognac" ? "leather" : c.it.variant === "linen" ? "linen" : c.it.variant === "tan" ? "tan" : "cream";
+    const mat: MatKey = c.it.variant === "cognac" ? "leather" : c.it.variant === "linen" ? "linen" : c.it.variant === "tan" || c.it.variant === "tanThrow" ? "tan" : "cream";
     if (c.it.variant === "outdoor") {
       legs(c, "teak", w - 0.04, d - 0.04, 0.3, 0.06, 0.0);
       B(c, "teak", w, 0.06, d, 0, 0.24, 0);
@@ -122,6 +122,10 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     B(c, mat, w, 0.42, 0.22, 0, 0.38, -d / 2 + 0.11);
     for (let i = 0; i < n; i++) B(c, mat, cw - 0.04, 0.34, 0.14, -w / 2 + 0.2 + cw * (i + 0.5), 0.52, -d / 2 + 0.28);
     for (const sx of [-1, 1]) B(c, mat, 0.2, 0.32, d, sx * (w / 2 - 0.1), 0.38, 0);
+    if (c.it.variant === "tanThrow") {
+      B(c, "cream", 0.5, 0.025, d * 0.75, w / 2 - 0.35, 0.56, 0.0);
+      B(c, "cream", 0.5, 0.3, 0.025, w / 2 - 0.35, 0.28, d / 2 - 0.01);
+    }
     if (mat !== "leather") for (const sx of [-1, 1]) B(c, mat === "tan" ? (sx < 0 ? "charcoal" : "cream") : "teal", 0.42, 0.36, 0.12, sx * (w / 2 - 0.42), 0.56, -d / 2 + 0.36);
   },
   loungeChair(c) {
@@ -386,6 +390,14 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
   },
   nightstand(c) {
     const { w, d, h } = c.it;
+    if (c.it.variant === "cube") {
+      B(c, "white", w, h, d);
+      B(c, "darkMetal", w - 0.04, 0.004, 0.005, 0, h * 0.6, d / 2);
+      C(c, "darkMetal", 0.06, 0.06, 0.02, -0.08, h, -0.05, 12);
+      beam(c, "darkMetal", 0.012, new THREE.Vector3(-0.08, h + 0.02, -0.05), new THREE.Vector3(-0.05, h + 0.38, -0.08));
+      C(c, "darkMetal", 0.07, 0.03, 0.12, -0.02, h + 0.3, -0.02, 12);
+      return;
+    }
     if (c.it.variant === "cream") {
       B(c, "white", w, h, d);
       B(c, "greige", w - 0.12, 0.14, 0.01, 0, 0.1, d / 2 + 0.001);
@@ -503,6 +515,16 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       for (let y = 0.12; y < 0.82; y += 0.06) B(c, "walnut", w - 0.08, 0.012, 0.006, 0, y, d / 2 + 0.002);
       B(c, "darkMetal", 0.004, 0.76, 0.006, 0, 0.08, d / 2 + 0.004);
       C(c, "pot", 0.07, 0.05, 0.22, w * 0.3, 0.92, 0, 14);
+      return;
+    }
+    if (c.it.variant === "float") {
+      const bw = 2.0;
+      B(c, "veneer", w, 0.04, d, 0, c.it.h - 0.04, 0);
+      B(c, "darkMetal", bw, 0.03, d - 0.04, 0, 0.1, -0.01);
+      B(c, "darkMetal", bw, 0.3, 0.02, 0, 0.1, -d / 2 + 0.03);
+      for (const x of [-bw / 2, bw / 2]) B(c, "darkMetal", 0.03, c.it.h - 0.14, d - 0.04, x, 0.1, -0.01);
+      C(c, "pot", 0.06, 0.05, 0.14, -0.3, c.it.h, 0, 14);
+      S(c, "terracotta", 0.06, -0.12, c.it.h + 0.06, 0.05);
       return;
     }
     if (c.it.variant === "media") {
@@ -711,18 +733,22 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     const { w, h } = c.it;
     if (c.it.variant === "panel") {
       const base = -(c.it.elev ?? 1.45);
-      const cw = Math.min(2.0, w * 0.55);
+      const cw = 2.0;
+      const side = (w - cw) / 2;
       B(c, "walnut", w, h, 0.03, 0, base, 0.015);
-      B(c, "oakWood", cw, h, 0.05, 0, base, 0.025);
-      B(c, "darkMetal", 1.26, 1.36, 0.03, 0, base + 1.1, 0.065);
-      P(c, "art2", 1.2, 1.3, 0, base + 1.75, 0.081);
-      const sx = -(cw / 2 + (w - cw) / 4);
-      for (const y of [1.0, 1.45, 1.9]) {
-        B(c, "walnut", (w - cw) / 2 - 0.2, 0.03, 0.22, sx, base + y, 0.11);
-        B(c, "glow", (w - cw) / 2 - 0.3, 0.006, 0.01, sx, base + y - 0.008, 0.2);
-      }
-      C(c, "pot", 0.05, 0.05, 0.12, sx - 0.15, base + 1.03, 0.11, 12);
-      B(c, "white", 0.18, 0.1, 0.14, sx + 0.15, base + 1.48, 0.11);
+      B(c, "veneer", cw, h, 0.08, 0, base, 0.04);
+      B(c, "darkMetal", 1.36, 1.36, 0.03, 0, base + 1.17, 0.095);
+      P(c, "art2", 1.3, 1.3, 0, base + 1.85, 0.111);
+      // black open shelving in the left recess, lit from above
+      const sx = -(cw / 2 + side / 2);
+      const sw = side - 0.18;
+      for (const x of [-sw / 2, sw / 2]) B(c, "darkMetal", 0.02, 1.4, 0.02, sx + x, base + 1.0, 0.24);
+      for (const y of [1.0, 1.47, 1.94, 2.4]) B(c, "darkMetal", sw, 0.02, 0.26, sx, base + y, 0.13);
+      B(c, "glow", sw - 0.06, 0.006, 0.01, sx, base + 2.38, 0.2);
+      C(c, "white", 0.05, 0.05, 0.14, sx - 0.15, base + 1.49, 0.13, 12);
+      C(c, "glowWarm", 0.04, 0.04, 0.08, sx + 0.12, base + 1.49, 0.13, 12);
+      B(c, "white", 0.2, 0.22, 0.14, sx + 0.12, base + 1.02, 0.12);
+      B(c, "books", 0.06, 0.1, 0.2, sx - 0.12, base + 1.96, 0.13);
       return;
     }
     const base = -(c.it.elev ?? 1.3); // floor, relative to the wall item's centre height
@@ -747,12 +773,22 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
       return;
     }
     if (v === "terracotta") {
-      // terracotta wall with long open shelves above the bed
       B(c, "terracotta", w, h, 0.012, 0, base, 0.006);
-      const sw = 2.6;
-      for (const y of [1.75, 2.18]) B(c, "white", sw, 0.025, 0.28, 0.1, base + y, 0.15);
-      for (let i = 0; i <= 5; i++) B(c, "white", 0.025, 0.43, 0.28, 0.1 - sw / 2 + (sw / 5) * i, base + 1.75, 0.15);
-      for (const y of [1.775, 2.205]) P(c, "books", sw - 0.6, 0.24, -0.1, base + y + 0.12, 0.18, true);
+      const n = 5;
+      const bw = 0.62;
+      const x0 = 0.1 - (n * bw) / 2;
+      const z0 = base + 1.62;
+      const bh = 0.5;
+      for (let i = 0; i < n; i++) {
+        const x = x0 + bw * (i + 0.5);
+        B(c, "white", bw - 0.01, 0.02, 0.3, x, z0, 0.16);
+        B(c, "white", bw - 0.01, 0.02, 0.3, x, z0 + bh - 0.02, 0.16);
+        B(c, "white", bw - 0.01, 0.015, 0.3, x, z0 + bh / 2, 0.16);
+        B(c, "white", 0.02, bh, 0.3, x - bw / 2 + 0.01, z0, 0.16);
+        P(c, "books", bw - 0.14, 0.2, x, z0 + 0.12, 0.2, true);
+      }
+      B(c, "white", 0.02, bh, 0.3, x0 + n * bw - 0.01, z0, 0.16);
+      for (const x of [x0 + 0.3, x0 + n * bw - 0.3]) C(c, "white", 0.006, 0.006, -base + h / 2 - (z0 + bh - base) + 0.0, x, z0 + bh, 0.16, 6);
       return;
     }
     if (v === "orangeArc") {

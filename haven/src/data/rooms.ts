@@ -21,8 +21,8 @@ export interface FeaturedRoom {
 export const featuredRooms: FeaturedRoom[] = [
   {
     num: "01", id: "living", name: "Hall",
-    description: "The heart of the home: two tan sofas face each other across a round black coffee table, in front of a wood-panelled feature wall with a large abstract painting and lit floating shelves. Bulb pendants, an arc lamp, dark wood floors, and wide glass doors onto the balcony.",
-    chips: ["7.03 × 6.55 m", "Wood-panelled feature wall", "Opens to the balcony"],
+    description: "The heart of the home: two espresso-brown sofas face each other across a round black coffee table on a grey shag rug, in front of a warm wood-veneer feature wall with a large marbled painting, black shelving lit in a dark recess and a floating console. Bulb pendants, an arc lamp, dark wood floors, and tall glass doors and windows onto the balcony.",
+    chips: ["7.03 × 6.55 m", "Wood-veneer feature wall", "Opens to the balcony"],
     image: "/images/concepts/hall-warm.webp", alt: "Living room with two sofas facing a warm wood-panelled wall with a large abstract painting", label: CONCEPT_LABEL,
   },
   {
@@ -51,8 +51,8 @@ export const featuredRooms: FeaturedRoom[] = [
   },
   {
     num: "06", id: "bed3", name: "Bedroom three",
-    description: "A study bedroom: a grey upholstered bed against a terracotta wall lined with open shelves, a long oak desk along the west window with an orange chair, and a wardrobe.",
-    chips: ["4.3 × 3.75 m", "Desk along the window", "Terracotta shelf wall"],
+    description: "A study bedroom: a grey upholstered bed with a rumpled duvet against a terracotta wall lined with a row of open shelf boxes, a long oak desk under the wide window with an orange chair, grey curtains and carpet tiles.",
+    chips: ["4.3 × 3.75 m", "Desk under a wide window", "Terracotta shelf wall"],
     image: "/images/concepts/study-bedroom.webp", alt: "Bedroom with a study desk along the window and shelves on an orange wall", label: CONCEPT_LABEL,
   },
   {

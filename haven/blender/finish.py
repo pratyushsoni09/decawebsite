@@ -137,11 +137,47 @@ def painted(mat, key):
     bsdf.inputs["Roughness"].default_value = 0.88
 
 
+def carpet(mat):
+    """Beige carpet tiles, 0.5 m, each a shade different, with a fine pile bump."""
+    mat.use_nodes = True
+    nt = mat.node_tree
+    b = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    for name in ("Base Color", "Roughness", "Normal"):
+        for link in list(b.inputs[name].links):
+            nt.links.remove(link)
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    brick = nt.nodes.new("ShaderNodeTexBrick")
+    brick.offset = 0.0
+    brick.inputs["Scale"].default_value = 1.0
+    brick.inputs["Brick Width"].default_value = 0.5
+    brick.inputs["Row Height"].default_value = 0.5
+    brick.inputs["Mortar Size"].default_value = 0.002
+    brick.inputs["Color1"].default_value = (0.44, 0.39, 0.33, 1)
+    brick.inputs["Color2"].default_value = (0.4, 0.355, 0.3, 1)
+    brick.inputs["Mortar"].default_value = (0.3, 0.27, 0.23, 1)
+    nt.links.new(coord.outputs["UV"], brick.inputs["Vector"])
+    nt.links.new(brick.outputs["Color"], b.inputs["Base Color"])
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 900.0
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.35
+    bump.inputs["Distance"].default_value = 0.002
+    nt.links.new(coord.outputs["UV"], noise.inputs["Vector"])
+    nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], b.inputs["Normal"])
+    b.inputs["Roughness"].default_value = 0.98
+    if "Sheen Weight" in b.inputs:
+        b.inputs["Sheen Weight"].default_value = 0.5
+
+
 def upgrade_surfaces():
     done = 0
     for mat in bpy.data.materials:
         key = mat.name.split(".")[0]
-        if key in PAINT:
+        if key == "carpet":
+            carpet(mat)
+            done += 1
+        elif key in PAINT:
             painted(mat, key)
             done += 1
         elif key in SURFACES:
@@ -346,7 +382,31 @@ def finish(layout):
             frames.box(r["x1"], r["y1"], top - 0.03, r["x2"], r["y2"], top)
     frames.done()
 
-    # feature walls (wood panelling, terracotta, orange arches, charcoal) come with the furniture as accentWall items
+    # feature walls (wood panelling, terracotta, orange arches, charcoal) come with the furniture as accentWall items;
+    # bedroom three's window wall is painted grey and its window has a white four-pane frame (client's photo)
+    grey_wall = Mesh("finish_grey_wall", simple_material("paint_grey", (0.2, 0.195, 0.19), 0.9), e)
+    frame_white = Mesh("finish_window_frame_white", simple_material("frame_white", (0.85, 0.85, 0.83), 0.35), e)
+    for room in rooms:
+        if room["id"] != "bed3":
+            continue
+        for side, fixed, a, b in wall_runs(room, door_cuts + window_cuts):
+            if side == "W":
+                along(grey_wall, side, fixed, a, b, 0.004, 0.0, ceiling)
+        for w in layout["windows"]:
+            r = w["rect"]
+            if w["side"] != "W" or not _overlaps(r, room["rects"][0]):
+                continue
+            x0, x1 = r["x2"] - 0.07, r["x2"] + 0.006
+            y1, y2, s0, s1 = r["y1"], r["y2"], w["sill"], w["head"]
+            t = 0.05
+            for yy in (y1, (y1 + y2) / 2 - t / 2, y2 - t):
+                frame_white.box(x0, yy, s0, x1, yy + t, s1)
+            for zz in (s0, s0 + (s1 - s0) * 0.72, s1 - t):
+                frame_white.box(x0, y1, zz, x1, y2, zz + t)
+            for yy in (y1 + (y2 - y1) * 0.25, y1 + (y2 - y1) * 0.75):
+                frame_white.box(x0, yy - 0.015, s0 + (s1 - s0) * 0.72, x1, yy + 0.015, s1)
+    grey_wall.done()
+    frame_white.done()
 
     spotlights(rooms, e, ceiling)
     curtains(layout, rooms, e, ceiling)
@@ -421,6 +481,9 @@ def spotlights(rooms, e, ceiling):
 def curtains(layout, rooms, e, ceiling):
     """Two pleated drapes drawn open at the sides of each window or glass door in the living spaces and bedrooms, on a rod."""
     fabric = fabric_material()
+    grey = simple_material("curtain_grey", (0.2, 0.19, 0.185), 0.95)
+    # bedroom three has grey drapes, as in the client's photo
+    grey_rooms = [r for r in rooms if r["id"] == "bed3"]
     rod_mat = simple_material("curtain_rod", (0.12, 0.11, 0.1), 0.35, metal=0.8)
     bm = bmesh.new()
     rods = Mesh("finish_curtain_rods", rod_mat, e)
@@ -440,6 +503,7 @@ def curtains(layout, rooms, e, ceiling):
             inward = 1 if side == "W" else -1
             a, b = r["y1"], r["y2"]
         off = face + inward * 0.12
+        tone = 1 if any(_overlaps(r, rc, 0.31) for room in grey_rooms for rc in room["rects"]) else 0
         panel = 0.42
         for c0 in (a - 0.18 - panel, b + 0.18):
             pleats = 9
@@ -457,7 +521,7 @@ def curtains(layout, rooms, e, ceiling):
                         else:
                             quad.append((off + inward * w, -u, e + z))
                 vs = [bm.verts.new(p) for p in (quad[0], quad[2], quad[3], quad[1])]
-                bm.faces.new(vs)
+                bm.faces.new(vs).material_index = tone
         if side in "NS":
             rods.box(a - 0.7, off - 0.012, ceiling - 0.13, b + 0.7, off + 0.012, ceiling - 0.105)
         else:
@@ -468,6 +532,7 @@ def curtains(layout, rooms, e, ceiling):
     bm.to_mesh(me)
     bm.free()
     me.materials.append(fabric)
+    me.materials.append(grey)
     for p in me.polygons:
         p.use_smooth = True
     ob = bpy.data.objects.new("finish_curtains", me)

@@ -92,6 +92,31 @@ def wood(name, dark, light, scale=3.0):
     return _mat(name, make)
 
 
+def swirl_art():
+    """Abstract marbled canvas in black, white, grey and burnt orange, like the painting in the client's hall photo."""
+    def make(m, b):
+        nt = m.node_tree
+        coord = nt.nodes.new("ShaderNodeTexCoord")
+        noise = nt.nodes.new("ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value = 0.9
+        noise.inputs["Detail"].default_value = 10.0
+        noise.inputs["Distortion"].default_value = 6.0
+        nt.links.new(coord.outputs["Object"], noise.inputs["Vector"])
+        ramp = nt.nodes.new("ShaderNodeValToRGB")
+        cr = ramp.color_ramp
+        stops = [(0.0, (0.005, 0.006, 0.012)), (0.44, (0.01, 0.012, 0.02)), (0.48, (0.25, 0.26, 0.28)), (0.52, (0.85, 0.85, 0.83)),
+                 (0.56, (0.5, 0.12, 0.03)), (0.6, (0.8, 0.79, 0.77)), (0.66, (0.06, 0.07, 0.1)), (1.0, (0.005, 0.006, 0.012))]
+        cr.elements[0].position, cr.elements[0].color = stops[0][0], (*stops[0][1], 1)
+        cr.elements[1].position, cr.elements[1].color = stops[-1][0], (*stops[-1][1], 1)
+        for pos, col in stops[1:-1]:
+            e = cr.elements.new(pos)
+            e.color = (*col, 1)
+        nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+        nt.links.new(ramp.outputs["Color"], b.inputs["Base Color"])
+        b.inputs["Roughness"].default_value = 0.6
+    return _mat("m_art_swirl", make)
+
+
 def existing(name, fallback):
     """A material from the imported model (walnut, oak …) so new pieces match the rest of the home."""
     for m in bpy.data.materials:
@@ -127,7 +152,7 @@ def palette():
         "steel": solid("m_brushed_steel", (0.55, 0.55, 0.55), 0.3, metal=1.0),
         "led": solid("m_led_strip", (1.0, 0.9, 0.75), 0.5, emit=(1.0, 0.82, 0.6), strength=12.0),
         # restyle palette, after the client's concept images
-        "tan": fabric("m_fabric_tan", (0.24, 0.13, 0.075), sheen=0.5),
+        "tan": fabric("m_fabric_tan", (0.075, 0.042, 0.03), sheen=0.6),
         "tan_dark": fabric("m_fabric_tan_dark", (0.2, 0.12, 0.08), sheen=0.4),
         "black_leather": solid("m_black_leather", (0.018, 0.018, 0.02), 0.45, coat=0.2),
         "pink_leather": solid("m_pink_leather", (0.62, 0.3, 0.27), 0.4, coat=0.25),
@@ -141,6 +166,17 @@ def palette():
         "driftwood": wood("m_driftwood", (0.12, 0.095, 0.08), (0.24, 0.2, 0.17)),
         "light_oak": wood("m_light_oak", (0.42, 0.28, 0.16), (0.62, 0.45, 0.28)),
         "glow_warm": solid("m_glow_warm", (0.9, 0.62, 0.25), 0.8, emit=(1.0, 0.7, 0.3), strength=0.9),
+        "veneer": wood("m_veneer_warm", (0.3, 0.15, 0.075), (0.46, 0.25, 0.13)),
+        "walnut_dark": wood("m_walnut_recess", (0.07, 0.038, 0.022), (0.13, 0.072, 0.042)),
+        "art_swirl": swirl_art(),
+        "shag": fabric("m_rug_shag", (0.2, 0.2, 0.195), sheen=0.8, weave=0.9),
+        "terracotta": solid("m_paint_terracotta", (0.42, 0.115, 0.05), 0.92),
+        "shelf_white": solid("m_shelf_white", (0.72, 0.72, 0.7), 0.4, coat=0.1),
+        "screen": solid("m_screen", (0.02, 0.025, 0.035), 0.1, emit=(0.5, 0.6, 0.8), strength=0.6),
+        "book_a": solid("m_book_a", (0.02, 0.02, 0.022), 0.6),
+        "book_b": solid("m_book_b", (0.7, 0.68, 0.64), 0.6),
+        "book_c": solid("m_book_c", (0.3, 0.06, 0.03), 0.6),
+        "book_d": solid("m_book_d", (0.18, 0.2, 0.24), 0.6),
         "bulb": solid("m_bulb", (1.0, 0.9, 0.7), 0.3, emit=(1.0, 0.78, 0.5), strength=25.0),
     }
 
@@ -257,11 +293,36 @@ class Piece:
         mod.segments = 2
         return ob
 
+    def rumple(self, ob, strength=0.03, size=0.22):
+        """Soft folds: subdivide and push the surface with a cloud texture (duvets, throws)."""
+        sub = ob.modifiers.new("subdiv", "SUBSURF")
+        sub.levels = sub.render_levels = 3
+        sub.subdivision_type = "SIMPLE"
+        tex = bpy.data.textures.get("rumple") or bpy.data.textures.new("rumple", "CLOUDS")
+        tex.noise_scale = size
+        disp = ob.modifiers.new("folds", "DISPLACE")
+        disp.texture = tex
+        disp.strength = strength
+        disp.mid_level = 0.5
+        smooth = ob.modifiers.new("smooth", "SMOOTH")
+        smooth.iterations = 2
+        return ob
+
     def panel_y(self, mat, cx, cy, cz, r, depth, seg=40):
         """Upright disc facing -y (front), centre (cx, cy, cz)."""
         ob = self.cyl(mat, 0, 0, -depth / 2, r, r, depth, seg=seg)
         ob.matrix_world = self.frame @ Matrix.Translation(Vector((cx, cy, cz))) @ Matrix.Rotation(math.pi / 2, 4, "X")
         return ob
+
+
+def area_light(frame, x, y, z, size, watts, colour=(1.0, 0.78, 0.52)):
+    data = bpy.data.lights.new("feature_light", "AREA")
+    data.energy = watts
+    data.color = colour
+    data.size = size
+    ob = bpy.data.objects.new(data.name, data)
+    ob.matrix_world = frame @ Matrix.Translation(Vector((x, y, z)))
+    bpy.context.scene.collection.objects.link(ob)
 
 
 def lamp_light(frame, x, y, z, watts=6.0):
@@ -278,11 +339,14 @@ def lamp_light(frame, x, y, z, watts=6.0):
 
 def sofa(p, it, M):
     w, d = it["w"], it["d"]
+    v = it.get("variant")
+    if v in ("tan", "tanThrow"):
+        return tan_sofa(p, it, M)
     seat_h = 0.44
     for sx in (-1, 1):
         for sy in (-1, 1):
             p.cyl(M["black"], sx * (w / 2 - 0.12), sy * (d / 2 - 0.1), 0, 0.012, 0.016, 0.1, seg=12)
-    cloth = M["tan"] if it.get("variant") == "tan" else M["oat"]
+    cloth = M["oat"]
     p.box(cloth, 0, 0, 0.1, w, d, 0.2, r=0.03)  # base
     n = 3 if w > 2.4 else 2
     arm = 0.17
@@ -295,9 +359,36 @@ def sofa(p, it, M):
     p.box(cloth, 0, d / 2 - 0.06, 0.3, w, 0.12, 0.42, r=0.04)  # back frame
     for sx in (-1, 1):
         p.box(cloth, sx * (w / 2 - arm / 2), 0, 0.3, arm, d, 0.3, r=0.06, seg=5)  # arms
-    # scatter cushions
-    for sx, mat in (((-1, M["ink"]), (1, M["oat"])) if it.get("variant") == "tan" else ((-1, M["rust"]), (1, M["ink"]))):
+    for sx, mat in ((-1, M["rust"]), (1, M["ink"])):
         p.box(mat, sx * (inner / 2 - 0.3), d / 2 - 0.33, seat_h + 0.02, 0.44, 0.13, 0.42, r=0.06, seg=5, tilt=-0.25)
+
+
+def tan_sofa(p, it, M):
+    """Low, deep sofa with slim square arms on tapered black legs, as in the client's hall photo."""
+    w, d = it["w"], it["d"]
+    cloth = M["tan"]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.leg(M["black"], sx * (w / 2 - 0.08), sy * (d / 2 - 0.08), 0.15, r_top=0.018, r_bottom=0.008)
+    p.box(cloth, 0, 0, 0.14, w, d, 0.22, r=0.02, seg=3)
+    arm = 0.15
+    inner = w - 2 * arm
+    for sx in (-1, 1):
+        p.box(cloth, sx * (w / 2 - arm / 2), 0, 0.14, arm, d, 0.47, r=0.03, seg=4)
+    p.box(cloth, 0, d / 2 - 0.08, 0.36, inner, 0.16, 0.42, r=0.03, seg=4)
+    for i in range(2):
+        cx = -inner / 4 + inner / 2 * i
+        p.box(cloth, cx, -0.06, 0.36, inner / 2 - 0.012, d - 0.3, 0.15, r=0.06, seg=6)
+        p.box(cloth, cx, d / 2 - 0.26, 0.48, inner / 2 - 0.03, 0.22, 0.4, r=0.09, seg=6, tilt=-0.14)
+    pillows = ((-1, M["ink"]), (1, M["mustard"])) if it.get("variant") == "tanThrow" else ((-1, M["ink"]), (1, M["tan_dark"]))
+    for sx, mat in pillows:
+        p.box(mat, sx * (inner / 2 - 0.26), d / 2 - 0.4, 0.5, 0.44, 0.14, 0.42, r=0.07, seg=6, tilt=-0.3)
+    p.box(M["oat"], -inner / 2 + 0.62, d / 2 - 0.42, 0.5, 0.38, 0.12, 0.34, r=0.06, seg=6, tilt=-0.35)
+    if it.get("variant") == "tanThrow":
+        throw = p.box(M["throw"], w / 2 - 0.3, 0.02, 0.52, 0.5, d * 0.8, 0.03, r=0.01, seg=2)
+        p.rumple(throw, 0.025, 0.15)
+        drop = p.box(M["throw"], w / 2 - 0.3, -d / 2 + 0.06, 0.2, 0.5, 0.03, 0.34, r=0.01, seg=2)
+        p.rumple(drop, 0.02, 0.15)
 
 
 def dining_chair(p, it, M):
@@ -456,7 +547,8 @@ def upholstered_bed(p, it, M):
     frame = M["cream"] if twin else M["grey"]
     p.box(frame, 0, 0, 0.04, w + 0.06, d, 0.34, r=0.08 if twin else 0.03, seg=5)
     p.box(M["linen"], 0, -0.03, 0.36, w - 0.04, d - 0.12, 0.18, r=0.05, seg=5)
-    p.box(M["oat"] if twin else M["grey"], 0, -d * 0.16, 0.5, w + 0.02, d * 0.64, 0.07, r=0.035, seg=4)
+    if twin:
+        p.box(M["oat"], 0, -d * 0.16, 0.5, w + 0.02, d * 0.64, 0.07, r=0.035, seg=4)
     if twin:
         p.box(M["orange"], 0, d / 2 - 0.3, 0.52, w - 0.3, 0.36, 0.16, r=0.07, seg=6, tilt=-0.35)
         p.box(M["oat"], 0, d / 2 - 0.48, 0.56, w * 0.45, 0.12, 0.3, r=0.06, seg=5, tilt=-0.3)
@@ -465,13 +557,27 @@ def upholstered_bed(p, it, M):
     else:
         pw = (w - 0.25) / 2
         for x in (-pw / 2 - 0.04, pw / 2 + 0.04):
-            p.box(M["linen"], x, d / 2 - 0.3, 0.52, pw, 0.42, 0.15, r=0.07, seg=6, tilt=-0.35)
-        p.box(frame, 0, d / 2 + 0.04, 0.04, w + 0.12, 0.1, 1.0, r=0.03, seg=4)
+            p.box(M["grey"], x, d / 2 - 0.28, 0.5, pw, 0.4, 0.17, r=0.08, seg=6, tilt=-0.4)
+            p.box(M["linen"], x * 0.9, d / 2 - 0.45, 0.52, pw * 0.9, 0.36, 0.15, r=0.07, seg=6, tilt=-0.3)
+        duvet = p.box(M["grey"], 0, -d * 0.12, 0.28, w + 0.14, d * 0.78, 0.31, r=0.05, seg=3)
+        p.rumple(duvet, 0.08, 0.28)
+        p.box(frame, 0, d / 2 + 0.05, 0.04, w + 0.14, 0.1, 0.95, r=0.03, seg=4)
 
 
 def nightstand(p, it, M):
     """Floating-look walnut nightstand with one drawer, on slim black legs, and a table lamp."""
     w, d = it["w"], it["d"]
+    if it.get("variant") == "cube":
+        h = it["h"]
+        p.box(M["shelf_white"], 0, 0, 0, w, d, h, r=0.008)
+        p.box(M["black"], 0, -d / 2 - 0.001, h * 0.62, w - 0.04, 0.004, 0.004)
+        p.cyl(M["black"], -0.08, 0.05, h, 0.06, 0.06, 0.02)
+        p.cyl(M["black"], -0.08, 0.05, h + 0.02, 0.008, 0.008, 0.36, seg=10)
+        p.box(M["black"], -0.04, 0.05, h + 0.36, 0.1, 0.014, 0.014, r=0.004)
+        p.cyl(M["black"], 0.02, 0.05, h + 0.24, 0.06, 0.025, 0.12)
+        lamp_light(p.frame, 0.02, 0.05, h + 0.22, watts=3.0)
+        p.box(M["book_a"], 0.1, -0.02, h, 0.14, 0.2, 0.03)
+        return
     if it.get("variant") == "cream":
         p.box(M["cream"], 0, 0, 0, w, d, it["h"], r=0.04, seg=5)
         p.box(M["stone_dark"], 0, -d / 2 + 0.01, 0.1, w - 0.12, 0.02, 0.14, r=0.02)
@@ -525,7 +631,10 @@ def desk(p, it, M):
             for z in (0.24, 0.47):
                 p.box(M["black"], sx * (w / 2 - 0.21), -d / 2 + 0.018, z, 0.36, 0.004, 0.004)
         p.box(M["light_oak"], 0, 0, h - 0.04, w, d, 0.04, r=0.005)
-        p.box(M["black"], w * 0.1, d / 2 - 0.2, h, 0.34, 0.24, 0.012, r=0.004)  # laptop
+        p.box(M["steel"], w * 0.1, -0.02, h, 0.34, 0.24, 0.012, r=0.004)  # laptop, open
+        p.box(M["steel"], w * 0.1, 0.11, h + 0.005, 0.34, 0.01, 0.23, r=0.004, tilt=0.25)
+        p.box(M["screen"], w * 0.1, 0.103, h + 0.02, 0.31, 0.003, 0.2, tilt=0.25)
+        p.box(M["book_d"], -w * 0.05, -0.05, h, 0.22, 0.3, 0.02)
         p.cyl(M["black"], -w * 0.3, d / 2 - 0.12, h, 0.06, 0.06, 0.015)
         p.cyl(M["black"], -w * 0.3, d / 2 - 0.12, h + 0.015, 0.008, 0.008, 0.4, seg=8)
         p.cyl(M["black"], -w * 0.3, d / 2 - 0.25, h + 0.38, 0.06, 0.035, 0.1)
@@ -676,6 +785,103 @@ def stool(p, it, M):
     p.box(M["taupe"], 0, 0.18, 0.71, 0.4, 0.05, 0.2, r=0.02, seg=4, tilt=-0.12)
 
 
+def feature_wall(p, it, M):
+    """Hall feature wall from the client's photo: warm veneer centre panel with a large marbled painting,
+    dark walnut recesses either side, black open shelving lit from above in the left recess."""
+    w, h = it["w"], it["h"]
+    cw = 2.0
+    side = (w - cw) / 2
+    p.box(M["walnut_dark"], 0, -0.015, 0, w, 0.03, h)
+    p.box(M["veneer"], 0, -0.04, 0, cw, 0.08, h, r=0.004)
+    p.box(M["black"], 0, -0.095, 1.17, 1.36, 0.03, 1.36, r=0.004)
+    p.box(M["art_swirl"], 0, -0.112, 1.2, 1.3, 0.006, 1.3)
+    sx = -(cw / 2 + side / 2)
+    sw = side - 0.18
+    for x in (-sw / 2, sw / 2):
+        p.box(M["black"], sx + x, -0.24, 1.0, 0.018, 0.018, 1.42)
+    for z in (1.0, 1.47, 1.94, 2.4):
+        p.box(M["black"], sx, -0.15, z, sw, 0.26, 0.018)
+    p.box(M["shelf_white"], sx - 0.12, -0.14, 1.018, 0.1, 0.18, 0.24, r=0.01)
+    p.cyl(M["ceramic"], sx + 0.12, -0.13, 1.018, 0.05, 0.035, 0.18)
+    p.cyl(M["glow_warm"], sx - 0.1, -0.13, 1.488, 0.035, 0.035, 0.08)
+    p.cyl(M["glow_warm"], sx + 0.02, -0.13, 1.488, 0.03, 0.03, 0.06)
+    for i, mat in enumerate(("book_b", "book_a", "book_b", "book_d")):
+        p.box(M[mat], sx + 0.05 + i * 0.035, -0.13, 1.958, 0.03, 0.18, 0.2 + (i % 2) * 0.03)
+    p.ellipsoid(M["ceramic"], sx - 0.12, -0.13, 2.0, 0.05, 0.05, 0.06)
+    area_light(p.frame, sx, -0.15, 2.38, 0.4, 25.0)
+    area_light(p.frame, -sx, -0.15, 2.6, 0.4, 12.0)
+
+
+def float_console(p, it, M):
+    """Floating veneer console top over a black open box, with a vase of dried stems and an orange."""
+    w, d, h = it["w"], it["d"], it["h"]
+    bw = 2.0
+    p.box(M["veneer"], 0, 0, h - 0.04, w, d, 0.04, r=0.004)
+    p.box(M["black"], 0, 0.01, 0.1, bw, d - 0.04, 0.025)
+    p.box(M["black"], 0, d / 2 - 0.02, 0.1, bw, 0.02, h - 0.14)
+    for x in (-bw / 2, bw / 2):
+        p.box(M["black"], x, 0.01, 0.1, 0.025, d - 0.04, h - 0.14)
+    p.cyl(M["stone"], -0.35, 0.0, h, 0.06, 0.045, 0.14)
+    for k in range(6):
+        stem = p.cyl(M["brass"], 0, 0, 0, 0.002, 0.002, 0.32 + 0.04 * (k % 3), seg=6)
+        stem.matrix_world = p.frame @ Matrix.Translation(Vector((-0.35, 0.0, h + 0.12))) @ Matrix.Rotation(0.18 * (k - 2.5), 4, "Y") @ Matrix.Rotation(0.1 * (k % 2), 4, "X")
+    p.ellipsoid(M["orange"], -0.12, 0.04, h + 0.05, 0.05, 0.05, 0.05)
+    p.ellipsoid(M["ceramic"], 0.9, 0.0, h + 0.06, 0.07, 0.07, 0.07)
+
+
+def terracotta_wall(p, it, M):
+    """Bedroom three, after the client's photo: terracotta wall with a row of open white shelf boxes hung on rods."""
+    w, h = it["w"], it["h"]
+    p.box(M["terracotta"], 0, -0.006, 0, w, 0.012, h)
+    n, bw, bh, depth = 5, 0.62, 0.5, 0.3
+    x0 = 0.1 - n * bw / 2
+    z0 = 1.62
+    y = -0.012 - depth / 2
+    for i in range(n):
+        x = x0 + bw * (i + 0.5)
+        p.box(M["shelf_white"], x, y, z0, bw - 0.01, depth, 0.02)
+        p.box(M["shelf_white"], x, y, z0 + bh - 0.02, bw - 0.01, depth, 0.02)
+        p.box(M["shelf_white"], x, y, z0 + bh / 2, bw - 0.01, depth, 0.015)
+        p.box(M["shelf_white"], x - bw / 2 + 0.01, y, z0, 0.02, depth, bh)
+        # books and objects, a little different in each box
+        for row, zb in enumerate((z0 + 0.02, z0 + bh / 2 + 0.015)):
+            k = 0
+            bx = x - bw / 2 + 0.05
+            while bx < x + bw / 2 - 0.12 and k < 7:
+                bwid = 0.025 + ((i * 7 + k * 3 + row) % 4) * 0.008
+                bht = 0.16 + ((i + k * 5 + row) % 3) * 0.03
+                mat = M[("book_a", "book_b", "book_d", "book_b", "book_c")[(i + k + row) % 5]]
+                lean = 0.12 if (i + k + row) % 6 == 0 else 0.0
+                bk = p.box(mat, bx, y + 0.02, zb, bwid, 0.2, bht)
+                if lean:
+                    bk.matrix_world = bk.matrix_world @ Matrix.Translation(Vector((bx, 0, zb))) @ Matrix.Rotation(lean, 4, "Y") @ Matrix.Translation(Vector((-bx, 0, -zb)))
+                bx += bwid + 0.004
+                k += 1
+            if (i + row) % 2 == 0:
+                p.cyl(M["ceramic"], x + bw / 2 - 0.08, y, zb, 0.035, 0.03, 0.12)
+            else:
+                p.box(M["black"], x + bw / 2 - 0.08, y + 0.05, zb, 0.1, 0.015, 0.13, tilt=-0.15)
+    p.box(M["shelf_white"], x0 + n * bw - 0.01, y, z0, 0.02, depth, bh)
+    for x in (x0 + 0.3, x0 + n * bw - 0.3):
+        p.cyl(M["shelf_white"], x, y, z0 + bh, 0.005, 0.005, 3.0 - z0 - bh, seg=8)
+
+
+def shag_rug(p, it, M):
+    ob = p.box(M["shag"], 0, 0, 0.0, it["w"], it["d"], 0.03, r=0.012, seg=2)
+    p.rumple(ob, 0.006, 0.02)
+
+
+def arc_lamp(p, it, M):
+    """Black floor lamp with a conical shade on an angled arm, reaching back over the sofa."""
+    p.cyl(M["black"], 0, 0, 0, 0.16, 0.16, 0.025)
+    p.cyl(M["black"], 0, 0, 0.025, 0.011, 0.011, 1.5, seg=10)
+    arm = p.cyl(M["black"], 0, 0, 0, 0.009, 0.009, 0.5, seg=10)
+    arm.matrix_world = p.frame @ Matrix.Translation(Vector((0, 0, 1.52))) @ Matrix.Rotation(-1.2, 4, "X")
+    head = p.cyl(M["black"], 0, 0, -0.16, 0.12, 0.04, 0.16, seg=24)
+    head.matrix_world = p.frame @ Matrix.Translation(Vector((0, 0.46, 1.7))) @ Matrix.Rotation(0.5, 4, "X")
+    lamp_light(p.frame, 0, 0.48, 1.6, watts=6.0)
+
+
 def lounge_chair(p, it, M):
     """Pink leather swivel bucket chair."""
     w, d = it["w"], it["d"]
@@ -723,6 +929,11 @@ def pendant(p, it, M):
 BUILDERS = {
     "pendant": pendant,
     "loungeChair": lounge_chair,
+    "tvWall": feature_wall,
+    "console": float_console,
+    "accentWall": terracotta_wall,
+    "rug": shag_rug,
+    "floorLamp": arc_lamp,
     "kitchenRun": kitchen_run,
     "tallUnits": tall_units,
     "island": island,
@@ -751,6 +962,9 @@ def wants(it):
     """Whether this item is modelled here (pendants only over the kitchen island; the rest use CC0 lamps)."""
     if it["type"] not in BUILDERS or it.get("variant") == "outdoor":
         return False
+    only = {"tvWall": "panel", "console": "float", "accentWall": "terracotta", "rug": "grey", "floorLamp": "arc"}
+    if it["type"] in only:
+        return it.get("variant") == only[it["type"]]
     return it["type"] != "pendant" or it["room"] == "kitchen" or it.get("variant") in ("bulb", "cluster")
 
 

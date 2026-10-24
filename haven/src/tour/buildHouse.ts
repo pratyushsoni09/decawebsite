@@ -11,7 +11,7 @@ import { StaticBuilder, boxAt, metricBox, planeAt, placeMatrix } from "./geom";
 import { buildFurniture, type LightSpot } from "./buildFurniture";
 import type { MatKey, MaterialLib } from "./materials";
 
-const FINISH: Record<FloorFinish, MatKey> = { oak: "oak", darkPlank: "darkPlank", polished: "polished", herringbone: "herringbone", stone: "stone", marble: "marble", tile: "tile", teak: "teak" };
+const FINISH: Record<FloorFinish, MatKey> = { oak: "oak", darkPlank: "darkPlank", polished: "polished", carpet: "carpet", herringbone: "herringbone", stone: "stone", marble: "marble", tile: "tile", teak: "teak" };
 const E = RESIDENCE_ELEVATION;
 const H = FLOOR_TO_FLOOR;
 const SLAB = H - CEILING_HEIGHT; // 0.3 m structural slab

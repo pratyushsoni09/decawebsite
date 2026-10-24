@@ -346,7 +346,7 @@ export type MatKey =
   | "darkGlass" | "water" | "bark" | "art0" | "art1" | "art2" | "art3" | "art4" | "art5" | "white"
   | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor" | "greige"
   | "darkPlank" | "polished" | "driftwood" | "tan" | "blackLeather" | "pinkLeather" | "mustard" | "maroon"
-  | "terracotta" | "orangePaint" | "charcoal" | "rugGrey" | "rugRose" | "glowWarm";
+  | "terracotta" | "orangePaint" | "charcoal" | "rugGrey" | "rugRose" | "glowWarm" | "carpet" | "veneer";
 
 export type MaterialLib = Record<MatKey, THREE.MeshStandardMaterial>;
 
@@ -402,6 +402,8 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     charcoal: std({ color: 0x2c2b2d, roughness: 0.8 }),
     rugGrey: std({ map: tx("grey rug", 256, paintFabric(30, 4, 66), 85, [0.5, 0.5]), roughness: 1 }),
     rugRose: std({ map: tx("rose rug", 256, paintFabric(350, 34, 48), 87, [0.5, 0.5]), roughness: 1 }),
+    carpet: std({ map: tx("carpet tiles", 256, paintFabric(34, 16, 70), 91, [0.5, 0.5]), roughness: 1 }),
+    veneer: std({ map: tx("veneer", 512, paintOakVertical, 93, [0.6, 2.4]), roughness: 0.55, color: 0xd7a27a }),
     glowWarm: std({ color: 0xffe3a6, emissive: 0xffc95e, emissiveIntensity: 1.1, roughness: 0.9 }),
     glass: std({ color: 0xcfe0e4, metalness: 0, roughness: 0.04, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
     darkGlass: std({ color: 0x15130f, metalness: 0.4, roughness: 0.15 }),
