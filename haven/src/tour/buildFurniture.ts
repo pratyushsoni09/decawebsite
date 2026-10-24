@@ -504,8 +504,8 @@ const builders: Partial<Record<FurnitureDef["type"], (c: Ctx) => void>> = {
     c.hang = { it: c.it, sb: new StaticBuilder(), hookY, eye: [0, 1.22 - hookY, 0.1] };
     HC(c, "darkMetal", 0.008, 0.5, 0, -0.5, 0);
     const shell = new THREE.SphereGeometry(0.5, 32, 18, Math.PI * 0.72, Math.PI * 1.56, 0.05, Math.PI * 0.95);
+    // the open sector is centred on +z, the chair's front (away from the stand's post)
     shell.scale(1, 1.25, 0.95);
-    shell.rotateY(Math.PI);
     shell.translate(0, -1.15, 0);
     c.hang.sb.add(shell, "rattan", I);
     const cushion = new THREE.SphereGeometry(0.4, 20, 10);

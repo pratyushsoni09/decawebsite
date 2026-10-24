@@ -370,7 +370,7 @@ export const furniture: FurnitureDef[] = [
   f("balcony", "roundTable", 2.45, 18.35, 0, { group: "bistro", anchor: true, w: 0.7, d: 0.7 }),
   f("balcony", "chair", 1.8, 18.35, 90, { group: "bistro" }),
   f("balcony", "chair", 3.1, 18.35, 270, { group: "bistro" }),
-  f("balcony", "swingEgg", 4.6, 17.6, 0),
+  f("balcony", "swingEgg", 4.6, 17.6, 90),
   f("balcony", "plant", 6.2, 18.65, 0, { variant: "olive" }),
   f("balcony", "planter", 8.0, 18.75, 0),
   f("balcony", "swingBench", 10.6, 17.7, 0),
