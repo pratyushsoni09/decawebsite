@@ -19,7 +19,7 @@ export function SiteFooter() {
       </div>
       <div className={styles.fine}>
         <p>
-          3D model authored procedurally (Three.js) for this site and rendered in Blender Cycles, with furniture modelled in Blender and some furniture, decor and surface textures from Poly Haven (CC0). Images are renders of that model and are not photographs of a real property.
+          3D model authored procedurally (Three.js) for this site and rendered in Blender Cycles, with furniture modelled in Blender and some furniture, decor and surface textures from Poly Haven (CC0). Images are renders of that model and are not photographs of a real property. The “Real homes” photographs show other homes and are used under the Unsplash License, credited to each photographer.
         </p>
         <p>© {new Date().getFullYear()} Haven</p>
       </div>
