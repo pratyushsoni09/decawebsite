@@ -7,3 +7,9 @@ blender/out/
 blender/assets/
 .vercel
 .env*
+unreal/export/
+unreal/HavenOak/
+unreal/frames/
+unreal/dist/
+unreal/manifest.txt
+unreal/haven-unreal-kit.zip
