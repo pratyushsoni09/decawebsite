@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Armchair, ArrowLeft, Check, DoorOpen, HelpCircle, Layers, ListChecks, RotateCcw, X } from "lucide-react";
+import { Armchair, ArrowLeft, Check, DoorOpen, Globe, HelpCircle, Layers, ListChecks, RotateCcw, X } from "lucide-react";
 import { FLOOR_NAMES, RESIDENCE_NAME, roomById, walkableRooms, type FloorId } from "../data/houseLayout";
 import { FloorPlanSvg } from "../components/FloorPlanSvg";
 import { TourEngine, type EngineState, type Quality } from "../tour/engine";
 import { runModelChecks, type CheckRow } from "../tour/checks";
+import { CITY_ATTRIBUTION } from "../tour/buildCity";
+import { GOOGLE_KEY } from "../tour/googleTiles";
 import styles from "./Tour.module.css";
 
 type Panel = "rooms" | "help" | "checks" | null;
@@ -88,6 +90,8 @@ export default function Tour() {
   const [engine, setEngine] = useState<TourEngine | null>(null);
   const [progress, setProgress] = useState({ p: 0, label: "Preparing" });
   const [loaded, setLoaded] = useState(false);
+  const [tiles, setTiles] = useState(false);
+  const [tileCredit, setTileCredit] = useState("");
   const [state, setState] = useState<EngineState>({ floor: 0, roomId: null, roomName: "", doorAhead: false, swingAhead: null, seated: null });
   const [panel, setPanel] = useState<Panel>(null);
   const [fade, setFade] = useState(false);
@@ -96,6 +100,12 @@ export default function Tour() {
   const [touch, setTouch] = useState(false);
   const [webgl] = useState(hasWebGL);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tiles || !engine) return;
+    const id = window.setInterval(() => setTileCredit(engine.googleTiles?.attributions() ?? ""), 1500);
+    return () => window.clearInterval(id);
+  }, [tiles, engine]);
 
   useEffect(() => {
     document.title = "Walk Residence 11A — Haven · The Oak Residences";
@@ -208,6 +218,20 @@ export default function Tour() {
               <button className={`${styles.glass} ${styles.tool} ${panel === "rooms" ? styles.toolOn : ""}`} onClick={() => toggle("rooms")} aria-expanded={panel === "rooms"} aria-controls="panel-rooms">
                 <Layers size={16} strokeWidth={1.6} aria-hidden="true" /> <span>Rooms</span>
               </button>
+              {GOOGLE_KEY && engine && (
+                <button
+                  className={`${styles.glass} ${styles.iconTool} ${tiles ? styles.toolOn : ""}`}
+                  onClick={() => {
+                    const on = !tiles;
+                    if (engine.setGoogleTiles(on)) setTiles(on);
+                  }}
+                  aria-pressed={tiles}
+                  aria-label="Show Google 3D map of the surroundings"
+                  title="Google 3D map of Kudasan"
+                >
+                  <Globe size={17} strokeWidth={1.6} />
+                </button>
+              )}
               <button className={`${styles.glass} ${styles.iconTool} ${panel === "help" ? styles.toolOn : ""}`} onClick={() => toggle("help")} aria-expanded={panel === "help"} aria-controls="panel-help" aria-label="Help: controls">
                 <HelpCircle size={17} strokeWidth={1.6} />
               </button>
@@ -253,6 +277,7 @@ export default function Tour() {
                   <div><dt>Touch</dt><dd>Left pad to walk, drag anywhere else to look, round button to open a door or sit on a swing</dd></div>
                 </dl>
                 <p className={styles.foot}>Doors pause if you stand in their swing.</p>
+                <p className={styles.foot}>Surroundings: central Kudasan, Gandhinagar. {CITY_ATTRIBUTION}. Heights estimated where unknown.</p>
                 <div className={styles.quality}>
                   <span>Rendering quality: {quality === "high" ? "high (shadows on)" : "light (no shadows)"}.</span>
                   <button className={styles.linkBtn} onClick={() => setQ(quality === "high" ? "light" : "high")}>
@@ -291,6 +316,12 @@ export default function Tour() {
           </div>
 
           {engine && <Minimap engine={engine} floor={state.floor} roomId={state.roomId} />}
+
+          {tiles && (
+            <p className={`${styles.glass} ${styles.tileCredit}`} aria-live="polite">
+              <strong>Google</strong> {tileCredit || "Loading 3D map…"}
+            </p>
+          )}
 
           {!touch && (state.seated || state.swingAhead || state.doorAhead) && (
             <p className={`${styles.glass} ${styles.hint}`} aria-live="polite">

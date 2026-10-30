@@ -9,6 +9,7 @@ import {
 } from "../data/layoutGeometry";
 import { StaticBuilder, boxAt, metricBox, planeAt, placeMatrix } from "./geom";
 import { buildFurniture, type LightSpot } from "./buildFurniture";
+import { buildCity } from "./buildCity";
 import type { MatKey, MaterialLib } from "./materials";
 
 const FINISH: Record<FloorFinish, MatKey> = { oak: "oak", darkPlank: "darkPlank", polished: "polished", carpet: "carpet", herringbone: "herringbone", stone: "stone", marble: "marble", tile: "tile", teak: "teak" };
@@ -44,6 +45,8 @@ export interface HouseBuild {
   swings: SwingRuntime[];
   lights: LightSpot[];
   sky: THREE.Mesh;
+  /** the open-data surroundings (central Kudasan), hidden while Google 3D Tiles are shown */
+  city: THREE.Group;
   authoredMeshes: number;
   ceilingRooms: Set<string>;
 }
@@ -227,33 +230,14 @@ function tree(sb: StaticBuilder, x: number, z: number, s = 1) {
 }
 
 function buildSite(sb: StaticBuilder) {
-  sb.add(planeAt(-260, -260, 290, 280, -0.03), "grass");
+  // the tower's own plot: lawn, terrace, entrance path, pool and garden …
+  sb.add(planeAt(-22, -20, 46, 64, -0.03), "grass");
   sb.add(boxAt(-12, -0.4, -10, 36, -0.005, 34), "terrace");
   // path to the entrance and a reflecting pool
   sb.add(boxAt(10, -0.02, 21.5, 14, 0.01, 60), "pathStone");
   sb.add(boxAt(17, -0.02, 24, 30, 0.02, 30), "water");
   sb.add(boxAt(-6, -0.02, 24, 7, 0.4, 30), "boxwood");
   for (const [x, z, s] of [[-8, 26, 1.1], [3, 33, 1], [-10, 10, 1.2], [33, 34, 1], [36, 6, 1.1], [-4, -6, 1], [30, -6, 1.2], [22, 40, 0.9], [-14, 38, 1]] as const) tree(sb, x, z, s);
-  // neighbouring city: lower blocks around the tower
-  let k = 11;
-  const rnd = () => ((k = (k * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 26; i++) {
-    const a = (i / 26) * Math.PI * 2 + rnd() * 0.15;
-    const dist = 85 + rnd() * 90;
-    const cx = 12 + Math.cos(a) * dist;
-    const cz = 9 + Math.sin(a) * dist;
-    const w = 14 + rnd() * 18;
-    const d = 12 + rnd() * 14;
-    const h = 9 + rnd() * 30;
-    sb.add(boxAt(cx - w / 2, 0, cz - d / 2, cx + w / 2, h, cz + d / 2), rnd() > 0.35 ? "concrete" : "stoneTrim");
-    for (let y = 3.2; y < h - 1; y += 3.3) sb.add(boxAt(cx - w / 2 - 0.05, y, cz - d / 2 - 0.05, cx + w / 2 + 0.05, y + 1.5, cz + d / 2 + 0.05), "towerGlass");
-  }
-  for (let i = 0; i < 40; i++) {
-    const a = (i / 40) * Math.PI * 2;
-    if (a > 0.6 && a < 2.0) continue; // keep the south-east view of the tower open
-    const dist = 55 + ((i * 37) % 23);
-    tree(sb, 12 + Math.cos(a) * dist, 9 + Math.sin(a) * dist, 0.8 + ((i * 13) % 5) / 10);
-  }
 }
 
 /* ------------------------------------------------------------------ doors */
@@ -347,7 +331,7 @@ export function createSky(preset: SkyPreset = "day") {
         #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), mat);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1300, 32, 16), mat);
   sky.position.set(12, 0, 9);
   sky.name = "sky";
   return sky;
@@ -386,7 +370,14 @@ export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture
   await step("Fifteen storeys");
   buildSite(sb);
   await step("Gardens and city");
-  const authoredMeshes = sb.meshCount;
+  // the surroundings: central Kudasan, Gandhinagar from open map data, as its own group
+  const csb = new StaticBuilder();
+  buildCity(csb);
+  const city = new THREE.Group();
+  city.name = "city";
+  csb.build(lib, city);
+  root.add(city);
+  const authoredMeshes = sb.meshCount + csb.meshCount;
   sb.build(lib, root);
 
   // swings: hanging parts on their own pivots so they can sway
@@ -407,5 +398,5 @@ export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture
   await step("Doors");
   const sky = createSky("day");
   root.add(sky);
-  return { root, leaves: leafRuntimes, swings, lights, sky, authoredMeshes: authoredMeshes + leafRuntimes.length, ceilingRooms };
+  return { root, leaves: leafRuntimes, swings, lights, sky, city, authoredMeshes: authoredMeshes + leafRuntimes.length, ceilingRooms };
 }

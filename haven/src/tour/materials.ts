@@ -121,6 +121,43 @@ const paintHerringbone: Paint = (ctx, w, h, rnd) => {
   noise(ctx, w, h, rnd, 0.04);
 };
 
+/** Kudasan facades: painted render with one window per 3 m bay, a slab line at the top of each 3.1 m storey */
+const paintFacade = (hue: number, sat: number, light: number): Paint => (ctx, w, h, rnd) => {
+  ctx.fillStyle = hsl(hue, sat, light);
+  ctx.fillRect(0, 0, w, h);
+  noise(ctx, w, h, rnd, 0.05, 6000, 2);
+  const storey = 3.1;
+  const y = (m: number) => h * (1 - m / storey); // canvas y runs down; v = 0 is the storey floor
+  ctx.fillStyle = hsl(hue, sat, light - 10, 0.5);
+  ctx.fillRect(0, y(storey), w, y(storey - 0.22) - y(storey));
+  ctx.fillStyle = "rgba(235,240,245,0.9)";
+  ctx.fillRect(w * 0.3 - 3, y(2.25) - 3, w * 0.4 + 6, y(0.95) - y(2.25) + 6);
+  ctx.fillStyle = "rgba(28,36,46,0.92)";
+  ctx.fillRect(w * 0.3, y(2.25), w * 0.4, y(0.95) - y(2.25));
+  ctx.fillStyle = "rgba(120,150,175,0.35)";
+  ctx.fillRect(w * 0.3, y(2.25), w * 0.2, y(1.6) - y(2.25));
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillRect(w * 0.3, y(0.95), w * 0.4, 3);
+};
+
+const paintAsphalt: Paint = (ctx, w, h, rnd) => {
+  ctx.fillStyle = hsl(30, 4, 30);
+  ctx.fillRect(0, 0, w, h);
+  noise(ctx, w, h, rnd, 0.12, 16000, 1.5);
+};
+
+const paintGround: Paint = (ctx, w, h, rnd) => {
+  ctx.fillStyle = hsl(36, 26, 66);
+  ctx.fillRect(0, 0, w, h);
+  for (let k = 0; k < 60; k++) {
+    ctx.fillStyle = hsl(32 + rnd() * 10, 20 + rnd() * 15, 55 + rnd() * 18, 0.35);
+    ctx.beginPath();
+    ctx.arc(rnd() * w, rnd() * h, 6 + rnd() * 40, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  noise(ctx, w, h, rnd, 0.08, 14000, 1.5);
+};
+
 const paintStone: Paint = (ctx, w, h, rnd) => {
   // 1.6 m tile, 0.8 m limestone flags
   const n = 2;
@@ -346,7 +383,8 @@ export type MatKey =
   | "darkGlass" | "water" | "bark" | "art0" | "art1" | "art2" | "art3" | "art4" | "art5" | "white"
   | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor" | "greige"
   | "darkPlank" | "polished" | "driftwood" | "tan" | "blackLeather" | "pinkLeather" | "mustard" | "maroon"
-  | "terracotta" | "orangePaint" | "charcoal" | "rugGrey" | "rugRose" | "glowWarm" | "carpet" | "veneer";
+  | "terracotta" | "orangePaint" | "charcoal" | "rugGrey" | "rugRose" | "glowWarm" | "carpet" | "veneer"
+  | "ground" | "park" | "asphalt" | "roadLine" | "facadeA" | "facadeB" | "facadeC" | "facadeD" | "roofGrey" | "parapet" | "tank";
 
 export type MaterialLib = Record<MatKey, THREE.MeshStandardMaterial>;
 
@@ -404,6 +442,19 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     rugRose: std({ map: tx("rose rug", 256, paintFabric(350, 34, 48), 87, [0.5, 0.5]), roughness: 1 }),
     carpet: std({ map: tx("carpet tiles", 256, paintFabric(34, 16, 70), 91, [0.5, 0.5]), roughness: 1 }),
     veneer: std({ map: tx("veneer", 512, paintOakVertical, 93, [0.6, 2.4]), roughness: 0.55, color: 0xd7a27a }),
+    // Kudasan surroundings
+    ground: std({ map: tx("ground", 512, paintGround, 95, [18, 18]), roughness: 1 }),
+    park: std({ map: tx("park", 512, paintGrass, 96, [6, 6]), roughness: 1, color: 0x9fb37a }),
+    asphalt: std({ map: tx("asphalt", 256, paintAsphalt, 97, [4, 4]), roughness: 0.95 }),
+    roadLine: std({ color: 0xe8e2d0, roughness: 0.8 }),
+    // the paint of Kudasan's apartment blocks: cream, ochre, peach and a weathered grey-white
+    facadeA: std({ map: tx("facade cream", 256, paintFacade(42, 32, 86), 98, [3, 3.1], 265), roughness: 0.85 }),
+    facadeB: std({ map: tx("facade ochre", 256, paintFacade(34, 48, 66), 99, [3, 3.1], 265), roughness: 0.85 }),
+    facadeC: std({ map: tx("facade peach", 256, paintFacade(24, 38, 78), 101, [3, 3.1], 265), roughness: 0.85 }),
+    facadeD: std({ map: tx("facade grey", 256, paintFacade(40, 8, 74), 102, [3, 3.1], 265), roughness: 0.85 }),
+    roofGrey: std({ color: 0x8c8780, roughness: 0.95 }),
+    parapet: std({ color: 0xd9d2c4, roughness: 0.9 }),
+    tank: std({ color: 0x14151a, roughness: 0.6 }),
     glowWarm: std({ color: 0xffe3a6, emissive: 0xffc95e, emissiveIntensity: 1.1, roughness: 0.9 }),
     glass: std({ color: 0xcfe0e4, metalness: 0, roughness: 0.04, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
     darkGlass: std({ color: 0x15130f, metalness: 0.4, roughness: 0.15 }),

@@ -192,6 +192,9 @@ def tune_materials():
             set_input(b, ["Coat Weight"], 0.25)
         elif k in ("plaster", "ceiling", "concrete"):
             set_input(b, "Roughness", 0.9)
+        elif k in ("asphalt", "ground", "park", "roofGrey", "facadeA", "facadeB", "facadeC", "facadeD", "parapet", "tank"):
+            set_input(b, "Roughness", 0.95 if k != "asphalt" else 0.98)
+            set_input(b, ["Sheen Weight", "Sheen"], 0.0)
         elif k == "grass":
             mix = b.inputs["Base Color"]
             if mix.is_linked:
@@ -321,7 +324,7 @@ def add_lamps(lights):
 
 OUTDOOR_VIEWS = {"balcony", "swing"}
 # north-facing rooms only get skylight: open them up further, as a photographer would
-EXTRA_EV = {"bed2": 1.2, "bed3": 0.8, "kitchen": 0.0, "master": 0.9, "pooja": 0.9, "dining": -1.9, "living": -0.4}
+EXTRA_EV = {"balcony": -0.45, "swing": -0.45, "bed2": 1.2, "bed3": 0.8, "kitchen": 0.0, "master": 0.9, "pooja": 0.9, "dining": -1.9, "living": -0.4}
 
 PRESET = {
     "day": {"elev": 42, "air": 1.0, "dust": 1.0, "sun": 4.2, "sky": 1.0, "exposure": 0.0},

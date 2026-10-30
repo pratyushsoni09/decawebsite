@@ -100,3 +100,7 @@
   .whereRoom { font-size: 16px; }
   .minimap { width: 42vw; }
 }
+
+/* Google 3D Tiles: the required Google credit, bottom-right, kept clear of the minimap */
+.tileCredit { position: absolute; right: 22px; bottom: 22px; z-index: 12; max-width: 46vw; padding: 6px 10px; font-size: 11px; line-height: 1.4; pointer-events: none; }
+.tileCredit strong { font-weight: 600; letter-spacing: 0.02em; margin-right: 6px; }

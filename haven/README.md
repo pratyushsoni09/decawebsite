@@ -39,6 +39,12 @@ The room and tower photos are Blender Cycles renders of the same model you walk:
    Indian 3BHK homes are typically finished: marble floors with tile skirting in the hall, dining hall
    and kitchen; laminate in the bedrooms; bathroom walls tiled to 2.1 m; teak
    architraves on every door and archway; recessed spotlights; pleated curtains on rods.
+The tower stands in central Kudasan, Gandhinagar. `scripts/fetch_kudasan.py` pulls the surroundings from
+open map data (building footprints from Overture Maps, streets, greens and water from OpenStreetMap) into
+`src/data/kudasan.json`, which `src/tour/buildCity.ts` turns into the 3D city around the plot — in the
+walkable tour and, through the export, in the Blender renders. Heights are estimated where the data has
+none. Re-run the script to refresh the data or move `ORIGIN` to the exact plot.
+
 3. Render (GPU/OptiX is picked up automatically):
 
    ```bash

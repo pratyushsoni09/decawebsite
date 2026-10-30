@@ -47,7 +47,8 @@ const towerShot = { w: 2400, h: 1350, pos: [33, 1.7, 68] as [number, number, num
 export const VIEWS: View[] = [
   { name: "tower-golden", ...towerShot, sky: "golden", exposure: 0.95, sun: golden, hemi: 0.65, env: 0.35, lamps: 1.2, windowsLit: 0.35 },
   { name: "hero", ...towerShot, sky: "day", exposure: 1.0, sun: day, hemi: 0.9, env: 0.3, lamps: 0, sketch: true },
-  { name: "tower-dusk", w: 1800, h: 1350, pos: [70, 1.9, 70], look: [12, 1.9, 8], fov: 62, shift: 0.14, sky: "dusk", exposure: 1.3, sun: { intensity: 0.6, color: 0xff9d6a, dir: [-0.7, 0.05, 0.71] }, hemi: 0.2, env: 0.1, lamps: 3, windowsLit: 1.8 },
+  // from a clear spot on the street south-east of the plot (checked against the Kudasan footprints)
+  { name: "tower-dusk", w: 1800, h: 1350, pos: [46.9, 1.9, 62.7], look: [12, 1.9, 8], fov: 84, shift: 0.04, sky: "dusk", exposure: 1.3, sun: { intensity: 0.6, color: 0xff9d6a, dir: [-0.7, 0.05, 0.71] }, hemi: 0.2, env: 0.1, lamps: 3, windowsLit: 1.8 },
   // hall and bedroom three are framed like the client's photos they follow
   room("living", [5.55, 1.25, 12.4], [11.86, 1.3, 12.4], { w: 2000, h: 1366, fov: 56, sun: { intensity: 4.0, color: 0xffcf98, dir: [-0.2, 0.3, 0.93] } }),
   // the client's kitchen-dining photo is an evening shot: across the set table into the open kitchen

@@ -19,7 +19,7 @@ export function SiteFooter() {
       </div>
       <div className={styles.fine}>
         <p>
-          3D model authored procedurally (Three.js) for this site and rendered in Blender Cycles, with furniture modelled in Blender and some furniture, decor and surface textures from Poly Haven (CC0). Images are renders of that model or interior concept images showing the intended style; none are photographs of a real property.
+          3D model authored procedurally (Three.js) for this site and rendered in Blender Cycles, with furniture modelled in Blender and some furniture, decor and surface textures from Poly Haven (CC0). Images are renders of that model or interior concept images showing the intended style; none are photographs of a real property. The surroundings are central Kudasan, Gandhinagar, built from open map data: building footprints from Overture Maps (Google Open Buildings, Microsoft ML Buildings), streets and greens © OpenStreetMap contributors; building heights are estimated where unknown.
         </p>
         <p>© {new Date().getFullYear()} Haven</p>
       </div>

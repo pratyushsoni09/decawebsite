@@ -4,6 +4,7 @@ import { RESIDENCE_ELEVATION, roomById, type FloorId } from "../data/houseLayout
 import { buildObstacles, leafDir, roomAt, type Obstacle } from "../data/layoutGeometry";
 import { createMaterials, type MaterialLib } from "./materials";
 import { buildHouse, easeInOut, poseLeaf, type DoorLeafRuntime, type HouseBuild, type SwingRuntime } from "./buildHouse";
+import { GOOGLE_KEY, GoogleTilesLayer } from "./googleTiles";
 
 export type Quality = "high" | "light";
 
@@ -114,6 +115,8 @@ export class TourEngine {
   private swingTarget: SwingRuntime | null = null;
   /** the swing the player sits on, if any */
   seat: SwingRuntime | null = null;
+  /** optional live Google 3D Tiles of the surroundings */
+  googleTiles: GoogleTilesLayer | null = null;
   private ro: ResizeObserver;
   private pmrem: THREE.PMREMGenerator;
   /** set false by the studio, which drives the camera itself */
@@ -131,7 +134,7 @@ export class TourEngine {
     this.renderer.domElement.setAttribute("aria-label", "First-person 3D view of Residence 11A");
     this.renderer.domElement.setAttribute("role", "img");
     container.appendChild(this.renderer.domElement);
-    this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 900);
+    this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 1800);
     this.camera.rotation.order = "YXZ";
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     this.ro = new ResizeObserver(() => this.resize());
@@ -175,7 +178,7 @@ export class TourEngine {
   private setupLights() {
     this.scene.environment = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.45;
-    this.scene.fog = new THREE.Fog(0xe6e0d4, 160, 620);
+    this.scene.fog = new THREE.Fog(0xe6e0d4, 240, 1150);
 
     this.hemi = new THREE.HemisphereLight(0xfff2de, 0x8a7058, 0.9);
     this.scene.add(this.hemi);
@@ -279,6 +282,7 @@ export class TourEngine {
 
   dispose() {
     this.running = false;
+    this.googleTiles?.dispose();
     cancelAnimationFrame(this.raf);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
@@ -524,6 +528,7 @@ export class TourEngine {
       this.y = this.seat.it.y;
     }
     this.placeCamera();
+    if (this.googleTiles && this.googleTiles.tiles.group.visible) this.googleTiles.update();
     this.doorTarget = this.interactive && !this.seat ? this.findDoorAhead() : null;
     this.swingTarget = this.interactive && !this.seat ? this.findSwingAhead() : null;
     this.updateState();
@@ -627,6 +632,17 @@ export class TourEngine {
       l.s = next;
       poseLeaf(l);
     }
+  }
+
+  /** Show Google's photorealistic 3D tiles of Kudasan instead of the open-data city (needs a key). */
+  setGoogleTiles(on: boolean) {
+    if (on && !GOOGLE_KEY) return false;
+    if (on && !this.googleTiles) {
+      this.googleTiles = new GoogleTilesLayer(this.scene, this.camera, this.renderer, new THREE.Vector3(12, 0, 8));
+    }
+    this.googleTiles?.setVisible(on);
+    this.house.city.visible = !on;
+    return true;
   }
 
   /** Instantly open (or close) every leaf — used by the studio. */
