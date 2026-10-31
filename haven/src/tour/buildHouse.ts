@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {
   BALCONY, CEILING_HEIGHT, DOOR_HEAD, FLOOR_TO_FLOOR, FOOTPRINT, PARTY_X, RESIDENCE_ELEVATION, TOWER, furniture, rooms,
-  type FloorFinish, type FurnitureDef,
+  SWING_TYPES, type FloorFinish, type FurnitureDef,
 } from "../data/houseLayout";
 import {
   BALUSTRADE_T, isFacadeBox, leafDir, leaves, resolvedDoors, resolvedOpenings, resolvedWindows, wallBoxes,
@@ -10,6 +10,7 @@ import {
 import { StaticBuilder, boxAt, metricBox, planeAt, placeMatrix } from "./geom";
 import { buildFurniture, type LightSpot } from "./buildFurniture";
 import { buildCity } from "./buildCity";
+import tourModel from "../data/tourModel.json";
 import type { MatKey, MaterialLib } from "./materials";
 
 const FINISH: Record<FloorFinish, MatKey> = { oak: "oak", darkPlank: "darkPlank", polished: "polished", carpet: "carpet", herringbone: "herringbone", stone: "stone", marble: "marble", tile: "tile", teak: "teak" };
@@ -47,6 +48,8 @@ export interface HouseBuild {
   sky: THREE.Mesh;
   /** the open-data surroundings (central Kudasan), hidden while Google 3D Tiles are shown */
   city: THREE.Group;
+  /** the Blender-modelled interior, once streamed in */
+  detailed?: THREE.Group;
   authoredMeshes: number;
   ceilingRooms: Set<string>;
 }
@@ -348,7 +351,7 @@ export function setSky(sky: THREE.Mesh, preset: SkyPreset) {
 
 /* ------------------------------------------------------------------ assemble */
 
-export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture?: boolean } = {}): Promise<HouseBuild> {
+export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture?: boolean; lowPolyOnly?: boolean } = {}): Promise<HouseBuild> {
   const root = new THREE.Group();
   root.name = "tower";
   const sb = new StaticBuilder();
@@ -357,7 +360,20 @@ export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture
   buildResidenceShell(sb, ceilingRooms);
   await step("Residence 11A");
   // the Blender export takes the shell without furniture and the furniture item by item
-  const { lights, swings: hanging } = opts.furniture === false ? { lights: [], swings: [] } : buildFurniture(sb, furniture);
+  // the detailed interior (public/models/interior.glb, from Blender) replaces most low-poly pieces; the tour keeps
+  // building the ones it animates or that were never remodelled, listed by blender/export_tour.py
+  const keep = new Set<string>(tourModel.keepLowPoly);
+  const detailed = opts.furniture !== false && !opts.lowPolyOnly && tourModel.keepLowPoly.length > 0;
+  const built = detailed ? furniture.filter((it) => keep.has(it.id) || SWING_TYPES.includes(it.type)) : furniture;
+  const { lights, swings: hanging } = opts.furniture === false ? { lights: [], swings: [] } : buildFurniture(sb, built);
+  if (detailed) {
+    // the lamps of the pendants now modelled in the glb still light the rooms
+    for (const it of furniture) {
+      if ((it.type === "pendant" || it.type === "chandelier") && !keep.has(it.id)) {
+        lights.push({ x: it.x, y: RESIDENCE_ELEVATION + 2.3, z: it.y, room: it.room, strength: it.type === "chandelier" ? 1.4 : 1 });
+      }
+    }
+  }
   await step("Furniture and fittings");
   for (let level = 1; level <= TOWER.storeys; level++) {
     slab(sb, levelZ(level));

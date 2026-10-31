@@ -260,9 +260,11 @@ export default function Studio() {
     eng.house.swings.forEach((s) => (s.pivot.rotation.x = 0));
     const root = eng.house.root;
     root.remove(eng.house.sky);
+    if (eng.house.detailed) root.remove(eng.house.detailed);
     root.updateMatrixWorld(true);
     const glb = (await new GLTFExporter().parseAsync(root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
     root.add(eng.house.sky);
+    if (eng.house.detailed) root.add(eng.house.detailed);
     const put = (name: string, body: BodyInit) => fetch(`/api/__save-file?name=${name}`, { method: "POST", body }).then((r) => r.json());
     const a = await put("tower.glb", glb);
     // shell without furniture + furniture item by item, so Blender can swap pieces for detailed CC0 models

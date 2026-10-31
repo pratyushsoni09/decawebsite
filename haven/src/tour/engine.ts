@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import tourModel from "../data/tourModel.json";
 import { RESIDENCE_ELEVATION, roomById, type FloorId } from "../data/houseLayout";
 import { buildObstacles, leafDir, roomAt, type Obstacle } from "../data/layoutGeometry";
 import { createMaterials, type MaterialLib } from "./materials";
@@ -149,7 +152,7 @@ export class TourEngine {
     const manager = new THREE.LoadingManager();
     const stages = [
       "Procedural textures", "Residence 11A", "Furniture and fittings", "Fifteen storeys", "Gardens and city",
-      "Doors", "Lighting", "Compiling shaders",
+      "Doors", "Detailed interior", "Lighting", "Compiling shaders",
     ];
     manager.onProgress = (url, loaded, total) => onProgress?.(loaded / total, url);
     stages.forEach((s) => manager.itemStart(s));
@@ -163,6 +166,8 @@ export class TourEngine {
     await done("Procedural textures");
     this.house = await buildHouse(this.lib, done);
     this.scene.add(this.house.root);
+    await this.loadDetailedInterior();
+    await done("Detailed interior");
     this.setupLights();
     await done("Lighting");
     this.applyQuality();
@@ -173,6 +178,35 @@ export class TourEngine {
       /* compileAsync is an optimisation only */
     }
     await done("Compiling shaders");
+  }
+
+  /** The furniture, decor and finishes modelled in Blender, streamed in as one Draco-compressed glb. */
+  private async loadDetailedInterior() {
+    if (!tourModel.keepLowPoly.length) return;
+    const draco = new DRACOLoader().setDecoderPath("/draco/");
+    const loader = new GLTFLoader().setDRACOLoader(draco);
+    try {
+      const gltf = await loader.loadAsync(tourModel.model);
+      const group = gltf.scene;
+      group.name = "detailed-interior";
+      group.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        m.castShadow = true;
+        m.receiveShadow = true;
+        const mats = Array.isArray(m.material) ? m.material : [m.material];
+        for (const mat of mats as THREE.MeshStandardMaterial[]) {
+          if (mat.transparent && mat.opacity < 0.99) mat.depthWrite = false;
+          mat.envMapIntensity = 0.6;
+        }
+      });
+      this.house.root.add(group);
+      this.house.detailed = group;
+    } catch (err) {
+      console.warn("detailed interior not loaded; using the built-in furniture", err);
+    } finally {
+      draco.dispose();
+    }
   }
 
   private setupLights() {
