@@ -36,11 +36,11 @@ export function Cinematic({ video, poster, download }: CinematicProps) {
           <div>
             <p className={styles.dlTitle}>Walk it yourself on Windows</p>
             <p className={styles.dlNote}>
-              The same residence as a first-person walkthrough app: WASD to walk, mouse to look. Windows 10/11, a recent
-              graphics card, {download.size} download.
+              The same residence as a first-person walkthrough app: WASD to walk, mouse to look. Unzip and run HavenOak.exe. Windows 10/11, a
+              graphics card with DirectX 12, {download.size} download.
             </p>
           </div>
-          <a className={styles.dlBtn} href={download.url}>
+          <a className={styles.dlBtn} href={download.url} download>
             <Download size={16} strokeWidth={1.8} aria-hidden="true" /> Download
           </a>
         </div>

@@ -32,7 +32,11 @@ export default function Home() {
         <RoomsWalk />
         <FloorPlans />
         <Gallery />
-        <Cinematic video="/video/haven-cinematic.mp4" poster="/video/haven-cinematic.jpg" download={null} />
+        <Cinematic
+          video="/video/haven-cinematic.mp4"
+          poster="/video/haven-cinematic.jpg"
+          download={{ url: "https://github.com/pratyushsoni09/decawebsite/releases/download/walkthrough-v1/HavenOak-Windows.zip", size: "510 MB" }}
+        />
         <TourCta />
         <Enquiry />
       </main>
