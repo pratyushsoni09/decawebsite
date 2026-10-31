@@ -1,7 +1,7 @@
 """
 Unreal Editor Python: build the Haven level from the Blender export.
 
-  UnrealEditor-Cmd.exe HavenOak.uproject -run=pythonscript -script=build_level.py -unattended -nullrhi
+  UnrealEditor.exe HavenOak.uproject -ExecCmds="py build_level.py" -unattended -nosplash -log
 
 Imports unreal/export/scene.fbx as one static mesh per object (every transform already applied, so each
 mesh is placed at the origin), recreates every Blender material as an instance of three small master
@@ -221,13 +221,31 @@ def spawn(cls, loc, rot=unreal.Rotator(0, 0, 0)):
 
 
 def build_level(mesh_paths):
-    LES.new_level(LEVEL)
+    if EAL.does_asset_exist(LEVEL):
+        # a level from an earlier run: maps can't simply be deleted, so load it and empty it
+        LES.load_level(LEVEL)
+        EAS.destroy_actors(EAS.get_all_level_actors())
+    elif not LES.new_level(LEVEL):
+        raise RuntimeError(f"could not create {LEVEL}")
+    placed = 0
     for p in mesh_paths:
         sm = unreal.load_asset(p)
-        if isinstance(sm, unreal.StaticMesh):
-            a = EAS.spawn_actor_from_object(sm, unreal.Vector(0, 0, 0))
-            a.set_actor_label(sm.get_name())
-            a.set_mobility(unreal.ComponentMobility.STATIC)
+        if not isinstance(sm, unreal.StaticMesh):
+            continue
+        # a plain StaticMeshActor with the mesh set on its component (the actor factory path is unreliable headless)
+        a = EAS.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector(0, 0, 0))
+        if a is None:
+            log(f"could not place {sm.get_name()}")
+            continue
+        a.set_actor_label(sm.get_name())
+        comp = a.static_mesh_component
+        comp.set_mobility(unreal.ComponentMobility.STATIC)
+        if not comp.set_static_mesh(sm):
+            log(f"no geometry in {sm.get_name()}; removed")
+            EAS.destroy_actor(a)
+            continue
+        placed += 1
+    log(f"{placed} meshes placed")
 
     # the day sun of the studio: towards the sun is three.js (-0.5, 0.55, 0.67) -> light travels the other way
     travel = unreal.Vector(0.5, -0.67, -0.55)
@@ -290,4 +308,11 @@ def main():
     log("done")
 
 
-main()
+# run from a full editor session (-ExecCmds="py build_level.py"): the editor quits itself when finished
+try:
+    main()
+except Exception:  # noqa: BLE001
+    import traceback
+    unreal.log_error("[haven] " + traceback.format_exc())
+finally:
+    unreal.SystemLibrary.quit_editor()

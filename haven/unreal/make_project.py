@@ -63,15 +63,13 @@ ProjectName=Haven — The Oak Residences
 ProjectDisplayedTitle=NSLOCTEXT("", "HavenTitle", "Haven — The Oak Residences, Kudasan")
 CompanyName=DecaCorpus
 """)
+    # plugins differ between engine versions; enable only those this engine ships
+    have = {os.path.splitext(os.path.basename(p))[0] for p in glob.glob(os.path.join(engine, "Engine", "Plugins", "**", "*.uplugin"), recursive=True)}
+    wanted = ["PythonScriptPlugin", "EditorScriptingUtilities", "SequencerScripting", "MovieRenderPipelineCore", "MovieRenderPipeline", "MovieRenderPipelineRenderPasses"]
     uproject = {
         "FileVersion": 3, "EngineAssociation": version, "Category": "", "Description": "Residence 11A walkthrough",
         "Modules": [],
-        "Plugins": [
-            {"Name": "PythonScriptPlugin", "Enabled": True},
-            {"Name": "EditorScriptingUtilities", "Enabled": True},
-            {"Name": "SequencerScripting", "Enabled": True},
-            {"Name": "MovieRenderPipelineCore", "Enabled": True},
-        ],
+        "Plugins": [{"Name": n, "Enabled": True} for n in wanted if n in have],
     }
     with open(os.path.join(PROJECT, f"{NAME}.uproject"), "w", encoding="utf8") as f:
         json.dump(uproject, f, indent=1)

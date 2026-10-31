@@ -1,7 +1,7 @@
 """
 Unreal Editor Python: author the cinematic (a Level Sequence of seven shots) and queue it for Movie Render Queue.
 
-  UnrealEditor-Cmd.exe HavenOak.uproject -run=pythonscript -script=render_cinematic.py -unattended -nullrhi
+  UnrealEditor.exe HavenOak.uproject -ExecCmds="py render_cinematic.py" -unattended -nosplash -log
 
 Writes the sequence /Game/Haven/Cinematic/LS_Haven and a Movie Render Queue manifest; render it with
 
@@ -10,6 +10,7 @@ Writes the sequence /Game/Haven/Cinematic/LS_Haven and a Movie Render Queue mani
 then turn the PNG frames into MP4 with encode.py. Shots are in the plan's metres (x east, y south) at the
 residence elevation, so they match the studio's cameras; Unreal gets centimetres.
 """
+import json
 import math
 import os
 
@@ -32,6 +33,22 @@ SHOTS = [
     ("balcony", 9, (8.0, 14.6, E + 1.6), (8.0, 19.5, E + 1.0), (8.0, 18.2, E + 1.6), (3.0, 60.0, E - 8.0), 66),
     ("swing", 6, (7.4, 16.6, E + 1.6), (11.5, 18.9, E + 0.9), (8.6, 17.2, E + 1.5), (11.5, 18.9, E + 0.9), 64),
 ]
+
+
+# HAVEN_STILLS=1: one frame per studio camera view instead of the cinematic (quick design checks)
+STILLS = os.environ.get("HAVEN_STILLS") == "1"
+
+
+def studio_shots():
+    """The website's camera views as half-second holds: three.js metres (x east, y up, z south)."""
+    with open(os.path.join(HERE, "export", "cameras.json"), encoding="utf8") as f:
+        views = json.load(f)
+    shots = []
+    for v in views:
+        p = (v["pos"][0], v["pos"][2], v["pos"][1])
+        l = (v["look"][0], v["look"][2], v["look"][1])
+        shots.append((v["name"], 0.5, p, l, p, l, v.get("fov", 64)))
+    return shots
 
 
 def cm(p):
@@ -62,11 +79,12 @@ def main():
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         unreal.EditorAssetLibrary.delete_asset(path)
     seq = tools.create_asset("LS_Haven", CINE_DIR, unreal.LevelSequence, unreal.LevelSequenceFactoryNew())
+    shots = studio_shots() if STILLS else SHOTS
     seq.set_display_rate(unreal.FrameRate(FPS, 1))
     cuts = seq.add_track(unreal.MovieSceneCameraCutTrack)
     frame = 0
-    for name, secs, p0, l0, p1, l1, fov in SHOTS:
-        n = int(secs * FPS)
+    for name, secs, p0, l0, p1, l1, fov in shots:
+        n = max(1, int(secs * FPS))
         cam = eas.spawn_actor_from_class(unreal.CineCameraActor, cm(p0), look_rot(p0, l0))
         cam.set_actor_label(f"Cam_{name}")
         cc = cam.get_cine_camera_component()
@@ -100,8 +118,8 @@ def main():
     job.map = unreal.SoftObjectPath(LEVEL)
     cfg = job.get_configuration()
     out = cfg.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
-    out.output_resolution = unreal.IntPoint(1920, 1080)
-    out.output_directory = unreal.DirectoryPath(os.path.join(HERE, "frames"))
+    out.output_resolution = unreal.IntPoint(1280, 720) if STILLS else unreal.IntPoint(1920, 1080)
+    out.output_directory = unreal.DirectoryPath(os.path.join(HERE, "stills" if STILLS else "frames"))
     out.file_name_format = "haven.{frame_number}"
     out.output_frame_rate = unreal.FrameRate(FPS, 1)
     out.override_existing_output = True
@@ -109,7 +127,7 @@ def main():
     cfg.find_or_add_setting_by_class(unreal.MoviePipelineDeferredPassBase)
     aa = cfg.find_or_add_setting_by_class(unreal.MoviePipelineAntiAliasingSetting)
     aa.spatial_sample_count = 1
-    aa.temporal_sample_count = 6
+    aa.temporal_sample_count = 2 if STILLS else 6
     aa.override_anti_aliasing = True
     aa.anti_aliasing_method = unreal.AntiAliasingMethod.AAM_TSR
     manifest = unreal.MoviePipelineEditorLibrary.save_queue_to_manifest_file(queue)
@@ -118,4 +136,11 @@ def main():
         f.write(str(manifest))
 
 
-main()
+# run from a full editor session (-ExecCmds="py render_cinematic.py"): the editor quits itself when finished
+try:
+    main()
+except Exception:  # noqa: BLE001
+    import traceback
+    unreal.log_error("[haven] " + traceback.format_exc())
+finally:
+    unreal.SystemLibrary.quit_editor()

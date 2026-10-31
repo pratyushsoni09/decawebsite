@@ -1,11 +1,12 @@
-# Haven in Unreal Engine 5.5
+# Haven in Unreal Engine 5
 
 Everything here turns the finished Blender scene (Residence 11A, the tower and central Kudasan) into
 an Unreal Engine project: a first-person walkthrough you can package as a Windows app, and a cinematic
 rendered with Movie Render Queue for the website.
 
-Needs: Unreal Engine 5.5 installed through the Epic Games Launcher (default folder
-`C:\Program Files\Epic Games\UE_5.5`; set `UE_ROOT` if elsewhere) and Python 3 for the helper scripts.
+Needs: Unreal Engine 5.5 or newer installed through the Epic Games Launcher (default folder
+`C:\Program Files\Epic Games\UE_5.x`; set `UE_ROOT` if elsewhere) and Python 3 for the helper scripts.
+The commands below show 5.8; use your engine's folder.
 
 ## Files
 
@@ -22,15 +23,15 @@ Needs: Unreal Engine 5.5 installed through the Epic Games Launcher (default fold
 
 ```bat
 python unreal\make_project.py
-"C:\Program Files\Epic Games\UE_5.5\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -run=pythonscript -script="%CD%\unreal\build_level.py" -unattended -nullrhi
-"C:\Program Files\Epic Games\UE_5.5\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -run=pythonscript -script="%CD%\unreal\render_cinematic.py" -unattended -nullrhi
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -run=pythonscript -script="%CD%\unreal\build_level.py" -unattended -nullrhi
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -run=pythonscript -script="%CD%\unreal\render_cinematic.py" -unattended -nullrhi
 ```
 
 `render_cinematic.py` prints (and writes to `unreal\manifest.txt`) the Movie Render Queue manifest. Render
 the frames with the real GPU, then encode:
 
 ```bat
-"C:\Program Files\Epic Games\UE_5.5\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -game -MoviePipelineConfig="<manifest path>" -windowed -ResX=1280 -ResY=720 -unattended -NoLoadingScreen
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -game -MoviePipelineConfig="<manifest path>" -windowed -ResX=1280 -ResY=720 -unattended -NoLoadingScreen
 python unreal\encode.py
 ```
 
