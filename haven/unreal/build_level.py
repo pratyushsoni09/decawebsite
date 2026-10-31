@@ -247,6 +247,7 @@ def build_level(mesh_paths):
         if not comp.set_static_mesh(sm):
             log(f"no geometry in {sm.get_name()}; removed")
             EAS.destroy_actor(a)
+            EAL.delete_loaded_asset(sm)  # an empty mesh also breaks the cook when packaging
             continue
         placed += 1
     log(f"{placed} meshes placed")

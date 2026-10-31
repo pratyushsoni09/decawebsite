@@ -72,7 +72,6 @@ CompanyName=DecaCorpus
     wanted = ["PythonScriptPlugin", "EditorScriptingUtilities", "SequencerScripting", "MovieRenderPipelineCore", "MovieRenderPipeline", "MovieRenderPipelineRenderPasses"]
     uproject = {
         "FileVersion": 3, "EngineAssociation": version, "Category": "", "Description": "Residence 11A walkthrough",
-        "Modules": [],
         "Plugins": [{"Name": n, "Enabled": True} for n in wanted if n in have],
     }
     with open(os.path.join(PROJECT, f"{NAME}.uproject"), "w", encoding="utf8") as f:
