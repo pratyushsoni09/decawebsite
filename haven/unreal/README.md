@@ -23,15 +23,19 @@ The commands below show 5.8; use your engine's folder.
 
 ```bat
 python unreal\make_project.py
-"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -run=pythonscript -script="%CD%\unreal\build_level.py" -unattended -nullrhi
-"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -run=pythonscript -script="%CD%\unreal\render_cinematic.py" -unattended -nullrhi
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" unreal\HavenOak\HavenOak.uproject -ExecCmds="py %CD%\unreal\build_level.py" -unattended -nosplash -NoLoadingScreen -log
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" unreal\HavenOak\HavenOak.uproject -ExecCmds="py %CD%\unreal\render_cinematic.py" -unattended -nosplash -NoLoadingScreen -log
 ```
 
-`render_cinematic.py` prints (and writes to `unreal\manifest.txt`) the Movie Render Queue manifest. Render
-the frames with the real GPU, then encode:
+Both open a full editor window and close it themselves when done (the headless `-run=pythonscript`
+commandlet cannot place actors). Set `HAVEN_STILLS=1` before the second command to get one short hold
+per website camera view instead of the cinematic, for design checks.
+
+`render_cinematic.py` saves the Movie Render Queue manifest under the project's `Saved` folder. Render the
+frames with the real GPU, then encode:
 
 ```bat
-"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -game -MoviePipelineConfig="<manifest path>" -windowed -ResX=1280 -ResY=720 -unattended -NoLoadingScreen
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" unreal\HavenOak\HavenOak.uproject -game -MoviePipelineConfig="MovieRenderPipeline/QueueManifest.utxt" -windowed -ResX=1280 -ResY=720 -unattended -NoLoadingScreen
 python unreal\encode.py
 ```
 

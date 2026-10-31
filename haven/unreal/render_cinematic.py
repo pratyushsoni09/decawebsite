@@ -63,6 +63,19 @@ def focal(vfov):
     return SENSOR_H / (2 * math.tan(math.radians(vfov) / 2))
 
 
+def binding_id(seq, binding):
+    """The camera's binding id, whichever of the API's spellings this engine version has."""
+    ext = unreal.MovieSceneSequenceExtensions
+    for name in ("get_binding_id", "make_binding_id"):
+        fn = getattr(ext, name, None)
+        if fn:
+            try:
+                return fn(seq, binding)
+            except Exception:  # noqa: BLE001
+                continue
+    return binding.get_binding_id()
+
+
 def key_transform(section, frame, loc, rot):
     channels = section.get_all_channels()  # loc x y z, rot x y z, scale x y z
     vals = [loc.x, loc.y, loc.z, rot.roll, rot.pitch, rot.yaw, 1.0, 1.0, 1.0]
@@ -101,7 +114,7 @@ def main():
         key_transform(section, frame + n, cm(p1), look_rot(p1, l1))
         cut = cuts.add_section()
         cut.set_range(frame, frame + n)
-        cut.set_camera_binding_id(binding.get_binding_id())
+        cut.set_camera_binding_id(binding_id(seq, binding))
         frame += n
     seq.set_playback_start(0)
     seq.set_playback_end(frame)
@@ -130,10 +143,13 @@ def main():
     aa.temporal_sample_count = 2 if STILLS else 6
     aa.override_anti_aliasing = True
     aa.anti_aliasing_method = unreal.AntiAliasingMethod.AAM_TSR
-    manifest = unreal.MoviePipelineEditorLibrary.save_queue_to_manifest_file(queue)
+    result = unreal.MoviePipelineEditorLibrary.save_queue_to_manifest_file(queue)
+    manifest = result[1] if isinstance(result, tuple) else result  # 5.8 returns (queue, path)
+    # -MoviePipelineConfig takes this path relative to the project's Saved folder
+    manifest = "MovieRenderPipeline/QueueManifest.utxt" if "QueueManifest" in str(manifest) else str(manifest)
     unreal.log(f"[haven] sequence {path}, {frame} frames; manifest: {manifest}")
     with open(os.path.join(HERE, "manifest.txt"), "w", encoding="utf8") as f:
-        f.write(str(manifest))
+        f.write(manifest)
 
 
 # run from a full editor session (-ExecCmds="py render_cinematic.py"): the editor quits itself when finished

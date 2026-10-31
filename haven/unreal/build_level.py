@@ -132,6 +132,8 @@ def master(name, textured=False, glass=False):
         MEL.connect_material_expressions(tiling, "", mul_uv, "B")
         tex = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureSampleParameter2D, -900, -100)
         tex.set_editor_property("parameter_name", "BaseTex")
+        # an unset sampler shows the engine's checkerboard: default to plain white / a flat normal instead
+        tex.set_editor_property("texture", unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture"))
         MEL.connect_material_expressions(mul_uv, "", tex, "UVs")
         mul = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -500, -50)
         MEL.connect_material_expressions(tex, "RGB", mul, "A")
@@ -140,6 +142,7 @@ def master(name, textured=False, glass=False):
         nor = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureSampleParameter2D, -900, 300)
         nor.set_editor_property("parameter_name", "NormalTex")
         nor.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
+        nor.set_editor_property("texture", unreal.load_asset("/Engine/EngineMaterials/DefaultNormal"))
         MEL.connect_material_expressions(mul_uv, "", nor, "UVs")
         MEL.connect_material_property(nor, "RGB", unreal.MaterialProperty.MP_NORMAL)
     else:
@@ -166,21 +169,22 @@ def build_materials(textures):
             EAL.delete_asset(path)
         glass = spec["transmission"] > 0.5 or spec["alpha"] < 0.9
         base_tex = textures.get(spec["textures"].get("baseColor", ""))
-        kind = "glass" if glass else ("tex" if base_tex else "color")
+        nor_tex = textures.get(spec["textures"].get("normal", ""))
+        kind = "glass" if glass else ("tex" if (base_tex or nor_tex) else "color")
         mi = AT.create_asset(name, MAT_DIR, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
         MEL.set_material_instance_parent(mi, masters[kind])
         c = spec["baseColor"]
-        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(c[0], c[1], c[2], 1) if kind != "tex" else unreal.LinearColor(1, 1, 1, 1))
+        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(1, 1, 1, 1) if (kind == "tex" and base_tex) else unreal.LinearColor(c[0], c[1], c[2], 1))
         MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", spec["roughness"])
         MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", spec["metallic"])
         e = spec["emission"]
         s = spec["emissionStrength"]
         MEL.set_material_instance_vector_parameter_value(mi, "Emissive", unreal.LinearColor(e[0] * s, e[1] * s, e[2] * s, 1))
         if kind == "tex":
-            MEL.set_material_instance_texture_parameter_value(mi, "BaseTex", base_tex)
-            nor = textures.get(spec["textures"].get("normal", ""))
-            if nor:
-                MEL.set_material_instance_texture_parameter_value(mi, "NormalTex", nor)
+            if base_tex:
+                MEL.set_material_instance_texture_parameter_value(mi, "BaseTex", base_tex)
+            if nor_tex:
+                MEL.set_material_instance_texture_parameter_value(mi, "NormalTex", nor_tex)
             # Blender maps these in metres through a Mapping node; Unreal's UVs are the mesh's own
             scale = spec.get("uvScale", [1, 1])[0]
             MEL.set_material_instance_scalar_parameter_value(mi, "Tiling", float(scale) if scale else 1.0)
@@ -252,8 +256,9 @@ def build_level(mesh_paths):
     sun = spawn(unreal.DirectionalLight, (0, 0, 20000), unreal.MathLibrary.make_rot_from_x(travel))
     sun.set_actor_label("Sun")
     lc = sun.get_component_by_class(unreal.DirectionalLightComponent)
-    lc.set_editor_property("intensity", 9.0)
-    lc.set_editor_property("light_color", unreal.Color(255, 230, 196, 255))
+    lc.set_editor_property("intensity", 75000.0)  # lux: physically based exposure wants a real sun
+    lc.set_editor_property("light_color", unreal.Color(255, 232, 200, 255))
+    lc.set_editor_property("light_source_angle", 0.8)
     lc.set_editor_property("atmosphere_sun_light", True)
     lc.set_editor_property("cast_shadows", True)
     spawn(unreal.SkyAtmosphere, (0, 0, 0)).set_actor_label("SkyAtmosphere")
@@ -261,6 +266,7 @@ def build_level(mesh_paths):
     sky.set_actor_label("SkyLight")
     skc = sky.get_component_by_class(unreal.SkyLightComponent)
     skc.set_editor_property("real_time_capture", True)
+    skc.set_editor_property("intensity", 0.8)
     fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0))
     fog.set_actor_label("Haze")
     fc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
@@ -274,10 +280,12 @@ def build_level(mesh_paths):
     for l in lights:
         pl = spawn(unreal.PointLight, (l["x"] * 100, l["z"] * 100, l["y"] * 100))
         pc = pl.get_component_by_class(unreal.PointLightComponent)
-        pc.set_editor_property("intensity", 12.0 * l.get("strength", 1.0))
+        pc.set_editor_property("intensity_units", unreal.LightUnits.CANDELAS)
+        pc.set_editor_property("intensity", 180.0 * l.get("strength", 1.0))
         pc.set_editor_property("light_color", unreal.Color(255, 201, 143, 255))
-        pc.set_editor_property("attenuation_radius", 700.0)
-        pc.set_editor_property("cast_shadows", False)
+        pc.set_editor_property("attenuation_radius", 900.0)
+        pc.set_editor_property("source_radius", 12.0)
+        pc.set_editor_property("cast_shadows", True)
         pl.set_actor_label(f"Lamp_{l.get('room', 'x')}")
 
     # exposure: the eye adapts between the sunlit balcony and the rooms
@@ -285,10 +293,24 @@ def build_level(mesh_paths):
     pp.set_actor_label("PostProcess")
     pp.set_editor_property("unbound", True)
     settings = pp.get_editor_property("settings")
+    settings.set_editor_property("override_auto_exposure_method", True)
+    settings.set_editor_property("auto_exposure_method", unreal.AutoExposureMethod.AEM_HISTOGRAM)
     settings.set_editor_property("override_auto_exposure_min_brightness", True)
-    settings.set_editor_property("auto_exposure_min_brightness", 0.6)
+    settings.set_editor_property("auto_exposure_min_brightness", 3.0)
     settings.set_editor_property("override_auto_exposure_max_brightness", True)
-    settings.set_editor_property("auto_exposure_max_brightness", 9.0)
+    settings.set_editor_property("auto_exposure_max_brightness", 16.0)
+    settings.set_editor_property("override_auto_exposure_bias", True)
+    settings.set_editor_property("auto_exposure_bias", 0.0)
+    settings.set_editor_property("override_white_temp", True)
+    settings.set_editor_property("white_temp", 6900.0)
+    settings.set_editor_property("override_dynamic_global_illumination_method", True)
+    settings.set_editor_property("dynamic_global_illumination_method", unreal.DynamicGlobalIlluminationMethod.LUMEN)
+    settings.set_editor_property("override_reflection_method", True)
+    settings.set_editor_property("reflection_method", unreal.ReflectionMethod.LUMEN)
+    settings.set_editor_property("override_lumen_scene_lighting_quality", True)
+    settings.set_editor_property("lumen_scene_lighting_quality", 2.0)
+    settings.set_editor_property("override_lumen_final_gather_quality", True)
+    settings.set_editor_property("lumen_final_gather_quality", 2.0)
     pp.set_editor_property("settings", settings)
 
     # start in the lift lobby on level 11, facing the front door

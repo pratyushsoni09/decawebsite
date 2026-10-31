@@ -52,6 +52,10 @@ r.GenerateMeshDistanceFields=True
 r.AllowStaticLighting=False
 r.DefaultFeature.AutoExposure.ExtendDefaultLuminanceRange=True
 r.Nanite.ProjectEnabled=False
+r.RayTracing=True
+r.SkinCache.CompileShaders=True
+r.Lumen.HardwareRayTracing=True
+r.Lumen.TranslucencyReflections.FrontLayer.EnableForProject=True
 
 [/Script/WindowsTargetPlatform.WindowsTargetSettings]
 DefaultGraphicsRHI=DefaultGraphicsRHI_DX12
