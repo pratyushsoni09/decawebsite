@@ -76,6 +76,14 @@ def describe(mat):
         return d
     val = lambda n, default: list(b.inputs[n].default_value)[:3] if n in b.inputs and hasattr(b.inputs[n].default_value, "__len__") else (b.inputs[n].default_value if n in b.inputs else default)
     d["baseColor"] = val("Base Color", d["baseColor"])
+    sock = b.inputs["Base Color"]
+    if sock.is_linked and sock.links[0].from_node.type != "TEX_IMAGE":
+        src = sock.links[0].from_node
+        if src.type == "VALTORGB":
+            els = src.color_ramp.elements
+            d["baseColor"] = [sum(e.color[i] for e in els) / len(els) for i in range(3)]
+        else:
+            d["baseColor"] = list(mat.diffuse_color)[:3]
     d["roughness"] = float(val("Roughness", 0.5))
     d["metallic"] = float(val("Metallic", 0.0))
     d["emission"] = val("Emission Color", [0, 0, 0])

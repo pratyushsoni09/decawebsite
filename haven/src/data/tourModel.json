@@ -1,27 +1,20 @@
 {
  "model": "/models/interior.glb",
  "keepLowPoly": [
-  "balcony-swingBench-81",
-  "balcony-swingEgg-78",
-  "bath-mirror-14",
-  "bed2-cove-15",
-  "bed2-rug-18",
-  "dining-art-41",
-  "dining-console-42",
-  "dining-mirror-43",
-  "dining-poojaUnit-39",
-  "kitchen-accentWall-7",
-  "kitchen-accentWall-8",
-  "kitchen-accentWall-9",
+  "balcony-swingBench-83",
+  "balcony-swingEgg-80",
+  "bath-mirror-13",
+  "bed2-cove-14",
+  "dining-art-40",
+  "dining-mirror-42",
   "living-art-54",
   "living-art-55",
   "living-art-56",
   "living-art-60",
-  "living-cove-44",
+  "living-cove-43",
   "lobby-lift-1",
   "master-bath-mirror-64",
   "master-cove-66",
-  "master-mirror-72",
-  "master-rug-68"
+  "master-mirror-74"
  ]
 }

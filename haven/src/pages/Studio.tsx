@@ -49,14 +49,14 @@ export const VIEWS: View[] = [
   { name: "hero", ...towerShot, sky: "day", exposure: 1.0, sun: day, hemi: 0.9, env: 0.3, lamps: 0, sketch: true },
   // from a clear spot on the street south-east of the plot (checked against the Kudasan footprints)
   { name: "tower-dusk", w: 1800, h: 1350, pos: [46.9, 1.9, 62.7], look: [12, 1.9, 8], fov: 84, shift: 0.04, sky: "dusk", exposure: 1.3, sun: { intensity: 0.6, color: 0xff9d6a, dir: [-0.7, 0.05, 0.71] }, hemi: 0.2, env: 0.1, lamps: 3, windowsLit: 1.8 },
-  // hall and bedroom three are framed like the client's photos they follow
+  // interiors: one view per room, framed on its feature wall
   room("living", [5.55, 1.25, 12.4], [11.86, 1.3, 12.4], { w: 2000, h: 1366, fov: 56, sun: { intensity: 4.0, color: 0xffcf98, dir: [-0.2, 0.3, 0.93] } }),
-  // the client's kitchen-dining photo is an evening shot: across the set table into the open kitchen
+  // the dining hall is an evening shot: across the set table into the open kitchen, the mandir lit
   room("dining", [9.0, 1.45, 8.4], [8.1, 1.0, 1.2], { w: 2000, h: 1506, fov: 60, doors: "closed", sky: "dusk", sun: { intensity: 0.6, color: 0xff9d6a, dir: [-0.7, 0.05, 0.71] }, hemi: 0.25, env: 0.15, lamps: 3, windowsLit: 1.5 }),
   room("pooja", [6.7, 1.5, 8.05], [4.9, 1.3, 8.15], { fov: 56 }),
   room("kitchen", [10.3, 1.6, 3.35], [7.4, 1.0, 0.9], { fov: 72 }),
   room("master", [4.45, 1.35, 15.5], [1.0, 0.95, 12.9], { w: 2000, h: 1414, fov: 58, sun: { intensity: 6.0, color: 0xffc489, dir: [-0.9, 0.22, 0.35] } }),
-  // facing the twin beds square on, as in the client's photo
+  // facing the twin beds square on
   room("bed2", [3.95, 1.3, 2.3], [0.3, 1.2, 2.3], { w: 2000, h: 1500, fov: 56 }),
   room("bed3", [4.1, 1.35, 5.35], [0.3, 1.1, 7.6], { w: 2000, h: 1125, fov: 56, sun: { intensity: 5.0, color: 0xffd09a, dir: [-0.85, 0.28, 0.15] } }),
   room("balcony", [9.0, 1.6, 16.45], [3.5, 1.0, 18.2], { doors: "closed", fov: 62 }),

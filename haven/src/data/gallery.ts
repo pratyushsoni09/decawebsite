@@ -1,5 +1,3 @@
-import { CONCEPT_LABEL } from "./rooms";
-
 export interface GalleryImage {
   src: string;
   caption: string;
@@ -10,25 +8,16 @@ export interface GalleryImage {
   label?: string;
 }
 
-const C = CONCEPT_LABEL;
-
 export const gallery: GalleryImage[] = [
   { src: "/images/tower-golden.webp", caption: "The tower", alt: "The fifteen-storey Oak Residences tower with oak fins and glass balconies at golden hour", shape: "wide" },
-  { src: "/images/living.webp", caption: "Hall · 3D model", alt: "Hall of the 3D model: two brown sofas facing each other in front of a wood-veneer feature wall with a large marbled painting", shape: "wide" },
-  { src: "/images/master.webp", caption: "Master bedroom · 3D model", alt: "Master bedroom of the 3D model with a pink sculpted bed under a lit canopy on a dark polished floor", shape: "tall" },
-  { src: "/images/concepts/living-library.webp", caption: "Living · library wall", alt: "Living room with a curved wooden library wall, a spiral stair and a large sectional sofa", shape: "tall", label: C },
-  { src: "/images/concepts/hall-warm.webp", caption: "Hall", alt: "Living room with two sofas facing a warm wood-panelled wall with a large abstract painting", shape: "square", label: C },
-  { src: "/images/concepts/master-bedroom.webp", caption: "Master bedroom", alt: "Bedroom with a sculpted pink bed under arched windows looking over hills", shape: "wide", label: C },
-  { src: "/images/concepts/kitchen-dining.webp", caption: "Kitchen and dining", alt: "Open kitchen and dining table under glass pendants, with the city lit up beyond the windows", shape: "wide", label: C },
-  { src: "/images/concepts/twin-bedroom.webp", caption: "Bedroom two", alt: "Children's bedroom with twin beds against a curved orange feature wall", shape: "square", label: C },
-  { src: "/images/concepts/study-bedroom.webp", caption: "Bedroom three", alt: "Bedroom with a study desk along the window and shelves on an orange wall", shape: "square", label: C },
-  { src: "/images/bed2.webp", caption: "Bedroom two · 3D model", alt: "Bedroom two of the 3D model: twin beds with arched cream headboards against an orange and cream feature wall", shape: "square" },
-  { src: "/images/bed3.webp", caption: "Bedroom three · 3D model", alt: "Bedroom three of the 3D model: grey bed below a terracotta wall with open shelf boxes, desk under a wide window", shape: "square" },
-  { src: "/images/dining.webp", caption: "Dining hall · 3D model", alt: "Dining hall of the 3D model in the evening: a set wood table with black chairs under glass pendants, the open kitchen beyond", shape: "wide" },
-  { src: "/images/concepts/living-white.webp", caption: "Living · marble and light", alt: "White living room with marble walls, a low sectional sofa and full-height windows", shape: "wide", label: C },
-  { src: "/images/concepts/lounge-evening.webp", caption: "Evening lounge", alt: "Lounge with grey sofas, table lamps and a ring chandelier in front of a curtained window", shape: "square", label: C },
-  { src: "/images/kitchen.webp", caption: "Luxury kitchen", alt: "Open kitchen with charcoal walls, grey-oak cabinets, a steel hood and a wood island with an induction hob", shape: "square" },
-  { src: "/images/pooja.webp", caption: "Open pooja unit", alt: "Teak pooja unit standing open against the dining-hall wall, with brass bells and diyas", shape: "square" },
+  { src: "/images/living.webp", caption: "Hall", alt: "Hall of the 3D model: ivory boucle sofas across a marble table, facing a fluted walnut wall with a marble centre and brass-lit shelves", shape: "wide" },
+  { src: "/images/master.webp", caption: "Master bedroom", alt: "Master bedroom of the 3D model: an ivory boucle bed against a fluted walnut wall with brass strips and sconces", shape: "tall" },
+  { src: "/images/dining.webp", caption: "Dining hall", alt: "Dining hall of the 3D model in the evening: a walnut table set for six in ivory boucle chairs under a linear brass light", shape: "wide" },
+  { src: "/images/pooja.webp", caption: "The mandir", alt: "Walnut mandir on a marble plinth with a brass jaali backdrop lit from behind, brass bells, diyas and marigolds", shape: "square" },
+  { src: "/images/kitchen.webp", caption: "Kitchen", alt: "Kitchen of the 3D model: ivory units under an ivory marble counter, walnut uppers and a fluted walnut island with brass stools", shape: "square" },
+  { src: "/images/bed2.webp", caption: "Bedroom two", alt: "Bedroom two of the 3D model: cane-headboard single beds in sage linen against an oak slat wall with brass sconces", shape: "square" },
+  { src: "/images/bed3.webp", caption: "Bedroom three", alt: "Bedroom three of the 3D model: an oak bed below walnut slats and a lit brass jaali, a long walnut desk under the window", shape: "square" },
+  { src: "/images/balcony.webp", caption: "The balcony", alt: "Teak balcony with the rattan egg chair, planters and a glass balustrade over Kudasan", shape: "wide" },
   { src: "/images/swing.webp", caption: "The porch swing", alt: "Teak porch swing on the balcony, looking out over the city", shape: "wide" },
   { src: "/images/tower-dusk.webp", caption: "At dusk", alt: "The tower at dusk with warm light in the windows", shape: "square" },
 ];

@@ -72,7 +72,7 @@ export function Gallery() {
       <header className={`${styles.head} reveal`}>
         <p className="eyebrow">Interior gallery</p>
         <h2 id="gallery-title" className={styles.title}>Inside and out.</h2>
-        <p className={styles.note}>Renders of the 3D model, with interior concept images that set the intended style of each room. None are photographs of Residence 11A.</p>
+        <p className={styles.note}>Renders of the 3D model of Residence 11A, finished in warm modern Indian luxury: walnut and brass, fluted panels, ivory marble, boucle and velvet, jaali screens. None are photographs.</p>
       </header>
       <ul className={styles.grid}>
         {gallery.map((g, i) => (

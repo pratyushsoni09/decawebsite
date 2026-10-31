@@ -138,19 +138,19 @@ const mirrorRect = (rc: Rect): Rect => r(FOOTPRINT.x2 - rc.x2, rc.y1, FOOTPRINT.
 
 /** Residence 11A — a simple 3BHK: hall, dining hall (with an open pooja unit), kitchen, three bedrooms, two bathrooms. */
 const homeA: RoomDef[] = [
-  { id: "kitchen", floor: 0, flat: "A", name: "Kitchen", rects: [r(6.8, 0.3, 10.6, 3.6)], kind: "kitchen", finish: "darkPlank", arrival: { x: 10.15, y: 1.7, yaw: 270 } },
+  { id: "kitchen", floor: 0, flat: "A", name: "Kitchen", rects: [r(6.8, 0.3, 10.6, 3.6)], kind: "kitchen", finish: "marble", arrival: { x: 10.15, y: 1.7, yaw: 270 } },
   { id: "bath", floor: 0, flat: "A", name: "Bathroom", rects: [r(4.85, 0.3, 6.55, 3.6)], kind: "bathroom", finish: "tile", arrival: { x: 6.1, y: 2.0, yaw: 180 }, hideDims: true },
   { id: "bed2", floor: 0, flat: "A", name: "Bedroom two", rects: [r(0.3, 0.3, 4.6, 4.9)], kind: "bedroom", finish: "oak", arrival: { x: 2.9, y: 4.2, yaw: 300 } },
-  { id: "bed3", floor: 0, flat: "A", name: "Bedroom three", rects: [r(0.3, 5.15, 4.6, 8.9)], kind: "bedroom", finish: "carpet", arrival: { x: 2.8, y: 6.3, yaw: 240 } },
-  { id: "dining", floor: 0, flat: "A", name: "Dining hall", rects: [r(4.85, 3.85, 10.6, 8.9), r(10.6, 5.75, 11.875, 8.9)], kind: "living", finish: "darkPlank", arrival: { x: 9.9, y: 6.4, yaw: 270 } },
-  { id: "living", floor: 0, flat: "A", name: "Hall", rects: [r(4.85, 9.15, 11.875, 15.7)], kind: "living", finish: "darkPlank", arrival: { x: 5.8, y: 10.4, yaw: 150 } },
+  { id: "bed3", floor: 0, flat: "A", name: "Bedroom three", rects: [r(0.3, 5.15, 4.6, 8.9)], kind: "bedroom", finish: "oak", arrival: { x: 2.8, y: 6.3, yaw: 240 } },
+  { id: "dining", floor: 0, flat: "A", name: "Dining hall", rects: [r(4.85, 3.85, 10.6, 8.9), r(10.6, 5.75, 11.875, 8.9)], kind: "living", finish: "marble", arrival: { x: 9.9, y: 6.4, yaw: 270 } },
+  { id: "living", floor: 0, flat: "A", name: "Hall", rects: [r(4.85, 9.15, 11.875, 15.7)], kind: "living", finish: "marble", arrival: { x: 5.8, y: 10.4, yaw: 150 } },
   { id: "master-bath", floor: 0, flat: "A", name: "Master bath", rects: [r(0.3, 9.15, 2.4, 11.15)], kind: "bathroom", finish: "tile", arrival: { x: 1.75, y: 10.25, yaw: 180 }, hideDims: true },
-  { id: "master", floor: 0, flat: "A", name: "Master bedroom", rects: [r(0.3, 11.4, 4.6, 15.7), r(2.65, 9.15, 4.6, 11.4)], kind: "bedroom", finish: "polished", arrival: { x: 3.6, y: 13.4, yaw: 300 } },
+  { id: "master", floor: 0, flat: "A", name: "Master bedroom", rects: [r(0.3, 11.4, 4.6, 15.7), r(2.65, 9.15, 4.6, 11.4)], kind: "bedroom", finish: "darkPlank", arrival: { x: 3.6, y: 13.4, yaw: 300 } },
   { id: "balcony", floor: 0, flat: "A", name: "Balcony", rects: [BALCONY], kind: "outdoor", finish: "teak", arrival: { x: 8.0, y: 17.8, yaw: 0 } },
 ];
 
 const lobby: RoomDef = {
-  id: "lobby", floor: 0, flat: "common", name: "Lift lobby", rects: [r(10.85, 0.3, 13.15, 5.5)], kind: "hall", finish: "stone",
+  id: "lobby", floor: 0, flat: "common", name: "Lift lobby", rects: [r(10.85, 0.3, 13.15, 5.5)], kind: "hall", finish: "marble",
   arrival: { x: 12.0, y: 3.0, yaw: 270 }, hideDims: true,
 };
 
@@ -275,98 +275,104 @@ function f(
 }
 
 export const furniture: FurnitureDef[] = [
-  /* Lift lobby 10.85..13.15 × 0.3..5.5 */
+  /* Warm modern Indian luxury: walnut and brass, fluted panels, ivory marble, boucle and rust velvet, jaali screens,
+     warm cove light. Lift lobby 10.85..13.15 × 0.3..5.5 */
   f("lobby", "lift", 12.0, 0.32, 0, { elev: 1.125 }),
   f("lobby", "plant", 12.75, 4.9, 0, { variant: "fig", w: 0.5, d: 0.5, h: 1.3 }),
-  f("lobby", "pendant", 12.0, 2.8, 0, { variant: "dome" }),
+  f("lobby", "pendant", 12.0, 2.8, 0, { variant: "brassDome" }),
 
-  /* Kitchen 6.8..10.6 × 0.3..3.6 — after the client's dark kitchen-dining photo: open to the dining hall, charcoal walls,
-     grey-oak run with lit glass uppers and a steel hood, wood appliance column, long wood island with an induction hob */
-  f("kitchen", "kitchenRun", 8.7, 0.63, 0, { w: 3.8, variant: "modular" }),
-  f("kitchen", "tallUnits", 7.125, 1.8, 90, { w: 1.6, h: 2.4, variant: "column" }),
-  f("kitchen", "island", 9.05, 2.4, 0, { w: 1.8, d: 0.9, variant: "wood" }),
-  f("kitchen", "accentWall", 7.775, 0.32, 0, { variant: "charcoal", w: 1.9, elev: 1.95, h: 2.1 }),
-  f("kitchen", "accentWall", 10.58, 1.95, 270, { variant: "charcoal", w: 3.2, elev: 1.5, h: 3.0 }),
-  f("kitchen", "accentWall", 6.82, 1.95, 90, { variant: "charcoal", w: 3.2, elev: 1.5, h: 3.0 }),
-  f("kitchen", "chimney", 7.95, 0.32, 0, { elev: 1.9 }),
+  /* Kitchen 6.8..10.6 × 0.3..3.6 — open to the dining hall: ivory handleless run under walnut uppers with brass pulls,
+     ivory marble top and splashback, a walnut appliance column, a fluted walnut island with a marble waterfall top */
+  f("kitchen", "kitchenRun", 8.7, 0.63, 0, { w: 3.8, variant: "luxe" }),
+  f("kitchen", "tallUnits", 7.125, 1.8, 90, { w: 1.6, h: 2.4, variant: "walnutColumn" }),
+  f("kitchen", "island", 9.05, 2.4, 0, { w: 1.8, d: 0.9, variant: "marbleLuxe", group: "island", anchor: true }),
+  f("kitchen", "stool", 8.6, 3.2, 180, { variant: "brass", group: "island" }),
+  f("kitchen", "stool", 9.5, 3.2, 180, { variant: "brass", group: "island" }),
+  f("kitchen", "chimney", 7.95, 0.32, 0, { elev: 1.9, variant: "brass" }),
 
-  /* Bathroom 4.85..6.55 × 0.3..3.6 */
-  f("bath", "shower", 6.05, 0.8, 0),
+  /* Bathroom 4.85..6.55 × 0.3..3.6 — travertine, floating walnut vanity with a marble top, brushed-brass fittings */
+  f("bath", "shower", 6.05, 0.8, 0, { variant: "brass" }),
   f("bath", "wc", 5.18, 1.0, 90),
-  f("bath", "vanity", 5.1, 2.2, 90, { w: 0.8 }),
+  f("bath", "vanity", 5.1, 2.2, 90, { w: 0.8, variant: "marbleBrass" }),
   f("bath", "mirror", 4.87, 2.2, 90, { elev: 1.5, w: 0.5 }),
 
-  /* Bedroom two 0.3..4.6 × 0.3..4.9 — after the client's twin-bed photo: two cream single beds with arched headboards against
-     an orange-and-cream feature wall (a cream heart between orange fields), sconces, a coffered ceiling, window seat, shelf niche */
+  /* Bedroom two 0.3..4.6 × 0.3..4.9 — the guest room: two cane-headboard single beds against a wall of oak slats over
+     sage panels with brass sconces, a walnut shelf niche, jute rug, sage window seat, fluted oak wardrobe */
   f("bed2", "cove", 2.45, 2.6, 0, { w: 4.1, d: 4.4 }),
-  f("bed2", "accentWall", 0.32, 2.3, 90, { variant: "orangeArc", w: 4.0, elev: 1.45, h: 2.9 }),
-  f("bed2", "accentWall", 1.25, 4.88, 180, { variant: "shelfNiche", w: 1.3, elev: 1.45, h: 2.9 }),
-  f("bed2", "rug", 2.4, 2.3, 0, { variant: "round", w: 2.6, d: 2.6 }),
-  f("bed2", "bed", 1.33, 1.25, 90, { variant: "twin", w: 1.0, d: 2.0 }),
-  f("bed2", "bed", 1.33, 3.35, 90, { variant: "twin", w: 1.0, d: 2.0 }),
-  f("bed2", "nightstand", 0.55, 2.3, 90, { variant: "cream", w: 0.5, d: 0.42, h: 0.55 }),
-  f("bed2", "bench", 2.3, 0.55, 0, { variant: "windowSeat", w: 1.8, d: 0.45, h: 0.45 }),
-  f("bed2", "wardrobe", 4.3, 1.8, 270, { w: 2.2 }),
+  f("bed2", "accentWall", 0.32, 2.3, 90, { variant: "caneSlats", w: 4.0, elev: 1.45, h: 2.9 }),
+  f("bed2", "accentWall", 1.25, 4.88, 180, { variant: "walnutNiche", w: 1.3, elev: 1.45, h: 2.9 }),
+  f("bed2", "rug", 2.4, 2.3, 0, { variant: "jute", w: 2.6, d: 2.6 }),
+  f("bed2", "bed", 1.4, 1.25, 90, { variant: "cane", w: 1.0, d: 2.0 }),
+  f("bed2", "bed", 1.4, 3.35, 90, { variant: "cane", w: 1.0, d: 2.0 }),
+  f("bed2", "nightstand", 0.62, 2.3, 90, { variant: "oakDrum", w: 0.5, d: 0.42, h: 0.55 }),
+  f("bed2", "bench", 2.3, 0.55, 0, { variant: "sageSeat", w: 1.8, d: 0.45, h: 0.45 }),
+  f("bed2", "wardrobe", 4.3, 1.8, 270, { w: 2.2, variant: "flutedOak" }),
 
-  /* Bedroom three 0.3..4.6 × 5.15..8.9 — after the client's photo: terracotta wall with a row of open shelf boxes over a
-     grey bed, a long wood desk under a wide window, orange chair, carpet tiles */
-  f("bed3", "accentWall", 2.1, 8.88, 180, { variant: "terracotta", w: 3.6, elev: 1.45, h: 2.9 }),
-  f("bed3", "desk", 0.62, 6.35, 90, { variant: "long", w: 1.8, group: "b3-desk", anchor: true }),
-  f("bed3", "deskChair", 1.3, 6.35, 270, { variant: "orange", group: "b3-desk" }),
-  f("bed3", "bed", 2.0, 7.9, 180, { variant: "grey", w: 1.6, d: 2.0 }),
-  f("bed3", "nightstand", 0.85, 8.65, 180, { variant: "cube", w: 0.45, d: 0.4, h: 0.5 }),
+  /* Bedroom three 0.3..4.6 × 5.15..8.9 — the study bedroom: a walnut-slat wall with a brass-lit jaali panel and
+     floating shelves behind an oak bed in beige linen, a long walnut desk under the window, boucle chair */
+  f("bed3", "accentWall", 2.1, 8.88, 180, { variant: "jaaliStudy", w: 3.6, elev: 1.45, h: 2.9 }),
+  f("bed3", "desk", 0.62, 6.35, 90, { variant: "walnutLong", w: 1.8, group: "b3-desk", anchor: true }),
+  f("bed3", "deskChair", 1.3, 6.35, 270, { variant: "boucle", group: "b3-desk" }),
+  f("bed3", "bed", 2.0, 7.82, 180, { variant: "linenOak", w: 1.6, d: 2.0 }),
+  f("bed3", "nightstand", 0.85, 8.6, 180, { variant: "walnutCube", w: 0.45, d: 0.4, h: 0.5 }),
   f("bed3", "plant", 2.6, 5.45, 0, { variant: "fig", w: 0.5, d: 0.5, h: 1.2 }),
-  f("bed3", "wardrobe", 4.3, 8.2, 270, { w: 1.4 }),
+  f("bed3", "wardrobe", 4.3, 8.2, 270, { w: 1.4, variant: "flutedOak" }),
 
-  /* Dining hall 4.85..10.6 × 3.85..8.9 (+ 10.6..11.875 × 5.75..8.9) — table for six, open pooja unit, crockery, shoe cabinet */
-  f("dining", "table", 7.7, 6.35, 0, { variant: "slab", w: 1.95, d: 1.0, group: "dining", anchor: true }),
+  /* Dining hall 4.85..10.6 × 3.85..8.9 (+ 10.6..11.875 × 5.75..8.9) — walnut table on a brass base set for six in ivory
+     boucle chairs under a linear brass light; a walnut mandir with a lit jaali backdrop; fluted sideboard, shoe console */
+  f("dining", "table", 7.7, 6.35, 0, { variant: "walnutBrass", w: 1.95, d: 1.0, group: "dining", anchor: true }),
   ...[7.2, 8.2].flatMap((x) => [
-    f("dining", "chair", x, 5.45, 0, { group: "dining" }),
-    f("dining", "chair", x, 7.25, 180, { group: "dining" }),
+    f("dining", "chair", x, 5.45, 0, { variant: "boucle", group: "dining" }),
+    f("dining", "chair", x, 7.25, 180, { variant: "boucle", group: "dining" }),
   ]),
-  f("dining", "chair", 6.4, 6.35, 90, { group: "dining" }),
-  f("dining", "chair", 9.0, 6.35, 270, { group: "dining" }),
-  f("dining", "pendant", 7.7, 6.35, 0, { variant: "cluster", w: 1.3, d: 0.3, h: 0.45 }),
-  f("dining", "poojaUnit", 5.15, 8.15, 90, { w: 1.2 }),
-  f("dining", "sideboard", 10.3, 8.65, 180),
+  f("dining", "chair", 6.4, 6.35, 90, { variant: "boucle", group: "dining" }),
+  f("dining", "chair", 9.0, 6.35, 270, { variant: "boucle", group: "dining" }),
+  f("dining", "pendant", 7.7, 6.35, 0, { variant: "brassLinear", w: 1.3, d: 0.3, h: 0.45 }),
+  f("dining", "poojaUnit", 5.15, 8.15, 90, { w: 1.2, variant: "jaali" }),
+  f("dining", "sideboard", 10.3, 8.65, 180, { variant: "flutedMarble" }),
   f("dining", "art", 10.3, 8.88, 180, { elev: 1.6, w: 1.0, h: 0.7 }),
-  f("dining", "console", 11.665, 7.3, 270, { variant: "shoe", w: 1.2 }),
+  f("dining", "console", 11.665, 7.3, 270, { variant: "walnutShoe", w: 1.2 }),
   f("dining", "mirror", 11.86, 7.3, 270, { elev: 1.55, w: 0.7, h: 0.8 }),
 
-  /* Hall 4.85..11.875 × 9.15..15.7 — after the client's photo: facing the east wall, a wood-veneer feature wall with a
-     large painting and lit shelving, a floating console, two brown sofas facing across a round table, windows on the right */
+  /* Hall 4.85..11.875 × 9.15..15.7 — a fluted walnut wall with an ivory marble centre and brass-lit niches, a floating
+     marble console, two ivory boucle sofas across a marble table with a rust velvet chair at the end, brass lights */
   f("living", "cove", 8.36, 12.43, 0, { w: 6.6, d: 6.1 }),
-  f("living", "tvWall", 11.86, 12.4, 270, { variant: "panel", w: 3.6, elev: 1.45, h: 2.9 }),
-  f("living", "console", 11.65, 12.4, 270, { variant: "float", w: 3.4, d: 0.45, h: 0.45 }),
-  f("living", "rug", 9.75, 12.4, 0, { variant: "grey", w: 2.3, d: 2.2 }),
-  f("living", "coffeeTable", 9.6, 12.4, 0, { variant: "round", w: 0.9, d: 0.9, h: 0.42, group: "living", anchor: true }),
-  f("living", "sofa", 9.6, 11.05, 0, { group: "living", w: 2.3, variant: "tan" }),
-  f("living", "sofa", 9.6, 13.75, 180, { group: "living", w: 2.3, variant: "tanThrow" }),
-  f("living", "floorLamp", 11.15, 14.6, 45, { variant: "arc" }),
+  f("living", "tvWall", 11.86, 12.4, 270, { variant: "fluted", w: 3.6, elev: 1.45, h: 2.9 }),
+  f("living", "console", 11.65, 12.4, 270, { variant: "marbleFloat", w: 3.4, d: 0.45, h: 0.45 }),
+  f("living", "rug", 9.6, 12.4, 0, { variant: "ivory", w: 2.6, d: 2.4 }),
+  f("living", "coffeeTable", 9.6, 12.4, 0, { variant: "marbleRound", w: 1.0, d: 1.0, h: 0.4, group: "living", anchor: true }),
+  f("living", "sofa", 9.6, 11.05, 0, { group: "living", w: 2.5, variant: "ivoryBoucle" }),
+  f("living", "sofa", 9.6, 13.75, 180, { group: "living", w: 2.5, variant: "ivoryBoucleRust" }),
+  f("living", "loungeChair", 7.6, 10.5, 45, { variant: "rustVelvet", w: 0.85, d: 0.85, group: "living" }),
+  f("living", "floorLamp", 11.15, 14.6, 45, { variant: "brassArc" }),
   f("living", "plant", 11.4, 15.2, 0, { variant: "fig", w: 0.6, d: 0.6, h: 1.8 }),
   f("living", "plant", 11.4, 9.65, 0, { variant: "fig", w: 0.6, d: 0.6, h: 1.6 }),
   f("living", "art", 9.6, 9.17, 0, { elev: 1.55, w: 0.7, h: 1.1 }),
   f("living", "art", 10.45, 9.17, 0, { elev: 1.6, w: 0.5, h: 0.7 }),
   f("living", "art", 11.1, 9.17, 0, { elev: 1.6, w: 0.5, h: 0.7 }),
-  f("living", "pendant", 11.55, 10.75, 0, { variant: "bulb", w: 0.12, d: 0.12, h: 1.5 }),
-  f("living", "pendant", 11.55, 14.05, 0, { variant: "bulb", w: 0.12, d: 0.12, h: 1.5 }),
-  f("living", "sideboard", 5.08, 12.4, 90, { w: 1.8 }),
+  f("living", "pendant", 11.55, 10.75, 0, { variant: "brassGlobe", w: 0.3, d: 0.3, h: 1.5 }),
+  f("living", "pendant", 11.55, 14.05, 0, { variant: "brassGlobe", w: 0.3, d: 0.3, h: 1.5 }),
+  f("living", "sideboard", 5.08, 12.4, 90, { w: 1.8, variant: "flutedMarble" }),
   f("living", "art", 4.87, 12.4, 90, { elev: 1.6, w: 1.2, h: 0.8 }),
 
   /* Master bath 0.3..2.4 × 9.15..11.15 */
-  f("master-bath", "shower", 0.85, 9.7, 0, { w: 1.1, d: 1.1 }),
+  f("master-bath", "shower", 0.85, 9.7, 0, { w: 1.1, d: 1.1, variant: "brass" }),
   f("master-bath", "wc", 0.63, 10.9, 90),
-  f("master-bath", "vanity", 1.75, 10.9, 180, { w: 0.8 }),
+  f("master-bath", "vanity", 1.75, 10.9, 180, { w: 0.8, variant: "marbleBrass" }),
   f("master-bath", "mirror", 1.75, 11.13, 180, { elev: 1.5, w: 0.5 }),
 
-  /* Master bedroom 0.3..4.6 × 11.4..15.7 (+ wardrobe bay 2.65..4.6 × 9.15..11.4) — sculpted bed under a lit canopy */
-  f("master", "wardrobe", 2.95, 10.55, 90, { w: 1.4 }),
+  /* Master bedroom 0.3..4.6 × 11.4..15.7 (+ wardrobe bay 2.65..4.6 × 9.15..11.4) — an ivory boucle bed against a
+     full-width fluted walnut headboard wall with brass strips, walnut-and-brass nightstands, a rust velvet chair and
+     brass ottoman by the window, a walnut dresser with a marble top, fluted walnut wardrobe */
+  f("master", "wardrobe", 2.95, 10.55, 90, { w: 1.4, variant: "flutedWalnut" }),
   f("master", "cove", 2.45, 13.55, 0, { w: 3.8, d: 3.8 }),
-  f("master", "bed", 1.85, 12.55, 0, { variant: "sculpted", w: 2.6, d: 2.3 }),
-  f("master", "rug", 1.3, 14.7, 0, { variant: "rose", w: 2.0, d: 1.6 }),
-  f("master", "loungeChair", 0.95, 15.1, 135, { variant: "pink", w: 0.9, d: 0.9, group: "master-lounge" }),
-  f("master", "bench", 1.6, 14.45, 0, { variant: "ottoman", w: 0.7, d: 0.7, h: 0.45, group: "master-lounge", anchor: true }),
-  f("master", "dresser", 4.35, 13.6, 270),
+  f("master", "bed", 1.85, 12.65, 0, { variant: "fluted", w: 2.0, d: 2.3 }),
+  f("master", "nightstand", 0.55, 11.7, 0, { variant: "walnutBrass", w: 0.45, d: 0.4, h: 0.5 }),
+  f("master", "nightstand", 3.15, 11.7, 0, { variant: "walnutBrass", w: 0.45, d: 0.4, h: 0.5 }),
+  f("master", "rug", 1.3, 14.7, 0, { variant: "ivory", w: 2.0, d: 1.6 }),
+  f("master", "loungeChair", 0.95, 15.1, 135, { variant: "rustVelvet", w: 0.9, d: 0.9, group: "master-lounge" }),
+  f("master", "bench", 1.6, 14.45, 0, { variant: "brassOttoman", w: 0.7, d: 0.7, h: 0.45, group: "master-lounge", anchor: true }),
+  f("master", "dresser", 4.35, 13.6, 270, { variant: "walnutMarble" }),
   f("master", "mirror", 4.58, 13.6, 270, { elev: 1.45, w: 0.7, h: 0.8 }),
   f("master", "plant", 0.6, 14.0, 0, { variant: "olive", w: 0.5, d: 0.5, h: 1.3 }),
 

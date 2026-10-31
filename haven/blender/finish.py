@@ -22,12 +22,13 @@ TEX = os.path.join(HERE, "assets", "tex")
 
 # web material key -> (texture id, roughness scale, tile joints in metres or None)
 SURFACES = {
-    "darkPlank": ("laminate_floor_02", 0.7, None, (0.42, 0.3, 0.22)),  # dark-stained wood: hall, dining hall, kitchen
+    "darkPlank": ("laminate_floor_02", 0.6, None, (0.3, 0.18, 0.1)),  # walnut-stained wood: master bedroom
+    "marble": ("marble_01", 0.22, (1.2, 0.6), (0.9, 0.87, 0.8)),  # ivory marble: hall, dining hall, kitchen, lobby
     "polished": ("marble_01", 0.25, None, (0.07, 0.07, 0.075)),          # dark polished floor: master bedroom
     "stone": ("marble_01", 0.3, (1.6, 0.8)),
     "herringbone": ("marble_01", 0.3, (1.6, 0.8)),
-    "oak": ("laminate_floor_02", 0.8, None),
-    "tile": ("tiled_floor_001", 0.6, None),
+    "oak": ("laminate_floor_02", 0.8, None, (0.74, 0.58, 0.4)),  # warm oak: guest bedrooms
+    "tile": ("tiled_floor_001", 0.6, None, (0.8, 0.73, 0.62)),  # travertine tone: bathrooms
     "plaster": ("plastered_wall_04", 1.0, None),
     "ceiling": ("plastered_wall_04", 1.0, None),
     "teak": ("wood_floor_deck", 0.9, None),
@@ -123,7 +124,7 @@ def textured(mat, tex_id, rough_scale=1.0, joints=None, box=False, normal_streng
         bsdf.inputs["Coat Roughness"].default_value = 0.04
 
 
-PAINT = {"plaster": (0.86, 0.83, 0.77), "ceiling": (0.93, 0.92, 0.89)}
+PAINT = {"plaster": (0.88, 0.84, 0.75), "ceiling": (0.94, 0.92, 0.88)}
 
 
 def painted(mat, key):
@@ -333,9 +334,9 @@ def finish(layout):
 
     upgrade_surfaces()
 
-    # skirting: marble-tile skirting on marble floors, white painted skirting on laminate
+    # skirting: marble skirting on marble floors, walnut skirting on wood
     marble_sk = Mesh("finish_skirting_marble", marble_box_material(), e)
-    white_sk = Mesh("finish_skirting_white", simple_material("skirting_white", (0.92, 0.9, 0.86), 0.35), e)
+    white_sk = Mesh("finish_skirting_walnut", simple_material("skirting_walnut", (0.2, 0.11, 0.06), 0.4), e)
     # no skirting under floor-to-ceiling glazing
     low_sills = [w["rect"] for w in layout["windows"] if w["sill"] < 0.2]
     for room in rooms:
@@ -357,7 +358,7 @@ def finish(layout):
     tiles.done()
 
     # wooden architraves around every internal door and archway, both faces
-    frames = Mesh("finish_door_frames", simple_material("frame_teak", (0.33, 0.2, 0.11), 0.45), e)
+    frames = Mesh("finish_door_frames", simple_material("frame_walnut", (0.2, 0.11, 0.06), 0.4), e)
     for d in layout["doors"] + layout["openings"]:
         if d.get("glazed") or d.get("id") == "kitchen-dining":  # the open kitchen has no frame, as in the photo
             continue
@@ -382,38 +383,7 @@ def finish(layout):
             frames.box(r["x1"], r["y1"], top - 0.03, r["x2"], r["y2"], top)
     frames.done()
 
-    # feature walls (wood panelling, terracotta, orange arches, charcoal) come with the furniture as accentWall items;
-    # bedroom three's window wall is painted grey and its window has a white four-pane frame (client's photo)
-    grey_wall = Mesh("finish_grey_wall", simple_material("paint_grey", (0.2, 0.195, 0.19), 0.9), e)
-    frame_white = Mesh("finish_window_frame_white", simple_material("frame_white", (0.85, 0.85, 0.83), 0.35), e)
-    for room in rooms:
-        if room["id"] != "bed3":
-            continue
-        for side, fixed, a, b in wall_runs(room, door_cuts + window_cuts):
-            if side == "W":
-                along(grey_wall, side, fixed, a, b, 0.004, 0.0, ceiling)
-        for w in layout["windows"]:
-            r = w["rect"]
-            if w["side"] != "W" or not _overlaps(r, room["rects"][0]):
-                continue
-            x0, x1 = r["x2"] - 0.07, r["x2"] + 0.006
-            y1, y2, s0, s1 = r["y1"], r["y2"], w["sill"], w["head"]
-            t = 0.05
-            for yy in (y1, (y1 + y2) / 2 - t / 2, y2 - t):
-                frame_white.box(x0, yy, s0, x1, yy + t, s1)
-            for zz in (s0, s0 + (s1 - s0) * 0.72, s1 - t):
-                frame_white.box(x0, y1, zz, x1, y2, zz + t)
-            for yy in (y1 + (y2 - y1) * 0.25, y1 + (y2 - y1) * 0.75):
-                frame_white.box(x0, yy - 0.015, s0 + (s1 - s0) * 0.72, x1, yy + 0.015, s1)
-    grey_wall.done()
-    frame_white.done()
     master_arches(layout, rooms, e)
-    dark = Mesh("finish_charcoal_walls", simple_material("paint_charcoal", (0.03, 0.03, 0.032), 0.85), e)
-    for room in rooms:
-        if room["id"] in ("kitchen", "dining"):
-            for side, fixed, a, b in wall_runs(room, door_cuts + window_cuts):
-                along(dark, side, fixed, a, b, 0.003, 0.0, layout["ceilingHeight"])
-    dark.done()
 
     spotlights(rooms, e, ceiling)
     curtains(layout, rooms, e, ceiling)
@@ -552,8 +522,8 @@ def curtains(layout, rooms, e, ceiling):
     fabric = fabric_material()
     grey = simple_material("curtain_grey", (0.2, 0.19, 0.185), 0.95)
     # bedroom three has grey drapes, as in the client's photo
-    grey_rooms = [r for r in rooms if r["id"] == "bed3"]
-    rod_mat = simple_material("curtain_rod", (0.12, 0.11, 0.1), 0.35, metal=0.8)
+    grey_rooms = []
+    rod_mat = simple_material("curtain_rod", (0.8, 0.62, 0.36), 0.3, metal=1.0)
     bm = bmesh.new()
     rods = Mesh("finish_curtain_rods", rod_mat, e)
     lived = [r for r in rooms if r["kind"] in ("living", "bedroom") and r["id"] != "master"]

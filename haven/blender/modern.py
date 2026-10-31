@@ -126,7 +126,8 @@ def existing(name, fallback):
 
 
 def palette():
-    return {
+    import luxe
+    return {**{
         "oat": fabric("m_fabric_oat", (0.62, 0.57, 0.5)),
         "taupe": fabric("m_fabric_taupe", (0.42, 0.37, 0.33)),
         "sage": fabric("m_fabric_sage", (0.43, 0.48, 0.41)),
@@ -185,7 +186,7 @@ def palette():
         "groove": solid("m_groove", (0.3, 0.26, 0.22), 0.8),
         "taupe_duvet": fabric("m_fabric_duvet_taupe", (0.32, 0.27, 0.22), sheen=0.5),
         "bulb": solid("m_bulb", (1.0, 0.9, 0.7), 0.3, emit=(1.0, 0.78, 0.5), strength=25.0),
-    }
+    }, **luxe.palette()}  # the luxury palette wins where names collide (walnut, oak, brass)
 
 
 # ---------------------------------------------------------------- mesh helpers
@@ -1217,6 +1218,9 @@ BUILDERS = {
 
 def wants(it):
     """Whether this item is modelled here (pendants only over the kitchen island; the rest use CC0 lamps)."""
+    import luxe
+    if luxe.wants(it):
+        return True
     if it["type"] not in BUILDERS or it.get("variant") == "outdoor":
         return False
     only = {"tvWall": "panel", "console": "float", "rug": "grey", "floorLamp": "arc"}
@@ -1230,6 +1234,9 @@ def wants(it):
 
 
 def build(it, frame, materials):
+    import luxe
+    if luxe.wants(it):
+        return luxe.build(Piece(f"modern-{it['id']}", frame), it, materials)
     builder = BUILDERS.get(it["type"])
     if builder is None or it.get("variant") == "outdoor":
         return False

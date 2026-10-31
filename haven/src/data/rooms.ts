@@ -3,6 +3,7 @@ import { AREAS, CEILING_HEIGHT, TOWER } from "./houseLayout";
 export const RENDER_LABEL = "Illustrative render of the 3D model";
 /** Mood images that set the intended style of a room; they are not of Residence 11A itself. */
 export const CONCEPT_LABEL = "Interior concept image";
+export const STYLE = "Warm modern Indian luxury: walnut and brass, fluted panels, ivory marble, boucle and rust velvet, jaali screens and warm cove light.";
 
 export interface FeaturedRoom {
   num: string;
@@ -21,39 +22,39 @@ export interface FeaturedRoom {
 export const featuredRooms: FeaturedRoom[] = [
   {
     num: "01", id: "living", name: "Hall",
-    description: "The heart of the home: two espresso-brown sofas face each other across a round black coffee table on a grey shag rug, in front of a warm wood-veneer feature wall with a large marbled painting, black shelving lit in a dark recess and a floating console. Bulb pendants, an arc lamp, dark wood floors, and tall glass doors and windows onto the balcony.",
-    chips: ["7.03 × 6.55 m", "Wood-veneer feature wall", "Opens to the balcony"],
-    image: "/images/concepts/hall-warm.webp", alt: "Living room with two sofas facing a warm wood-panelled wall with a large abstract painting", label: CONCEPT_LABEL,
+    description: "The heart of the home, in walnut and brass: a fluted walnut feature wall with an ivory marble centre, brass-lit shelves and a floating marble console; two ivory boucle sofas face each other across a round marble table on an ivory rug, with a rust velvet chair at the end. Brass globe pendants, a brass arc lamp, ivory marble floors and tall glass doors onto the balcony.",
+    chips: ["7.03 × 6.55 m", "Fluted walnut and marble wall", "Opens to the balcony"],
+    image: "/images/living.webp", alt: "Hall with two ivory boucle sofas across a round marble table, facing a fluted walnut wall with a marble centre and brass-lit shelves",
   },
   {
     num: "02", id: "dining", name: "Dining hall",
-    description: "You step straight into the dining hall: a thick rustic wood table set for six with black chairs, under a bar of clear glass pendants, with charcoal walls and the kitchen open beyond — and the family's pooja unit standing open against the wall.",
-    chips: ["5.75 × 5.05 m", "Dining for six", "Open to the kitchen"],
-    image: "/images/concepts/kitchen-dining.webp", alt: "Open kitchen and dining table under glass pendants, with the city lit up beyond the windows", label: CONCEPT_LABEL,
+    description: "You step straight into the dining hall: a walnut table on a sculptural brass base, set for six in ivory boucle chairs under a linear brass light with glass globes. The family mandir stands against the wall, walnut on a marble plinth with a brass jaali backdrop lit warm from behind, and the kitchen opens beyond.",
+    chips: ["5.75 × 5.05 m", "Dining for six", "Walnut mandir with a jaali"],
+    image: "/images/dining.webp", alt: "Dining hall with a walnut table set for six in ivory boucle chairs under a linear brass light, the walnut mandir lit behind",
   },
   {
     num: "03", id: "kitchen", name: "Kitchen",
-    description: "An open kitchen with charcoal walls: grey-oak cabinets under a white counter, a stainless steel hood, a lit glass-front cabinet with dishes, a wood appliance column with built-in ovens, and a long wood island with an induction hob and an oven facing the table.",
-    chips: ["3.8 × 3.3 m", "Open to the dining hall", "Wood island with hob"],
-    image: "/images/kitchen.webp", alt: "Luxury kitchen with a quartz waterfall island, counter stools and a walnut appliance column",
+    description: "An open kitchen in ivory and walnut: handleless ivory base units under an ivory marble counter and splashback, walnut uppers with brass pulls lit from beneath, a walnut appliance column, and a fluted walnut island with a marble waterfall top and two brass counter stools facing the dining hall.",
+    chips: ["3.8 × 3.3 m", "Open to the dining hall", "Marble waterfall island"],
+    image: "/images/kitchen.webp", alt: "Kitchen with ivory units, an ivory marble counter, walnut uppers and a fluted walnut island with brass stools",
   },
   {
     num: "04", id: "master", name: "Master bedroom",
-    description: "A sculpted pink leather bed under a softly lit canopy, with mustard sheets and a maroon throw; a pink swivel chair and ottoman on a rose rug, dark polished floors, a wardrobe bay, its own bathroom and glass doors to the balcony.",
-    chips: ["4.3 × 4.3 m", "Sculpted canopy bed", "Opens to the balcony"],
-    image: "/images/concepts/master-bedroom.webp", alt: "Bedroom with a sculpted pink bed under arched windows looking over hills", label: CONCEPT_LABEL, focus: "62% 50%",
+    description: "An ivory boucle bed against a full-width fluted walnut headboard wall with brass strips, reading sconces and a warm cove; walnut-and-brass nightstands, a rust velvet chair and brass ottoman by the arched windows, a walnut dresser with a marble top, a fluted wardrobe bay, its own bathroom and glass doors to the balcony.",
+    chips: ["4.3 × 4.3 m", "Fluted walnut headboard wall", "Opens to the balcony"],
+    image: "/images/master.webp", alt: "Master bedroom with an ivory boucle bed against a fluted walnut wall with brass strips and sconces, a rust velvet chair by arched windows",
   },
   {
     num: "05", id: "bed2", name: "Bedroom two",
-    description: "Twin beds for two children: cream beds with tall arched headboards against a feature wall of orange fields and a cream bowl that curves down to the nightstand, two reading sconces per bed, a coffered ceiling with light strips, a cushioned window seat, a shelf niche and a full-height wardrobe.",
-    chips: ["4.3 × 4.6 m", "Twin beds", "Window seat"],
-    image: "/images/concepts/twin-bedroom.webp", alt: "Children's bedroom with twin beds against a curved orange feature wall", label: CONCEPT_LABEL,
+    description: "The guest room: two single beds with cane headboards in oak frames and sage linen, against a wall of oak slats over sage panels with brass sconces at each bed head; a walnut shelf niche, a jute rug, a sage window seat, a coffered ceiling with light strips and a fluted oak wardrobe.",
+    chips: ["4.3 × 4.6 m", "Twin cane beds", "Window seat"],
+    image: "/images/bed2.webp", alt: "Bedroom two with two cane-headboard single beds in sage linen against an oak slat wall with brass sconces",
   },
   {
     num: "06", id: "bed3", name: "Bedroom three",
-    description: "A study bedroom: a grey upholstered bed with a rumpled duvet against a terracotta wall lined with a row of open shelf boxes, a long oak desk under the wide window with an orange chair, grey curtains and carpet tiles.",
-    chips: ["4.3 × 3.75 m", "Desk under a wide window", "Terracotta shelf wall"],
-    image: "/images/concepts/study-bedroom.webp", alt: "Bedroom with a study desk along the window and shelves on an orange wall", label: CONCEPT_LABEL,
+    description: "A study bedroom: an oak bed with a beige linen headboard under walnut slats, a brass jaali panel glowing beside it and floating walnut shelves; a long walnut desk on brass sled legs under the wide window with an ivory boucle chair, ivory drapes on brass rods and warm oak floors.",
+    chips: ["4.3 × 3.75 m", "Desk under a wide window", "Brass jaali wall"],
+    image: "/images/bed3.webp", alt: "Bedroom three with an oak bed below walnut slats and a lit brass jaali panel, a long walnut desk under the window",
   },
   {
     num: "07", id: "balcony", name: "Balcony & swings",

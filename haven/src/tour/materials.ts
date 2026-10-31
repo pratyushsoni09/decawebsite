@@ -398,7 +398,7 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
 
   const plasterMap = tx("plaster", 512, paintPlaster, 3, [3, 3]);
   const lib: Partial<MaterialLib> = {
-    plaster: std({ map: plasterMap, roughness: 0.92, color: 0xffffff }),
+    plaster: std({ map: plasterMap, roughness: 0.92, color: 0xf7f0e4 }),  // warm ivory emulsion, as in the Blender scene
     ceiling: std({ map: plasterMap, roughness: 0.95, color: 0xfbf8f2 }),
     white: std({ color: 0xf4f0e8, roughness: 0.6 }),
     oak: std({ map: tx("oak floor", 1024, paintPlanks, 7, [2, 2]), roughness: 0.55, metalness: 0 }),
