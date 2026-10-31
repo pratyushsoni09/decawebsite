@@ -10,6 +10,7 @@ export const NAV = [
   { id: "rooms", label: "Rooms" },
   { id: "plans", label: "Floor plan" },
   { id: "gallery", label: "Gallery" },
+  { id: "cinematic", label: "Cinematic" },
   { id: "enquire", label: "Viewing" },
 ];
 const IDS = NAV.map((n) => n.id);

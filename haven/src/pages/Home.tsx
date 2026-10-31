@@ -5,6 +5,7 @@ import { Overview } from "../components/home/Overview";
 import { RoomsWalk } from "../components/home/RoomsWalk";
 import { FloorPlans } from "../components/home/FloorPlans";
 import { Gallery } from "../components/home/Gallery";
+import { Cinematic } from "../components/home/Cinematic";
 import { TourCta } from "../components/home/TourCta";
 import { Enquiry } from "../components/home/Enquiry";
 import { SiteFooter } from "../components/home/SiteFooter";
@@ -31,6 +32,7 @@ export default function Home() {
         <RoomsWalk />
         <FloorPlans />
         <Gallery />
+        <Cinematic video="/video/haven-cinematic.mp4" poster="/video/haven-cinematic.jpg" download={null} />
         <TourCta />
         <Enquiry />
       </main>
