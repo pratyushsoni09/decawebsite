@@ -118,6 +118,9 @@ def main():
     if protos:
         for ob in list(protos.objects):
             bpy.data.objects.remove(ob)
+    for ob in list(scene.objects):
+        if ob.name.startswith("haze"):  # Blender's aerial-perspective volume; Unreal has its own height fog
+            bpy.data.objects.remove(ob)
     meshes = [ob for ob in scene.objects if ob.type == "MESH"]
     # make every mesh its own user and bake transforms, so Unreal can place everything at the origin
     bpy.ops.object.select_all(action="DESELECT")

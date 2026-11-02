@@ -271,9 +271,15 @@ def build_level(mesh_paths):
     fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0))
     fog.set_actor_label("Haze")
     fc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
-    fc.set_editor_property("fog_density", 0.004)
-    fc.set_editor_property("fog_height_falloff", 0.15)
-    fc.set_editor_property("start_distance", 8000.0)
+    # aerial perspective over the 1.8 km of mapped city: dusty haze that keeps its density up at balcony height
+    fc.set_editor_property("fog_density", 0.018)
+    fc.set_editor_property("fog_height_falloff", 0.03)
+    try:
+        fc.set_editor_property("fog_inscattering_luminance", unreal.LinearColor(0.86, 0.82, 0.74, 1.0))
+    except Exception as err:  # noqa: BLE001 - older property name
+        log(f"haze colour left at the default ({err})")
+    fc.set_editor_property("start_distance", 12000.0)
+    fc.set_editor_property("fog_max_opacity", 0.9)
 
     # the home's lamps, from the studio's lights.json (three.js metres: x east, y up, z south)
     with open(os.path.join(BL_EXPORT, "lights.json"), encoding="utf8") as f:

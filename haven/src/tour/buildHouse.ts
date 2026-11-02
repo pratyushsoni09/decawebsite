@@ -334,7 +334,7 @@ export function createSky(preset: SkyPreset = "day") {
         #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(1300, 32, 16), mat);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(7000, 32, 16), mat);
   sky.position.set(12, 0, 9);
   sky.name = "sky";
   return sky;
@@ -392,6 +392,8 @@ export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture
   const city = new THREE.Group();
   city.name = "city";
   csb.build(lib, city);
+  // the sun's shadow map only reaches the tower's own plot: the city neither casts into it nor pays for the pass
+  city.traverse((o) => { o.castShadow = false; });
   root.add(city);
   const authoredMeshes = sb.meshCount + csb.meshCount;
   sb.build(lib, root);

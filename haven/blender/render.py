@@ -280,6 +280,37 @@ def add_sun():
     return ob
 
 
+def add_haze():
+    """
+    Aerial perspective: a shallow drum of thin, dusty air over the city (6.5 km across, 560 m tall) so the
+    skyline fades with distance instead of ending at a hard edge. Thin enough that the rooms see no change;
+    across the 1.8 km of mapped city it takes a third of the contrast out of the far buildings.
+    The drum is exported to nothing: the tour has its own fog and Unreal its own height fog.
+    """
+    import bmesh
+    mesh = bpy.data.meshes.new("haze")
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=48, radius1=6500, radius2=6500, depth=560)
+    bm.to_mesh(mesh)
+    bm.free()
+    ob = bpy.data.objects.new("haze", mesh)
+    ob.location = (12, -9, 280)  # centred on the tower, floor at ground level
+    mat = bpy.data.materials.new("haze")
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    scatter = nt.nodes.new("ShaderNodeVolumeScatter")
+    scatter.inputs["Color"].default_value = (0.9, 0.88, 0.84, 1.0)
+    scatter.inputs["Density"].default_value = 0.00016
+    scatter.inputs["Anisotropy"].default_value = 0.45
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(scatter.outputs["Volume"], out.inputs["Volume"])
+    mesh.materials.append(mat)
+    ob.visible_shadow = False
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
 def add_bathroom_lights():
     """Bathrooms have no pendant in the web model; give each a soft ceiling panel, centred on its fittings."""
     path = os.path.join(EXPORT, "furniture.json")
@@ -384,7 +415,7 @@ def setup_camera(view):
     data = cam.data
     data.sensor_fit = "VERTICAL"
     data.clip_start = 0.05
-    data.clip_end = 1500
+    data.clip_end = 8000  # the ground runs to the horizon
     pos = three_to_blender(view["pos"])
     look = three_to_blender(view["look"])
     cam.location = pos
@@ -423,6 +454,7 @@ def main():
             finish.finish(json.load(f))
     sky, bg = setup_world()
     sun = add_sun()
+    add_haze()
     lamps = add_lamps(lights)
     add_bathroom_lights()
     os.makedirs(os.path.join(HERE, "out"), exist_ok=True)

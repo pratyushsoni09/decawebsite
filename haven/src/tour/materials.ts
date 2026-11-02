@@ -147,15 +147,17 @@ const paintAsphalt: Paint = (ctx, w, h, rnd) => {
 };
 
 const paintGround: Paint = (ctx, w, h, rnd) => {
-  ctx.fillStyle = hsl(36, 26, 66);
+  // Gandhinagar's open land: dusty khaki soil under a patchwork of scrub, grass and bare earth
+  ctx.fillStyle = hsl(50, 18, 46);
   ctx.fillRect(0, 0, w, h);
-  for (let k = 0; k < 60; k++) {
-    ctx.fillStyle = hsl(32 + rnd() * 10, 20 + rnd() * 15, 55 + rnd() * 18, 0.35);
+  for (let k = 0; k < 140; k++) {
+    const green = rnd() < 0.7;
+    ctx.fillStyle = green ? hsl(70 + rnd() * 24, 18 + rnd() * 14, 28 + rnd() * 14, 0.5) : hsl(36 + rnd() * 12, 22 + rnd() * 14, 50 + rnd() * 16, 0.45);
     ctx.beginPath();
-    ctx.arc(rnd() * w, rnd() * h, 6 + rnd() * 40, 0, Math.PI * 2);
+    ctx.ellipse(rnd() * w, rnd() * h, 20 + rnd() * 140, 14 + rnd() * 80, rnd() * Math.PI, 0, Math.PI * 2);
     ctx.fill();
   }
-  noise(ctx, w, h, rnd, 0.08, 14000, 1.5);
+  noise(ctx, w, h, rnd, 0.1, 16000, 1.5);
 };
 
 const paintStone: Paint = (ctx, w, h, rnd) => {
@@ -443,7 +445,7 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     carpet: std({ map: tx("carpet tiles", 256, paintFabric(34, 16, 70), 91, [0.5, 0.5]), roughness: 1 }),
     veneer: std({ map: tx("veneer", 512, paintOakVertical, 93, [0.6, 2.4]), roughness: 0.55, color: 0xd7a27a }),
     // Kudasan surroundings
-    ground: std({ map: tx("ground", 512, paintGround, 95, [18, 18]), roughness: 1 }),
+    ground: std({ map: tx("ground", 512, paintGround, 95, [110, 110]), roughness: 1 }),
     park: std({ map: tx("park", 512, paintGrass, 96, [6, 6]), roughness: 1, color: 0x9fb37a }),
     asphalt: std({ map: tx("asphalt", 256, paintAsphalt, 97, [4, 4]), roughness: 0.95 }),
     roadLine: std({ color: 0xe8e2d0, roughness: 0.8 }),

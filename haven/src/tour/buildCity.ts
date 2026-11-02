@@ -4,11 +4,14 @@ import { StaticBuilder } from "./geom";
 import type { MatKey } from "./materials";
 
 /**
- * The real surroundings of the tower: central Kudasan, Gandhinagar, from open map data
+ * The real surroundings of the tower: Kudasan, Gandhinagar out to 1.8 km, from open map data
  * (see scripts/fetch_kudasan.py). Building footprints are extruded to their known or
  * estimated heights, streets are laid as ribbons, parks and the pond as flat patches,
- * with trees along the residential streets and in the greens. Plan metres: x east,
- * y south (→ world z); the tower's plot is kept clear.
+ * and the city is planted the way Gandhinagar is: trees along every residential street,
+ * in the greens and across the garden plots. Detail falls off with distance (chajjas and
+ * roof tanks near the tower, parapets to 900 m, plain massing beyond), and the ground runs
+ * out to the horizon so the skyline fades into haze rather than ending at an edge.
+ * Plan metres: x east, y south (→ world z); the tower's plot is kept clear.
  */
 
 interface CityData {
@@ -26,9 +29,16 @@ interface CityData {
 
 export const CITY = city as unknown as CityData;
 export const CITY_ATTRIBUTION = CITY.attribution;
-export const CITY_RADIUS = 700;
+export const CITY_RADIUS = CITY.radius;
+/** the ground disc reaches well past the mapped city, to where the haze takes over */
+export const GROUND_RADIUS = 6000;
 
 const STOREY = 3.1;
+const TOWER_X = 12;
+const TOWER_Z = 8;
+/** detail bands, metres from the tower */
+const NEAR = 320;
+const MID = 900;
 
 /** flat polygon on the ground at height y (plan y → world z), facing up */
 function flat(ring: number[][], y: number) {
@@ -120,28 +130,79 @@ function ribbon(line: number[][], w: number, y: number) {
   return geos;
 }
 
-function tree(sb: StaticBuilder, x: number, z: number, s: number) {
-  const trunk = new THREE.CylinderGeometry(0.14 * s, 0.22 * s, 3.6 * s, 7);
+/**
+ * Where a tree may not stand: on the tower's plot, inside a building, on a street or in the pond.
+ * Buildings and street segments are bucketed into 60 m cells so thousands of trees can be placed quickly.
+ */
+class Obstacles {
+  private cell = 60;
+  private buildings = new Map<string, number[]>();
+  private segments = new Map<string, [number, number, number, number, number][]>();
+  constructor(private data: CityData) {
+    data.buildings.forEach((b, i) => {
+      const xs = b.p.map((p) => p[0]);
+      const zs = b.p.map((p) => p[1]);
+      this.cells(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), (k) => {
+        const list = this.buildings.get(k);
+        if (list) list.push(i);
+        else this.buildings.set(k, [i]);
+      });
+    });
+    for (const r of data.roads) {
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const [ax, az] = r.p[i];
+        const [bx, bz] = r.p[i + 1];
+        const seg: [number, number, number, number, number] = [ax, az, bx, bz, r.w / 2 + 1.5];
+        this.cells(Math.min(ax, bx) - seg[4], Math.min(az, bz) - seg[4], Math.max(ax, bx) + seg[4], Math.max(az, bz) + seg[4], (k) => {
+          const list = this.segments.get(k);
+          if (list) list.push(seg);
+          else this.segments.set(k, [seg]);
+        });
+      }
+    }
+  }
+  private cells(x1: number, z1: number, x2: number, z2: number, f: (k: string) => void) {
+    for (let cx = Math.floor(x1 / this.cell); cx <= Math.floor(x2 / this.cell); cx++)
+      for (let cz = Math.floor(z1 / this.cell); cz <= Math.floor(z2 / this.cell); cz++) f(`${cx},${cz}`);
+  }
+  blocked(x: number, z: number) {
+    const [px1, pz1, px2, pz2] = this.data.plot;
+    if (x > px1 && x < px2 && z > pz1 && z < pz2) return true;
+    const k = `${Math.floor(x / this.cell)},${Math.floor(z / this.cell)}`;
+    for (const i of this.buildings.get(k) ?? []) if (inRing(x, z, this.data.buildings[i].p)) return true;
+    for (const [ax, az, bx, bz, r] of this.segments.get(k) ?? []) {
+      const dx = bx - ax, dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+      if (Math.hypot(x - ax - dx * t, z - az - dz * t) < r) return true;
+    }
+    for (const w of this.data.water) if (inRing(x, z, w)) return true;
+    return false;
+  }
+}
+
+/** a neem or gulmohar: full canopy near the tower, a two-lobe sketch of one in the distance */
+function tree(sb: StaticBuilder, x: number, z: number, s: number, detailed: boolean) {
+  const trunk = new THREE.CylinderGeometry(0.14 * s, 0.22 * s, 3.6 * s, detailed ? 7 : 4, 1, true);
   trunk.translate(x, 1.8 * s, z);
   sb.add(trunk, "bark");
-  for (let i = 0; i < 5; i++) {
+  const lobes = detailed ? 5 : 2;
+  for (let i = 0; i < lobes; i++) {
     const a = i * 2.3 + x;
-    const c = new THREE.IcosahedronGeometry((1.3 + (i % 3) * 0.35) * s, 1);
-    c.translate(x + Math.cos(a) * 1.1 * s, (4.4 + (i % 3) * 0.6) * s, z + Math.sin(a) * 1.1 * s);
+    const c = new THREE.IcosahedronGeometry((detailed ? 1.3 + (i % 3) * 0.35 : 1.9 + i * 0.5) * s, detailed ? 1 : 0);
+    c.translate(x + Math.cos(a) * (detailed ? 1.1 : 0.7) * s, (4.4 + (i % 3) * 0.6) * s, z + Math.sin(a) * (detailed ? 1.1 : 0.7) * s);
     sb.add(c, i % 2 ? "leaf" : "olive");
   }
 }
 
 export function buildCity(sb: StaticBuilder) {
-  const [px1, pz1, px2, pz2] = CITY.plot;
-  const onPlot = (x: number, z: number) => x > px1 && x < px2 && z > pz1 && z < pz2;
   let seed = 3;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const dist = (x: number, z: number) => Math.hypot(x - TOWER_X, z - TOWER_Z);
 
-  // dusty open ground with the greens and the pond laid on it
-  const ground = new THREE.CircleGeometry(CITY_RADIUS + 300, 64);
+  // scrub and dust to the horizon, with the greens and the pond laid on it
+  const ground = new THREE.CircleGeometry(GROUND_RADIUS, 96);
   ground.rotateX(-Math.PI / 2);
-  ground.translate(12, -0.04, 8);
+  ground.translate(TOWER_X, -0.04, TOWER_Z);
   sb.add(ground, "ground");
   for (const g of CITY.greens) sb.add(flat(g, -0.02), "park");
   for (const w of CITY.water) sb.add(flat(w, -0.03), "water");
@@ -153,25 +214,29 @@ export function buildCity(sb: StaticBuilder) {
   }
 
   // buildings as Kudasan builds them: painted RCC frames with a window per bay, projecting floor slabs (chajjas),
-  // a parapet round a flat roof with a stair head and black water tanks; the few towers get glass bands
+  // a parapet round a flat roof with a stair head and black water tanks; the towers get glass bands
   const facades: MatKey[] = ["facadeA", "facadeB", "facadeC", "facadeD"];
   for (const b of CITY.buildings) {
     const h = Math.max(STOREY + 1, b.h);
     const [cx, cz] = centroid(b.p);
-    const near = Math.hypot(cx - 12, cz - 8) < 320;
+    const d = dist(cx, cz);
+    const near = d < NEAR;
     const a = area(b.p);
     const walls = extrude(b.p, h);
     sb.add(walls, b.k === "tower" ? "concrete" : facades[Math.floor(rnd() * facades.length)]);
     sb.add(flat(b.p, h + 0.03), "roofGrey");
     if (b.k === "tower") {
-      for (let y = STOREY; y < h - 1; y += STOREY) {
-        const band = extrude(b.p, 1.4);
-        band.scale(1.004, 1, 1.004);
-        band.translate(0, y, 0);
-        sb.add(band, "towerGlass");
+      if (d < MID) {
+        for (let y = STOREY; y < h - 1; y += STOREY) {
+          const band = extrude(b.p, 1.4);
+          band.scale(1.004, 1, 1.004);
+          band.translate(0, y, 0);
+          sb.add(band, "towerGlass");
+        }
       }
       continue;
     }
+    if (d >= MID) continue;
     // parapet
     const inner = offset(b.p, -0.22);
     sb.add(extrude(b.p, 0.9, h, inner), "parapet");
@@ -180,7 +245,7 @@ export function buildCity(sb: StaticBuilder) {
       const lip = offset(b.p, 0.35);
       for (let y = STOREY; y < h - 1; y += STOREY) sb.add(extrude(lip, 0.12, y - 0.12, b.p), "parapet");
     }
-    if (a > 110) {
+    if (near && a > 110) {
       // stair head and water tanks on the roof
       const sx = cx + (rnd() - 0.5) * 2;
       const sz = cz + (rnd() - 0.5) * 2;
@@ -200,34 +265,59 @@ export function buildCity(sb: StaticBuilder) {
     }
   }
 
-  // trees: in the greens, and along the quieter streets, never on the tower's plot
-  const blocked = (x: number, z: number) => onPlot(x, z) || CITY.buildings.some((b) => inRing(x, z, b.p));
+  // trees: Gandhinagar is the greenest capital in the country, so they go everywhere a tree can stand —
+  // thick in the greens, along both sides of the quieter streets, and scattered over the garden plots
+  const obstacles = new Obstacles(CITY);
+  const planted: [number, number][] = [];
+  const plant = (x: number, z: number, s: number) => {
+    const d = dist(x, z);
+    if (d > CITY_RADIUS || obstacles.blocked(x, z)) return false;
+    tree(sb, x, z, s, d < 200);
+    planted.push([x, z]);
+    return true;
+  };
+  for (const [x, z] of CITY.trees) plant(x, z, 0.8 + rnd() * 0.5);
   let count = 0;
   for (const g of CITY.greens) {
     const xs = g.map((p) => p[0]);
     const zs = g.map((p) => p[1]);
-    for (let x = Math.min(...xs); x < Math.max(...xs); x += 14) {
-      for (let z = Math.min(...zs); z < Math.max(...zs); z += 14) {
+    for (let x = Math.min(...xs); x < Math.max(...xs); x += 11) {
+      for (let z = Math.min(...zs); z < Math.max(...zs); z += 11) {
         const tx = x + rnd() * 6;
         const tz = z + rnd() * 6;
-        if (inRing(tx, tz, g) && !blocked(tx, tz) && count++ < 120) tree(sb, tx, tz, 0.8 + rnd() * 0.5);
+        if (count < 600 && inRing(tx, tz, g) && plant(tx, tz, 0.8 + rnd() * 0.5)) count++;
       }
     }
   }
+  count = 0;
   for (const r of CITY.roads) {
-    if (r.w > 7) continue;
+    if (r.w > 12) continue;
     for (let i = 0; i < r.p.length - 1; i++) {
       const [ax, az] = r.p[i];
       const [bx, bz] = r.p[i + 1];
       const len = Math.hypot(bx - ax, bz - az);
+      if (len < 1) continue;
       const nx = -(bz - az) / len;
       const nz = (bx - ax) / len;
-      for (let t = 12; t < len; t += 26) {
-        const side = rnd() > 0.5 ? 1 : -1;
-        const x = ax + ((bx - ax) * t) / len + nx * side * (r.w / 2 + 2.2);
-        const z = az + ((bz - az) * t) / len + nz * side * (r.w / 2 + 2.2);
-        if (!blocked(x, z) && count++ < 260) tree(sb, x, z, 0.7 + rnd() * 0.4);
+      for (let t = 9; t < len; t += 16) {
+        for (const side of [1, -1]) {
+          if (rnd() < 0.3) continue;
+          const x = ax + ((bx - ax) * t) / len + nx * side * (r.w / 2 + 2.4);
+          const z = az + ((bz - az) * t) / len + nz * side * (r.w / 2 + 2.4);
+          if (count < 3000 && plant(x, z, 0.7 + rnd() * 0.4)) count++;
+        }
       }
     }
   }
+  // garden trees on the plots between the houses and over the farmland beyond: one every 30 m or so
+  count = 0;
+  for (let x = TOWER_X - CITY_RADIUS; x < TOWER_X + CITY_RADIUS; x += 30) {
+    for (let z = TOWER_Z - CITY_RADIUS; z < TOWER_Z + CITY_RADIUS; z += 30) {
+      if (rnd() < 0.5) continue;
+      const tx = x + rnd() * 18;
+      const tz = z + rnd() * 18;
+      if (count < 2400 && plant(tx, tz, 0.7 + rnd() * 0.5)) count++;
+    }
+  }
+  return planted.length;
 }

@@ -137,7 +137,7 @@ export class TourEngine {
     this.renderer.domElement.setAttribute("aria-label", "First-person 3D view of Residence 11A");
     this.renderer.domElement.setAttribute("role", "img");
     container.appendChild(this.renderer.domElement);
-    this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 1800);
+    this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 7500);
     this.camera.rotation.order = "YXZ";
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     this.ro = new ResizeObserver(() => this.resize());
@@ -212,7 +212,8 @@ export class TourEngine {
   private setupLights() {
     this.scene.environment = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.45;
-    this.scene.fog = new THREE.Fog(0xe6e0d4, 240, 1150);
+    // aerial perspective: the mapped city runs to 1.8 km and fades into the haze beyond it
+    this.scene.fog = new THREE.Fog(0xe6e0d4, 300, 2600);
 
     this.hemi = new THREE.HemisphereLight(0xfff2de, 0x8a7058, 0.9);
     this.scene.add(this.hemi);

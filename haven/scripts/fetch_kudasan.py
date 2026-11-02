@@ -20,7 +20,7 @@ import urllib.parse
 import urllib.request
 
 ORIGIN = (23.1704419, 72.6234269)  # Kudasan, Gandhinagar (Nominatim)
-RADIUS = 700
+RADIUS = 1800
 TOWER_CENTRE = (12.0, 8.0)
 # the tower's own plot (terrace, entrance path, garden) is kept clear
 PLOT = (-22.0, -20.0, 46.0, 64.0)
