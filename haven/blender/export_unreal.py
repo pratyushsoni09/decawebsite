@@ -55,16 +55,16 @@ def save_image(img):
         if not os.path.exists(path):
             shutil.copy(src, path)
         return name
-    # packed images (the website's procedural textures, carried in the glTF): write them out by their full name
+    # packed images (the website's procedural textures, carried in the glTF): write them out by their full name,
+    # always afresh, since the same name carries a new painting whenever the website's materials change
     name = bpy.path.clean_name(img.name) + ".png"
     path = os.path.join(TEX_OUT, name)
-    if not os.path.exists(path):
-        try:
-            img.filepath_raw = path
-            img.file_format = "PNG"
-            img.save()
-        except RuntimeError:
-            return None
+    try:
+        img.filepath_raw = path
+        img.file_format = "PNG"
+        img.save()
+    except RuntimeError:
+        return name if os.path.exists(path) else None
     return name if os.path.exists(path) else None
 
 
