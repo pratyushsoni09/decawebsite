@@ -13,7 +13,7 @@ export class StaticBuilder {
   add(geo: THREE.BufferGeometry, mat: MatKey, matrix?: THREE.Matrix4) {
     let g = geo.index ? geo.toNonIndexed() : geo;
     if (g === geo) g = geo.clone();
-    for (const name of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(name)) g.deleteAttribute(name);
+    for (const name of Object.keys(g.attributes)) if (!["position", "normal", "uv", "color"].includes(name)) g.deleteAttribute(name);
     if (!g.attributes.uv) {
       g.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array((g.attributes.position.count) * 2), 2));
     }
@@ -27,6 +27,12 @@ export class StaticBuilder {
 
   build(lib: MaterialLib, group: THREE.Group, shadows = true) {
     for (const [key, list] of this.parts) {
+      // vertex colours (the ground's large-scale tones) must be on every part of a merged mesh: white where unset
+      if (list.some((g) => g.attributes.color)) {
+        for (const g of list) {
+          if (!g.attributes.color) g.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(1), 3));
+        }
+      }
       const merged = mergeGeometries(list, false);
       list.forEach((g) => g.dispose());
       if (!merged) continue;

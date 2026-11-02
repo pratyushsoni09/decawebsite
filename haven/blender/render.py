@@ -138,7 +138,8 @@ def tune_materials():
         if not b:
             continue
         # the importer maps three.js opacity to alpha blending; path tracing wants real transmission instead
-        set_input(b, "Alpha", 1.0)
+        if k not in ("leafCard", "leafCardB", "palmFrond"):
+            set_input(b, "Alpha", 1.0)
         if k in ("glass", "towerGlass"):
             set_input(b, ["Transmission Weight", "Transmission"], 1.0)
             set_input(b, "Roughness", 0.0 if k == "glass" else 0.03)
@@ -173,9 +174,29 @@ def tune_materials():
             set_input(b, ["Emission Color", "Emission"], (1.0, 0.78, 0.52, 1))
             set_input(b, "Emission Strength", 0.0)
             set_input(b, ["Subsurface Weight"], 0.0)
-        elif k == "water":
-            set_input(b, "Roughness", 0.02)
+        elif k in ("water", "river", "lake"):
+            set_input(b, "Roughness", 0.02 if k == "water" else 0.04)
             set_input(b, ["Coat Weight"], 0.6)
+            if k != "water":
+                set_input(b, "Metallic", 0.0)
+                set_input(b, "Base Color", (0.16, 0.26, 0.27, 1) if k == "river" else (0.12, 0.2, 0.19, 1))
+        elif k in ("leafCard", "leafCardB", "palmFrond"):
+            # foliage cards: the texture's alpha cuts the leaves out; a little translucency
+            set_input(b, "Roughness", 0.8)
+            set_input(b, ["Subsurface Weight"], 0.12)
+            mat.use_backface_culling = False
+        elif k in ("carWhite", "carSilver", "carGrey", "carRed", "carBlue", "carBlack", "carYellow", "carOrange"):
+            set_input(b, "Roughness", 0.28)
+            set_input(b, ["Coat Weight"], 1.0)
+            set_input(b, ["Coat Roughness"], 0.05)
+        elif k in ("windowGlass", "shopGlass", "carGlass"):
+            set_input(b, "Roughness", 0.08)
+            set_input(b, "Metallic", 0.3)
+            set_input(b, ["Coat Weight"], 0.8)
+        elif k in ("wallCream", "wallBeige", "wallOchre", "wallGrey", "wallWhite", "wallRose", "compoundWall",
+                   "farBlock", "farBlockB", "farBlockC", "kerb", "paver", "bridgeConcrete", "urban", "farm", "scrub", "dirt", "pitch"):
+            set_input(b, "Roughness", 0.95)
+            set_input(b, ["Sheen Weight", "Sheen"], 0.0)
         elif k in FABRICS:
             leather = k in ("leather", "blackLeather", "pinkLeather")
             set_input(b, ["Sheen Weight", "Sheen"], 0.0 if leather else 0.35)
@@ -209,7 +230,9 @@ def tune_materials():
         elif k in ("leaf", "olive", "boxwood"):
             set_input(b, ["Subsurface Weight"], 0.15)
             set_input(b, "Roughness", 0.7)
-        # alpha-blend settings left by the importer would cut holes; render everything opaque
+        # alpha-blend settings left by the importer would cut holes; render everything but the foliage cards opaque
+        if k in ("leafCard", "leafCardB", "palmFrond"):
+            continue
         for attr, val in (("blend_method", "OPAQUE"), ("surface_render_method", "DITHERED")):
             if hasattr(mat, attr):
                 try:
@@ -290,18 +313,18 @@ def add_haze():
     import bmesh
     mesh = bpy.data.meshes.new("haze")
     bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=48, radius1=6500, radius2=6500, depth=560)
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=48, radius1=13000, radius2=13000, depth=900)
     bm.to_mesh(mesh)
     bm.free()
     ob = bpy.data.objects.new("haze", mesh)
-    ob.location = (12, -9, 280)  # centred on the tower, floor at ground level
+    ob.location = (12, -9, 450)  # centred on the tower, floor at ground level
     mat = bpy.data.materials.new("haze")
     mat.use_nodes = True
     nt = mat.node_tree
     nt.nodes.clear()
     scatter = nt.nodes.new("ShaderNodeVolumeScatter")
     scatter.inputs["Color"].default_value = (0.9, 0.88, 0.84, 1.0)
-    scatter.inputs["Density"].default_value = 0.00016
+    scatter.inputs["Density"].default_value = 0.00007
     scatter.inputs["Anisotropy"].default_value = 0.45
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     nt.links.new(scatter.outputs["Volume"], out.inputs["Volume"])
@@ -355,10 +378,10 @@ def add_lamps(lights):
 
 OUTDOOR_VIEWS = {"balcony", "swing"}
 # north-facing rooms only get skylight: open them up further, as a photographer would
-EXTRA_EV = {"balcony": -0.45, "swing": -0.45, "bed2": 1.2, "bed3": 0.8, "kitchen": 0.0, "master": 0.9, "pooja": 0.9, "dining": -1.9, "living": -0.4}
+EXTRA_EV = {"balcony": -2.0, "swing": -1.9, "bed2": 1.2, "bed3": 0.8, "kitchen": 0.0, "master": 0.9, "pooja": 0.9, "dining": -1.9, "living": -0.4}
 
 PRESET = {
-    "day": {"elev": 42, "air": 1.0, "dust": 1.0, "sun": 4.2, "sky": 1.0, "exposure": 0.0},
+    "day": {"elev": 42, "air": 1.0, "dust": 0.7, "sun": 4.2, "sky": 1.0, "exposure": 0.0},
     "golden": {"elev": 9, "air": 1.6, "dust": 3.0, "sun": 4.6, "sky": 0.55, "exposure": -0.9},
     "dusk": {"elev": 1.5, "air": 2.0, "dust": 3.0, "sun": 0.8, "sky": 0.6, "exposure": 0.9},
 }
@@ -415,7 +438,7 @@ def setup_camera(view):
     data = cam.data
     data.sensor_fit = "VERTICAL"
     data.clip_start = 0.05
-    data.clip_end = 8000  # the ground runs to the horizon
+    data.clip_end = 20000  # the ground runs to the horizon
     pos = three_to_blender(view["pos"])
     look = three_to_blender(view["look"])
     cam.location = pos

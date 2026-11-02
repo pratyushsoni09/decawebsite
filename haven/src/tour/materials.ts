@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { SIGNS } from "./cityData";
 
 /**
  * Procedural PBR materials. Every texture is painted onto a canvas at
@@ -121,24 +122,208 @@ const paintHerringbone: Paint = (ctx, w, h, rnd) => {
   noise(ctx, w, h, rnd, 0.04);
 };
 
-/** Kudasan facades: painted render with one window per 3 m bay, a slab line at the top of each 3.1 m storey */
+/** Kudasan facades at 300-900 m: painted render, one window per 3 m bay with frame, dark glass and a sill shadow,
+ *  a slab line at the top of each 3.1 m storey and weather streaks under the sills */
 const paintFacade = (hue: number, sat: number, light: number): Paint => (ctx, w, h, rnd) => {
   ctx.fillStyle = hsl(hue, sat, light);
   ctx.fillRect(0, 0, w, h);
   noise(ctx, w, h, rnd, 0.05, 6000, 2);
   const storey = 3.1;
   const y = (m: number) => h * (1 - m / storey); // canvas y runs down; v = 0 is the storey floor
-  ctx.fillStyle = hsl(hue, sat, light - 10, 0.5);
-  ctx.fillRect(0, y(storey), w, y(storey - 0.22) - y(storey));
-  ctx.fillStyle = "rgba(235,240,245,0.9)";
-  ctx.fillRect(w * 0.3 - 3, y(2.25) - 3, w * 0.4 + 6, y(0.95) - y(2.25) + 6);
-  ctx.fillStyle = "rgba(28,36,46,0.92)";
-  ctx.fillRect(w * 0.3, y(2.25), w * 0.4, y(0.95) - y(2.25));
-  ctx.fillStyle = "rgba(120,150,175,0.35)";
-  ctx.fillRect(w * 0.3, y(2.25), w * 0.2, y(1.6) - y(2.25));
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.fillRect(w * 0.3, y(0.95), w * 0.4, 3);
+  // weather streaks
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = hsl(hue, sat - 10, light - 16, 0.08 + rnd() * 0.1);
+    const sx = rnd() * w;
+    ctx.fillRect(sx, 0, 2 + rnd() * 5, h);
+  }
+  ctx.fillStyle = hsl(hue, sat, light - 14, 0.55);
+  ctx.fillRect(0, y(storey), w, y(storey - 0.2) - y(storey));
+  // window: frame, glass with a sky gradient, a lit curtain in some, sill with its shadow
+  const x0 = w * 0.3, x1 = w * 0.7;
+  ctx.fillStyle = "rgba(240,238,232,0.95)";
+  ctx.fillRect(x0 - 4, y(2.3) - 4, x1 - x0 + 8, y(0.95) - y(2.3) + 8);
+  const g = ctx.createLinearGradient(0, y(2.3), 0, y(0.95));
+  g.addColorStop(0, "rgba(96,122,146,0.95)");
+  g.addColorStop(0.5, "rgba(38,48,60,0.95)");
+  g.addColorStop(1, "rgba(22,28,36,0.95)");
+  ctx.fillStyle = g;
+  ctx.fillRect(x0, y(2.3), x1 - x0, y(0.95) - y(2.3));
+  if (rnd() < 0.35) {
+    ctx.fillStyle = hsl(36 + rnd() * 20, 40, 78, 0.85);
+    ctx.fillRect(x0 + 2, y(2.3) + 2, (x1 - x0) * 0.45, y(0.95) - y(2.3) - 4);
+  }
+  ctx.fillStyle = "rgba(240,238,232,0.9)";
+  ctx.fillRect(x0 + (x1 - x0) / 2 - 1.5, y(2.3), 3, y(0.95) - y(2.3));
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillRect(x0 - 6, y(0.95), x1 - x0 + 12, 4);
+  ctx.fillStyle = hsl(hue, sat, light - 22, 0.25);
+  ctx.fillRect(x0 - 2, y(0.95) + 4, x1 - x0 + 4, y(0.4) - y(0.95));
 };
+
+/** weathered exterior emulsion: a plain field with stains, hairline cracks and rain streaks (tinted per building) */
+const paintWall: Paint = (ctx, w, h, rnd) => {
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 24; i++) {
+    ctx.fillStyle = `rgba(90,80,60,${0.03 + rnd() * 0.07})`;
+    ctx.beginPath();
+    ctx.ellipse(rnd() * w, rnd() * h, 10 + rnd() * 60, 6 + rnd() * 30, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let i = 0; i < 10; i++) {
+    const sx = rnd() * w;
+    ctx.fillStyle = `rgba(70,65,55,${0.04 + rnd() * 0.08})`;
+    ctx.fillRect(sx, rnd() * h * 0.3, 1.5 + rnd() * 4, h);
+  }
+  noise(ctx, w, h, rnd, 0.06, 7000, 2);
+};
+
+/** a cluster of foliage for a crossed-card canopy: leaves in two greens with a dark heart, clear around the edge */
+const paintLeafCard = (hue: number, sat: number): Paint => (ctx, w, h, rnd) => {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+  // five or six lobes of leaves around the centre, each a loose cloud of small leaf shapes
+  const lobes = 5 + Math.floor(rnd() * 2);
+  for (let l = 0; l < lobes + 1; l++) {
+    const la = (l / lobes) * Math.PI * 2 + rnd();
+    const lr = l === lobes ? 0 : w * (0.16 + rnd() * 0.14);
+    const lx = cx + Math.cos(la) * lr, ly = cy + Math.sin(la) * lr * 0.85;
+    const size = w * (0.12 + rnd() * 0.08);
+    for (let i = 0; i < 70; i++) {
+      const a = rnd() * Math.PI * 2;
+      const r = Math.pow(rnd(), 0.7) * size;
+      const x = lx + Math.cos(a) * r, y = ly + Math.sin(a) * r;
+      const edge = Math.hypot(x - cx, y - cy) / (w * 0.46);
+      ctx.fillStyle = hsl(hue + (rnd() - 0.5) * 20, sat + (rnd() - 0.5) * 16, 15 + edge * 16 + rnd() * 10, 0.97);
+      ctx.beginPath();
+      ctx.ellipse(x, y, 4 + rnd() * 7, 2.5 + rnd() * 4, rnd() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // sky showing through
+  ctx.globalCompositeOperation = "destination-out";
+  for (let i = 0; i < 26; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = w * (0.08 + rnd() * 0.34);
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.9, 3 + rnd() * 9, 2 + rnd() * 6, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = "source-over";
+  // a few sunlit leaves on top
+  for (let i = 0; i < 40; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = Math.pow(rnd(), 0.6) * w * 0.4;
+    ctx.fillStyle = hsl(hue + 8, sat, 38 + rnd() * 10, 0.9);
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.9, 4 + rnd() * 6, 2.5 + rnd() * 3, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+};
+
+/** one palm frond, drawn along u: a rib with leaflets either side, clear elsewhere */
+const paintFrond: Paint = (ctx, w, h, rnd) => {
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = hsl(80, 30, 30);
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2);
+  ctx.lineTo(w, h / 2);
+  ctx.stroke();
+  for (let x = 8; x < w; x += 6) {
+    const len = (h / 2) * (0.35 + 0.65 * Math.sin((x / w) * Math.PI)) * (0.8 + rnd() * 0.3);
+    for (const side of [-1, 1]) {
+      ctx.strokeStyle = hsl(84 + rnd() * 16, 36, 28 + rnd() * 14);
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x, h / 2);
+      ctx.lineTo(x + 10, h / 2 + side * len);
+      ctx.stroke();
+    }
+  }
+};
+
+const paintFarm: Paint = (ctx, w, h, rnd) => {
+  // 24 m tile of ploughed fields: furrows in dark soil, some strips greened by a standing crop
+  ctx.fillStyle = hsl(32, 30, 34);
+  ctx.fillRect(0, 0, w, h);
+  const strips = 6;
+  for (let i = 0; i < strips; i++) {
+    const green = rnd() < 0.45;
+    ctx.fillStyle = green ? hsl(78 + rnd() * 20, 30, 30 + rnd() * 10) : hsl(30 + rnd() * 8, 28, 30 + rnd() * 12);
+    ctx.fillRect(0, (i * h) / strips, w, h / strips);
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    for (let y = (i * h) / strips; y < ((i + 1) * h) / strips; y += 5) ctx.fillRect(0, y, w, 1.5);
+  }
+  noise(ctx, w, h, rnd, 0.08, 9000, 1.5);
+};
+
+const paintScrub: Paint = (ctx, w, h, rnd) => {
+  // dry season Gandhinagar: straw grass with bare earth showing and patches of darker scrub
+  ctx.fillStyle = hsl(46, 26, 52);
+  ctx.fillRect(0, 0, w, h);
+  for (let k = 0; k < 120; k++) {
+    ctx.fillStyle = rnd() < 0.5 ? hsl(70 + rnd() * 20, 22, 30 + rnd() * 10, 0.5) : hsl(38 + rnd() * 10, 26, 44 + rnd() * 14, 0.45);
+    ctx.beginPath();
+    ctx.ellipse(rnd() * w, rnd() * h, 6 + rnd() * 40, 4 + rnd() * 24, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  noise(ctx, w, h, rnd, 0.1, 14000, 1.5);
+};
+
+const paintDirt: Paint = (ctx, w, h, rnd) => {
+  ctx.fillStyle = hsl(34, 24, 50);
+  ctx.fillRect(0, 0, w, h);
+  for (let k = 0; k < 60; k++) {
+    ctx.fillStyle = hsl(30 + rnd() * 10, 20, 38 + rnd() * 20, 0.4);
+    ctx.beginPath();
+    ctx.ellipse(rnd() * w, rnd() * h, 10 + rnd() * 50, 6 + rnd() * 30, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  noise(ctx, w, h, rnd, 0.12, 12000, 1.5);
+};
+
+const paintAwning: Paint = (ctx, w, h, rnd) => {
+  const hue = rnd() * 360;
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = i % 2 ? "#f3efe6" : hsl(hue, 55, 42);
+    ctx.fillRect((i * w) / 8, 0, w / 8, h);
+  }
+};
+
+const SIGN_COLS = 8;
+const SIGN_ROWS = 16;
+/** every shop sign of the neighbourhood in one atlas: a coloured board with the name in bold, 256 × 64 px each */
+const paintSigns: Paint = (ctx, w, h, rnd) => {
+  const cw = w / SIGN_COLS, ch = h / SIGN_ROWS;
+  const palette: [string, string][] = [["#c8102e", "#fff"], ["#0b3d91", "#fff"], ["#f2c200", "#1a1a1a"], ["#1b7f3b", "#fff"],
+    ["#f5f1e8", "#1a1a1a"], ["#e8641b", "#fff"], ["#4b2a84", "#fff"], ["#111111", "#f2c200"], ["#0e8a9e", "#fff"]];
+  for (let i = 0; i < SIGN_COLS * SIGN_ROWS; i++) {
+    const x = (i % SIGN_COLS) * cw, y = Math.floor(i / SIGN_COLS) * ch;
+    const [bg, fg] = palette[Math.floor(rnd() * palette.length)];
+    ctx.fillStyle = bg;
+    ctx.fillRect(x, y, cw, ch);
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(x, y + ch - 3, cw, 3);
+    const name = SIGNS[i] ?? "";
+    if (!name) continue;
+    ctx.fillStyle = fg;
+    let size = 30;
+    ctx.font = `bold ${size}px Arial, Helvetica, sans-serif`;
+    while (ctx.measureText(name).width > cw - 20 && size > 12) {
+      size -= 2;
+      ctx.font = `bold ${size}px Arial, Helvetica, sans-serif`;
+    }
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x + cw / 2, y + ch / 2 + 1);
+  }
+};
+/** uv rectangle [u0, v0, u1, v1] of sign i in the atlas (v up) */
+export function signUV(i: number): [number, number, number, number] {
+  const c = i % SIGN_COLS, r = Math.floor(i / SIGN_COLS);
+  return [c / SIGN_COLS, 1 - (r + 1) / SIGN_ROWS, (c + 1) / SIGN_COLS, 1 - r / SIGN_ROWS];
+}
 
 const paintAsphalt: Paint = (ctx, w, h, rnd) => {
   ctx.fillStyle = hsl(30, 4, 30);
@@ -147,17 +332,47 @@ const paintAsphalt: Paint = (ctx, w, h, rnd) => {
 };
 
 const paintGround: Paint = (ctx, w, h, rnd) => {
-  // Gandhinagar's open land: dusty khaki soil under a patchwork of scrub, grass and bare earth
-  ctx.fillStyle = hsl(50, 18, 46);
+  // the grain of the ground only; its tones come from the disc's vertex colours
+  ctx.fillStyle = hsl(44, 14, 74);
   ctx.fillRect(0, 0, w, h);
-  for (let k = 0; k < 140; k++) {
-    const green = rnd() < 0.7;
-    ctx.fillStyle = green ? hsl(70 + rnd() * 24, 18 + rnd() * 14, 28 + rnd() * 14, 0.5) : hsl(36 + rnd() * 12, 22 + rnd() * 14, 50 + rnd() * 16, 0.45);
+  for (let k = 0; k < 160; k++) {
+    const roll = rnd();
+    ctx.fillStyle = roll < 0.4 ? hsl(66 + rnd() * 24, 14, 60 + rnd() * 12, 0.4)
+      : roll < 0.7 ? hsl(50 + rnd() * 14, 16, 68 + rnd() * 12, 0.4)
+      : hsl(34 + rnd() * 12, 16, 76 + rnd() * 12, 0.4);
     ctx.beginPath();
-    ctx.ellipse(rnd() * w, rnd() * h, 20 + rnd() * 140, 14 + rnd() * 80, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.ellipse(rnd() * w, rnd() * h, 24 + rnd() * 160, 14 + rnd() * 90, rnd() * Math.PI, 0, Math.PI * 2);
     ctx.fill();
   }
+  // tracks and field edges
+  for (let k = 0; k < 10; k++) {
+    ctx.strokeStyle = hsl(40, 20, 64, 0.35);
+    ctx.lineWidth = 2 + rnd() * 3;
+    ctx.beginPath();
+    ctx.moveTo(rnd() * w, rnd() * h);
+    ctx.lineTo(rnd() * w, rnd() * h);
+    ctx.stroke();
+  }
   noise(ctx, w, h, rnd, 0.1, 16000, 1.5);
+};
+
+/** the ground of the built-up plots: trodden dust and gravel in beige and grey, darker where it is paved */
+const paintUrban: Paint = (ctx, w, h, rnd) => {
+  ctx.fillStyle = hsl(38, 16, 60);
+  ctx.fillRect(0, 0, w, h);
+  for (let k = 0; k < 120; k++) {
+    ctx.fillStyle = rnd() < 0.5 ? hsl(34 + rnd() * 10, 12 + rnd() * 10, 50 + rnd() * 18, 0.5) : hsl(40, 6, 44 + rnd() * 16, 0.45);
+    ctx.beginPath();
+    ctx.ellipse(rnd() * w, rnd() * h, 14 + rnd() * 90, 10 + rnd() * 60, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let k = 0; k < 30; k++) {
+    ctx.fillStyle = hsl(90 + rnd() * 20, 18, 34 + rnd() * 10, 0.4);
+    ctx.beginPath();
+    ctx.ellipse(rnd() * w, rnd() * h, 6 + rnd() * 24, 4 + rnd() * 16, rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  noise(ctx, w, h, rnd, 0.12, 16000, 1.5);
 };
 
 const paintStone: Paint = (ctx, w, h, rnd) => {
@@ -386,7 +601,15 @@ export type MatKey =
   | "upholstery" | "teak" | "rattan" | "curtain" | "curtainLit" | "concrete" | "towerGlass" | "liftDoor" | "greige"
   | "darkPlank" | "polished" | "driftwood" | "tan" | "blackLeather" | "pinkLeather" | "mustard" | "maroon"
   | "terracotta" | "orangePaint" | "charcoal" | "rugGrey" | "rugRose" | "glowWarm" | "carpet" | "veneer"
-  | "ground" | "park" | "asphalt" | "roadLine" | "facadeA" | "facadeB" | "facadeC" | "facadeD" | "roofGrey" | "parapet" | "tank";
+  | "ground" | "park" | "asphalt" | "roadLine" | "facadeA" | "facadeB" | "facadeC" | "facadeD" | "roofGrey" | "parapet" | "tank"
+  | "wallCream" | "wallBeige" | "wallOchre" | "wallGrey" | "wallWhite" | "wallRose" | "farBlock" | "farBlockB" | "farBlockC"
+  | "windowGlass" | "windowFrame" | "balconyRail" | "acUnit" | "shopSign" | "shopGlass" | "awning" | "compoundWall"
+  | "kerb" | "paver" | "divider" | "streetLight" | "bridgeConcrete" | "river" | "lake" | "leafCard" | "leafCardB" | "palmFrond"
+  | "farm" | "scrub" | "dirt" | "pitch" | "urban" | "carWhite" | "carSilver" | "carGrey" | "carRed" | "carBlue" | "carBlack"
+  | "carYellow" | "carOrange" | "carGlass" | "tyre" | "carPaint";
+
+/** the body colour of a car, chosen by its number; the keys the exporter writes one material per */
+export const CAR_COLOURS: MatKey[] = ["carWhite", "carWhite", "carWhite", "carSilver", "carSilver", "carGrey", "carRed", "carBlue", "carBlack", "carBlack"];
 
 export type MaterialLib = Record<MatKey, THREE.MeshStandardMaterial>;
 
@@ -399,6 +622,7 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
   const std = (p: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial(p);
 
   const plasterMap = tx("plaster", 512, paintPlaster, 3, [3, 3]);
+  const wallMap = tx("weathered wall", 512, paintWall, 5, [6, 6]);
   const lib: Partial<MaterialLib> = {
     plaster: std({ map: plasterMap, roughness: 0.92, color: 0xf7f0e4 }),  // warm ivory emulsion, as in the Blender scene
     ceiling: std({ map: plasterMap, roughness: 0.95, color: 0xfbf8f2 }),
@@ -445,7 +669,7 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     carpet: std({ map: tx("carpet tiles", 256, paintFabric(34, 16, 70), 91, [0.5, 0.5]), roughness: 1 }),
     veneer: std({ map: tx("veneer", 512, paintOakVertical, 93, [0.6, 2.4]), roughness: 0.55, color: 0xd7a27a }),
     // Kudasan surroundings
-    ground: std({ map: tx("ground", 512, paintGround, 95, [110, 110]), roughness: 1 }),
+    ground: std({ map: tx("ground", 512, paintGround, 95, [110, 110]), roughness: 1, vertexColors: true, polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 6 }),
     park: std({ map: tx("park", 512, paintGrass, 96, [6, 6]), roughness: 1, color: 0x9fb37a }),
     asphalt: std({ map: tx("asphalt", 256, paintAsphalt, 97, [4, 4]), roughness: 0.95 }),
     roadLine: std({ color: 0xe8e2d0, roughness: 0.8 }),
@@ -457,6 +681,51 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     roofGrey: std({ color: 0x8c8780, roughness: 0.95 }),
     parapet: std({ color: 0xd9d2c4, roughness: 0.9 }),
     tank: std({ color: 0x14151a, roughness: 0.6 }),
+    // the near ring: plain weathered walls with real windows and balconies built on them
+    wallCream: std({ map: wallMap, color: 0xf0e6d2, roughness: 0.9 }),
+    wallBeige: std({ map: wallMap, color: 0xdcc9a8, roughness: 0.9 }),
+    wallOchre: std({ map: wallMap, color: 0xc99a5e, roughness: 0.9 }),
+    wallGrey: std({ map: wallMap, color: 0xc9c4ba, roughness: 0.9 }),
+    wallWhite: std({ map: wallMap, color: 0xf6f3ec, roughness: 0.88 }),
+    wallRose: std({ map: wallMap, color: 0xd9a98f, roughness: 0.9 }),
+    farBlock: std({ color: 0xbfb8ab, roughness: 0.95 }),
+    farBlockB: std({ color: 0xa9a297, roughness: 0.95 }),
+    farBlockC: std({ color: 0xcec7ba, roughness: 0.95 }),
+    urban: std({ map: tx("plots", 512, paintUrban, 113, [60, 60]), roughness: 1, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 }),
+    windowGlass: std({ color: 0x33444f, metalness: 0.55, roughness: 0.1 }),
+    windowFrame: std({ color: 0xe9e5dc, roughness: 0.6 }),
+    balconyRail: std({ color: 0x3a3a3c, metalness: 0.6, roughness: 0.45 }),
+    acUnit: std({ color: 0xd6d6d0, roughness: 0.7 }),
+    shopSign: std({ map: tx("shop signs", 2048, paintSigns, 103, [1, 1], 1024), roughness: 0.6 }),
+    shopGlass: std({ color: 0x1c242c, metalness: 0.4, roughness: 0.12 }),
+    awning: std({ map: tx("awning", 256, paintAwning, 104, [3, 1], 64), roughness: 0.9, side: THREE.DoubleSide }),
+    compoundWall: std({ map: wallMap, color: 0xc6bdae, roughness: 0.92 }),
+    kerb: std({ color: 0xb9b5ac, roughness: 0.9 }),
+    paver: std({ map: tx("pavers", 256, paintStone, 105, [1.6, 1.6]), color: 0xb8ada0, roughness: 0.9 }),
+    divider: std({ color: 0x3e6a33, roughness: 0.95 }),
+    streetLight: std({ color: 0x6c6c6a, metalness: 0.6, roughness: 0.5 }),
+    bridgeConcrete: std({ color: 0xa9a49b, roughness: 0.9 }),
+    river: std({ color: 0x5c7a80, metalness: 0.25, roughness: 0.08 }),
+    lake: std({ color: 0x4f6e6c, metalness: 0.25, roughness: 0.08 }),
+    leafCard: std({ map: tx("neem canopy", 256, paintLeafCard(104, 38), 106, [1, 1]), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.9 }),
+    leafCardB: std({ map: tx("gulmohar canopy", 256, paintLeafCard(80, 42), 107, [1, 1]), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.9 }),
+    palmFrond: std({ map: tx("palm frond", 256, paintFrond, 108, [1, 1], 64), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 }),
+    farm: std({ map: tx("fields", 512, paintFarm, 109, [24, 24]), roughness: 1 }),
+    scrub: std({ map: tx("scrub", 512, paintScrub, 110, [40, 40]), roughness: 1 }),
+    dirt: std({ map: tx("bare earth", 512, paintDirt, 111, [30, 30]), roughness: 1 }),
+    pitch: std({ map: tx("pitch", 512, paintGrass, 112, [6, 6]), roughness: 1, color: 0x8fb46a }),
+    carWhite: std({ color: 0xf2f2ee, roughness: 0.25, metalness: 0.1 }),
+    carSilver: std({ color: 0xb9bcc0, roughness: 0.22, metalness: 0.5 }),
+    carGrey: std({ color: 0x5a5d62, roughness: 0.25, metalness: 0.4 }),
+    carRed: std({ color: 0xa8201a, roughness: 0.25, metalness: 0.15 }),
+    carBlue: std({ color: 0x1f3a6e, roughness: 0.25, metalness: 0.2 }),
+    carBlack: std({ color: 0x15161a, roughness: 0.2, metalness: 0.3 }),
+    carYellow: std({ color: 0xe0b020, roughness: 0.4 }),
+    carOrange: std({ color: 0xd9601e, roughness: 0.4 }),
+    carGlass: std({ color: 0x1a2229, metalness: 0.5, roughness: 0.1 }),
+    tyre: std({ color: 0x151515, roughness: 0.9 }),
+    // the moving traffic of the tour: one instanced mesh, body colour per instance over vertex colours
+    carPaint: std({ color: 0xffffff, roughness: 0.3, metalness: 0.2, vertexColors: true }),
     glowWarm: std({ color: 0xffe3a6, emissive: 0xffc95e, emissiveIntensity: 1.1, roughness: 0.9 }),
     glass: std({ color: 0xcfe0e4, metalness: 0, roughness: 0.04, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
     darkGlass: std({ color: 0x15130f, metalness: 0.4, roughness: 0.15 }),

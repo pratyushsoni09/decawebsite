@@ -40,10 +40,14 @@ The room and tower photos are Blender Cycles renders of the same model you walk:
    and kitchen; laminate in the bedrooms; bathroom walls tiled to 2.1 m; teak
    architraves on every door and archway; recessed spotlights; pleated curtains on rods.
 The tower stands in central Kudasan, Gandhinagar. `scripts/fetch_kudasan.py` pulls the surroundings from
-open map data (building footprints from Overture Maps, streets, greens and water from OpenStreetMap) into
-`src/data/kudasan.json`, which `src/tour/buildCity.ts` turns into the 3D city around the plot — in the
-walkable tour and, through the export, in the Blender renders. Heights are estimated where the data has
-none. Re-run the script to refresh the data or move `ORIGIN` to the exact plot.
+Overture Maps (building footprints, streets with their bridges, greens, water and named places) into
+`src/data/kudasan.json`: every building to 1.8 km, and out to 7 km the skyline, the main roads, the Sabarmati,
+the lakes, parks and farmland. `src/tour/buildCity.ts` turns that into the 3D city around the plot — windows,
+balconies and shopfronts on the near blocks, tree-lined streets, kerbs and lamp posts, the far skyline — and
+`src/tour/traffic.ts` drives cars, autos and buses along the streets. All of it reaches the Blender renders
+and Unreal through the export (the traffic as one mesh per vehicle, with `blender/export/traffic.json` so
+Unreal can play the same plan as a looping sequence). Heights are estimated where the data has none.
+Re-run the script to refresh the data or move `ORIGIN` to the exact plot.
 
 3. Render (GPU/OptiX is picked up automatically):
 

@@ -261,8 +261,14 @@ export default function Studio() {
     const root = eng.house.root;
     root.remove(eng.house.sky);
     if (eng.house.detailed) root.remove(eng.house.detailed);
+    // the traffic goes out as one plain mesh per vehicle (car_NNN at its t = 0 pose), not as instances
+    eng.house.city.remove(eng.house.traffic.group);
+    const baked = eng.house.traffic.bake();
+    eng.house.city.add(baked);
     root.updateMatrixWorld(true);
     const glb = (await new GLTFExporter().parseAsync(root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
+    eng.house.city.remove(baked);
+    eng.house.city.add(eng.house.traffic.group);
     root.add(eng.house.sky);
     if (eng.house.detailed) root.add(eng.house.detailed);
     const put = (name: string, body: BodyInit) => fetch(`/api/__save-file?name=${name}`, { method: "POST", body }).then((r) => r.json());
@@ -274,6 +280,8 @@ export default function Studio() {
       poseLeaf(l);
     }
     shell.root.remove(shell.sky);
+    shell.city.remove(shell.traffic.group);
+    shell.city.add(shell.traffic.bake());
     shell.root.updateMatrixWorld(true);
     const shellGlb = (await new GLTFExporter().parseAsync(shell.root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
     const items = buildFurnitureItems(eng.lib, furniture);
@@ -293,6 +301,8 @@ export default function Studio() {
     }, null, 2));
     const b = await put("views.json", JSON.stringify({ residenceElevation: U, views: VIEWS }, null, 2));
     const c = await put("lights.json", JSON.stringify(eng.house.lights, null, 2));
+    // the traffic plan: each vehicle's road, speed and start, so Unreal can drive the same cars
+    await put("traffic.json", JSON.stringify(eng.house.traffic.plan));
     setLog([`tower.glb: ${Math.round(a.bytes / 1048576)} MB`, `views.json: ${b.bytes} B`, `lights.json: ${c.bytes} B`, "export done"]);
     setBusy(false);
   };

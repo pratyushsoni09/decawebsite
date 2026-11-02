@@ -137,7 +137,7 @@ export class TourEngine {
     this.renderer.domElement.setAttribute("aria-label", "First-person 3D view of Residence 11A");
     this.renderer.domElement.setAttribute("role", "img");
     container.appendChild(this.renderer.domElement);
-    this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 7500);
+    this.camera = new THREE.PerspectiveCamera(70, 1, 0.08, 16000);
     this.camera.rotation.order = "YXZ";
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     this.ro = new ResizeObserver(() => this.resize());
@@ -212,8 +212,19 @@ export class TourEngine {
   private setupLights() {
     this.scene.environment = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.45;
-    // aerial perspective: the mapped city runs to 1.8 km and fades into the haze beyond it
-    this.scene.fog = new THREE.Fog(0xe6e0d4, 300, 2600);
+    // aerial perspective: a clear Gandhinagar day, the Sabarmati still readable at 3 km, the GIFT City towers at 7
+    this.scene.fog = new THREE.Fog(0xdcdcd8, 350, 8000);
+    // the sky itself in the glass and the water outside (the rooms keep their neutral room environment)
+    const skyScene = new THREE.Scene();
+    skyScene.add(this.house.sky.clone());
+    const skyEnv = this.pmrem.fromScene(skyScene, 0.02).texture;
+    skyScene.clear();
+    for (const key of ["windowGlass", "shopGlass", "towerGlass", "river", "lake", "carGlass", "carPaint",
+      "carWhite", "carSilver", "carGrey", "carRed", "carBlue", "carBlack", "carYellow", "carOrange"] as const) {
+      this.lib[key].envMap = skyEnv;
+      this.lib[key].envMapIntensity = 1.0;
+      this.lib[key].needsUpdate = true;
+    }
 
     this.hemi = new THREE.HemisphereLight(0xfff2de, 0x8a7058, 0.9);
     this.scene.add(this.hemi);
@@ -541,6 +552,7 @@ export class TourEngine {
   private update(dt: number) {
     if (!this.house) return;
     this.time += dt;
+    if (this.house.city.visible) this.house.traffic.update(this.time);
     if (this.interactive) {
       this.updateLook(dt);
       if (this.seat) {

@@ -51,15 +51,34 @@ r.ReflectionMethod=1
 r.GenerateMeshDistanceFields=True
 r.AllowStaticLighting=False
 r.DefaultFeature.AutoExposure.ExtendDefaultLuminanceRange=True
-r.Nanite.ProjectEnabled=False
+r.Nanite.ProjectEnabled=True
 r.RayTracing=True
 r.SkinCache.CompileShaders=True
 r.Lumen.HardwareRayTracing=True
 r.Lumen.TranslucencyReflections.FrontLayer.EnableForProject=True
+r.Shadow.Virtual.Enable=1
+r.SupportSkyAtmosphere=True
+r.SupportSkyAtmosphereAffectsHeightFog=True
+r.VolumetricCloud=1
 
 [/Script/WindowsTargetPlatform.WindowsTargetSettings]
 DefaultGraphicsRHI=DefaultGraphicsRHI_DX12
 """)
+    # the packaged walkthrough runs at Epic scalability, full HD
+    with open(os.path.join(PROJECT, "Config", "DefaultGameUserSettings.ini"), "w", encoding="utf8") as f:
+        f.write("[ScalabilityGroups]
+sg.ResolutionQuality=100.000000
+" + "".join(
+            f"sg.{g}Quality=3
+" for g in ("ViewDistance", "AntiAliasing", "Shadow", "GlobalIllumination", "Reflection",
+                                           "PostProcess", "Texture", "Effects", "Foliage", "Shading", "Landscape"))
+            + "
+[/Script/Engine.GameUserSettings]
+bUseVSync=True
+FullscreenMode=1
+ResolutionSizeX=1920
+ResolutionSizeY=1080
+")
     with open(os.path.join(PROJECT, "Config", "DefaultGame.ini"), "a", encoding="utf8") as f:
         f.write("""
 [/Script/EngineSettings.GeneralProjectSettings]

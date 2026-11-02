@@ -30,7 +30,8 @@ SHOTS = [
     ("dining", 6, (10.4, 4.6, E + 1.6), (5.2, 7.7, E + 0.9), (9.2, 5.4, E + 1.5), (5.2, 7.7, E + 0.9), 62),
     ("hall", 7, (6.0, 12.4, E + 1.3), (11.86, 12.4, E + 1.3), (8.4, 12.4, E + 1.3), (11.86, 12.3, E + 1.3), 56),
     ("master", 6, (4.45, 15.5, E + 1.35), (1.0, 12.9, E + 0.95), (3.6, 14.6, E + 1.3), (1.0, 12.9, E + 0.95), 58),
-    ("balcony", 9, (8.0, 14.6, E + 1.6), (8.0, 19.5, E + 1.0), (8.0, 18.2, E + 1.6), (3.0, 60.0, E - 8.0), 66),
+    # out onto the balcony, then a slow sweep from the Sabarmati in the south-east round to the south-west
+    ("balcony", 12, (8.0, 14.6, E + 1.6), (40.0, 55.0, E + 0.0), (8.0, 18.2, E + 1.6), (-30.0, 80.0, E - 7.0), 66),
     ("swing", 6, (7.4, 16.6, E + 1.6), (11.5, 18.9, E + 0.9), (8.6, 17.2, E + 1.5), (11.5, 18.9, E + 0.9), 64),
 ]
 
@@ -131,7 +132,7 @@ def main():
     job.map = unreal.SoftObjectPath(LEVEL)
     cfg = job.get_configuration()
     out = cfg.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
-    out.output_resolution = unreal.IntPoint(1280, 720) if STILLS else unreal.IntPoint(1920, 1080)
+    out.output_resolution = unreal.IntPoint(1600, 900) if STILLS else unreal.IntPoint(1920, 1080)
     out.output_directory = unreal.DirectoryPath(os.path.join(HERE, "stills" if STILLS else "frames"))
     out.file_name_format = "haven.{frame_number}"
     out.output_frame_rate = unreal.FrameRate(FPS, 1)
@@ -140,9 +141,24 @@ def main():
     cfg.find_or_add_setting_by_class(unreal.MoviePipelineDeferredPassBase)
     aa = cfg.find_or_add_setting_by_class(unreal.MoviePipelineAntiAliasingSetting)
     aa.spatial_sample_count = 1
-    aa.temporal_sample_count = 2 if STILLS else 6
+    aa.temporal_sample_count = 4 if STILLS else 8
     aa.override_anti_aliasing = True
     aa.anti_aliasing_method = unreal.AntiAliasingMethod.AAM_TSR
+    aa.render_warm_up_count = 24
+    aa.engine_warm_up_count = 24
+    # everything the engine has, for an offline render: cinematic scalability, full Lumen, virtual shadows at their best
+    cvars = cfg.find_or_add_setting_by_class(unreal.MoviePipelineConsoleVariableSetting)
+    for name, value in {
+        "sg.ViewDistanceQuality": 4, "sg.AntiAliasingQuality": 4, "sg.ShadowQuality": 4, "sg.GlobalIlluminationQuality": 4,
+        "sg.ReflectionQuality": 4, "sg.PostProcessQuality": 4, "sg.TextureQuality": 4, "sg.EffectsQuality": 4,
+        "sg.FoliageQuality": 4, "sg.ShadingQuality": 4,
+        "r.ScreenPercentage": 100, "r.Lumen.Reflections.Allow": 1, "r.Lumen.ScreenProbeGather.RadianceCache.ProbeResolution": 32,
+        "r.Lumen.TraceMeshSDFs": 1, "r.Lumen.Reflections.MaxRoughnessToTrace": 0.6, "r.Shadow.Virtual.Enable": 1,
+        "r.Shadow.Virtual.ResolutionLodBiasDirectional": -1.0, "r.Nanite.MaxPixelsPerEdge": 0.5, "r.VolumetricCloud.ViewRaySampleMaxCount": 1024,
+        "r.VolumetricCloud.ReflectionRaySampleMaxCount": 160, "r.Streaming.PoolSize": 2500, "r.Streaming.FullyLoadUsedTextures": 1,
+        "r.Streaming.LimitPoolSizeToVRAM": 0, "r.DepthOfFieldQuality": 4, "r.MotionBlurQuality": 4, "r.TemporalAA.Upsampling": 0,
+    }.items():
+        cvars.add_or_update_console_variable(name, float(value))
     result = unreal.MoviePipelineEditorLibrary.save_queue_to_manifest_file(queue)
     manifest = result[1] if isinstance(result, tuple) else result  # 5.8 returns (queue, path)
     # -MoviePipelineConfig takes this path relative to the project's Saved folder

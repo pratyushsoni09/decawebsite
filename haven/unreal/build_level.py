@@ -14,8 +14,12 @@ centimetres with +Y = plan south, so plan (x, y) at elevation e lands at Unreal 
 import json
 import os
 import re
+import sys
 
 import unreal
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import traffic_sequence  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXPORT = os.path.join(HERE, "export")
@@ -100,11 +104,16 @@ def import_textures():
 
 # ---------------------------------------------------------------- materials
 
-def master(name, textured=False, glass=False):
+def master(name, textured=False, glass=False, masked=False):
     path = f"{MAT_DIR}/{name}"
     if EAL.does_asset_exist(path):
         EAL.delete_asset(path)
     mat = AT.create_asset(name, MAT_DIR, unreal.Material, unreal.MaterialFactoryNew())
+    if masked:
+        # foliage cards: the texture's alpha cuts the leaves out, seen from both sides
+        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+        mat.set_editor_property("two_sided", True)
+        mat.set_editor_property("opacity_mask_clip_value", 0.4)
     if glass:
         mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
         mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
@@ -138,7 +147,14 @@ def master(name, textured=False, glass=False):
         mul = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -500, -50)
         MEL.connect_material_expressions(tex, "RGB", mul, "A")
         MEL.connect_material_expressions(tint, "", mul, "B")
-        MEL.connect_material_property(mul, "", unreal.MaterialProperty.MP_BASE_COLOR)
+        # the mesh's vertex colours (the ground's large-scale tones; white on everything else)
+        vcol = MEL.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -500, -200)
+        mul2 = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -300, -100)
+        MEL.connect_material_expressions(mul, "", mul2, "A")
+        MEL.connect_material_expressions(vcol, "", mul2, "B")
+        MEL.connect_material_property(mul2, "", unreal.MaterialProperty.MP_BASE_COLOR)
+        if masked:
+            MEL.connect_material_property(tex, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
         nor = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureSampleParameter2D, -900, 300)
         nor.set_editor_property("parameter_name", "NormalTex")
         nor.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
@@ -160,7 +176,8 @@ def master(name, textured=False, glass=False):
 def build_materials(textures):
     with open(os.path.join(EXPORT, "materials.json"), encoding="utf8") as f:
         specs = json.load(f)
-    masters = {"color": master("M_Haven"), "tex": master("M_HavenTex", textured=True), "glass": master("M_HavenGlass", glass=True)}
+    masters = {"color": master("M_Haven"), "tex": master("M_HavenTex", textured=True), "glass": master("M_HavenGlass", glass=True),
+               "masked": master("M_HavenMasked", textured=True, masked=True)}
     instances = {}
     for spec in specs:
         name = "MI_" + clean(spec["name"])
@@ -170,17 +187,18 @@ def build_materials(textures):
         glass = spec["transmission"] > 0.5 or spec["alpha"] < 0.9
         base_tex = textures.get(spec["textures"].get("baseColor", ""))
         nor_tex = textures.get(spec["textures"].get("normal", ""))
-        kind = "glass" if glass else ("tex" if (base_tex or nor_tex) else "color")
+        kind = "masked" if (spec.get("masked") and base_tex) else "glass" if glass else ("tex" if (base_tex or nor_tex) else "color")
         mi = AT.create_asset(name, MAT_DIR, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
         MEL.set_material_instance_parent(mi, masters[kind])
         c = spec["baseColor"]
-        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(1, 1, 1, 1) if (kind == "tex" and base_tex) else unreal.LinearColor(c[0], c[1], c[2], 1))
+        t = spec.get("tint", [1, 1, 1])
+        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(t[0], t[1], t[2], 1) if (kind in ("tex", "masked") and base_tex) else unreal.LinearColor(c[0], c[1], c[2], 1))
         MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", spec["roughness"])
         MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", spec["metallic"])
         e = spec["emission"]
         s = spec["emissionStrength"]
         MEL.set_material_instance_vector_parameter_value(mi, "Emissive", unreal.LinearColor(e[0] * s, e[1] * s, e[2] * s, 1))
-        if kind == "tex":
+        if kind in ("tex", "masked"):
             if base_tex:
                 MEL.set_material_instance_texture_parameter_value(mi, "BaseTex", base_tex)
             if nor_tex:
@@ -199,6 +217,7 @@ def build_materials(textures):
 
 def assign_materials(mesh_paths, instances):
     assigned = 0
+    nanite = 0
     for p in mesh_paths:
         sm = unreal.load_asset(p)
         if not isinstance(sm, unreal.StaticMesh):
@@ -214,8 +233,30 @@ def assign_materials(mesh_paths, instances):
         bs = sm.get_editor_property("body_setup")
         if bs:
             bs.set_editor_property("collision_trace_flag", unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
+        # Nanite for everything solid and still: the house, the city, the trees' trunks; not glass, leaf cards or cars
+        name = sm.get_name()
+        slot_names = [clean(str(s.get_editor_property("material_slot_name"))) for s in mats]
+        solid = not any(any(k in n for k in ("Glass", "glass", "leafCard", "palmFrond", "curtain", "mirror")) for n in slot_names)
+        if solid and not name.startswith("car_"):
+            if enable_nanite(sm):
+                nanite += 1
         EAL.save_loaded_asset(sm)
-    log(f"{assigned} material slots assigned")
+    log(f"{assigned} material slots assigned, {nanite} meshes on Nanite")
+
+
+def enable_nanite(sm):
+    try:
+        settings = sm.get_editor_property("nanite_settings")
+        settings.set_editor_property("enabled", True)
+        sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+        if hasattr(sub, "set_nanite_settings"):
+            sub.set_nanite_settings(sm, settings, True)
+        else:
+            sm.set_editor_property("nanite_settings", settings)
+        return True
+    except Exception as err:  # noqa: BLE001
+        log(f"nanite not set on {sm.get_name()}: {err}")
+        return False
 
 
 # ---------------------------------------------------------------- level
@@ -232,6 +273,7 @@ def build_level(mesh_paths):
     elif not LES.new_level(LEVEL):
         raise RuntimeError(f"could not create {LEVEL}")
     placed = 0
+    cars = {}
     for p in mesh_paths:
         sm = unreal.load_asset(p)
         if not isinstance(sm, unreal.StaticMesh):
@@ -243,7 +285,9 @@ def build_level(mesh_paths):
             continue
         a.set_actor_label(sm.get_name())
         comp = a.static_mesh_component
-        comp.set_mobility(unreal.ComponentMobility.STATIC)
+        comp.set_mobility(unreal.ComponentMobility.MOVABLE if sm.get_name().startswith("car_") else unreal.ComponentMobility.STATIC)
+        if sm.get_name().startswith("car_"):
+            cars[sm.get_name()] = a
         if not comp.set_static_mesh(sm):
             log(f"no geometry in {sm.get_name()}; removed")
             EAS.destroy_actor(a)
@@ -263,6 +307,15 @@ def build_level(mesh_paths):
     lc.set_editor_property("atmosphere_sun_light", True)
     lc.set_editor_property("cast_shadows", True)
     spawn(unreal.SkyAtmosphere, (0, 0, 0)).set_actor_label("SkyAtmosphere")
+    # fair-weather cumulus over the plain
+    try:
+        clouds = spawn(unreal.VolumetricCloud, (0, 0, 0))
+        clouds.set_actor_label("Clouds")
+        cc = clouds.get_component_by_class(unreal.VolumetricCloudComponent)
+        cc.set_editor_property("layer_bottom_altitude", 1.8)
+        cc.set_editor_property("layer_height", 2.5)
+    except Exception as err:  # noqa: BLE001
+        log(f"no volumetric clouds ({err})")
     sky = spawn(unreal.SkyLight, (0, 0, 5000))
     sky.set_actor_label("SkyLight")
     skc = sky.get_component_by_class(unreal.SkyLightComponent)
@@ -271,15 +324,15 @@ def build_level(mesh_paths):
     fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0))
     fog.set_actor_label("Haze")
     fc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
-    # aerial perspective over the 1.8 km of mapped city: dusty haze that keeps its density up at balcony height
-    fc.set_editor_property("fog_density", 0.018)
-    fc.set_editor_property("fog_height_falloff", 0.03)
+    # aerial perspective over 7 km of mapped country: a clear day, the Sabarmati still readable at 3 km
+    fc.set_editor_property("fog_density", 0.0045)
+    fc.set_editor_property("fog_height_falloff", 0.02)
     try:
         fc.set_editor_property("fog_inscattering_luminance", unreal.LinearColor(0.86, 0.82, 0.74, 1.0))
     except Exception as err:  # noqa: BLE001 - older property name
         log(f"haze colour left at the default ({err})")
-    fc.set_editor_property("start_distance", 12000.0)
-    fc.set_editor_property("fog_max_opacity", 0.9)
+    fc.set_editor_property("start_distance", 20000.0)
+    fc.set_editor_property("fog_max_opacity", 0.92)
 
     # the home's lamps, from the studio's lights.json (three.js metres: x east, y up, z south)
     with open(os.path.join(BL_EXPORT, "lights.json"), encoding="utf8") as f:
@@ -315,14 +368,33 @@ def build_level(mesh_paths):
     settings.set_editor_property("override_reflection_method", True)
     settings.set_editor_property("reflection_method", unreal.ReflectionMethod.LUMEN)
     settings.set_editor_property("override_lumen_scene_lighting_quality", True)
-    settings.set_editor_property("lumen_scene_lighting_quality", 2.0)
+    settings.set_editor_property("lumen_scene_lighting_quality", 4.0)
     settings.set_editor_property("override_lumen_final_gather_quality", True)
-    settings.set_editor_property("lumen_final_gather_quality", 2.0)
+    settings.set_editor_property("lumen_final_gather_quality", 4.0)
+    for flag, prop, value in (("override_lumen_scene_detail", "lumen_scene_detail", 4.0),
+                              ("override_lumen_scene_view_distance", "lumen_scene_view_distance", 600000.0),
+                              ("override_lumen_reflection_quality", "lumen_reflection_quality", 4.0),
+                              ("override_lumen_ray_lighting_mode", "lumen_ray_lighting_mode", getattr(getattr(unreal, "LumenRayLightingModeOverride", None), "HIT_LIGHTING", None))):
+        if value is None:
+            continue
+        try:
+            settings.set_editor_property(flag, True)
+            settings.set_editor_property(prop, value)
+        except Exception as err:  # noqa: BLE001 - property names move between engine versions
+            log(f"{prop} left at the default ({err})")
     pp.set_editor_property("settings", settings)
 
     # start in the lift lobby on level 11, facing the front door
     start = spawn(unreal.PlayerStart, (1260, 240, RESIDENCE_ELEVATION * 100 + 95), unreal.Rotator(0, 180, 0))
     start.set_actor_label("Start_LiftLobby")
+    # the traffic: every exported vehicle driven along its road by one looping sequence
+    plan = os.path.join(BL_EXPORT, "traffic.json")
+    if os.path.exists(plan) and cars:
+        try:
+            traffic_sequence.build_traffic(LEVEL, plan, cars, LES)
+        except Exception:  # noqa: BLE001
+            import traceback
+            unreal.log_error("[haven] traffic: " + traceback.format_exc())
     LES.save_current_level()
     log(f"level saved: {LEVEL}")
 

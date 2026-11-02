@@ -9,7 +9,9 @@ import {
 } from "../data/layoutGeometry";
 import { StaticBuilder, boxAt, metricBox, planeAt, placeMatrix } from "./geom";
 import { buildFurniture, type LightSpot } from "./buildFurniture";
-import { buildCity } from "./buildCity";
+import { buildCity, tree as cityTree } from "./buildCity";
+import { CITY } from "./cityData";
+import { planTraffic, Traffic } from "./traffic";
 import tourModel from "../data/tourModel.json";
 import type { MatKey, MaterialLib } from "./materials";
 
@@ -48,6 +50,8 @@ export interface HouseBuild {
   sky: THREE.Mesh;
   /** the open-data surroundings (central Kudasan), hidden while Google 3D Tiles are shown */
   city: THREE.Group;
+  /** the cars on its streets */
+  traffic: Traffic;
   /** the Blender-modelled interior, once streamed in */
   detailed?: THREE.Group;
   authoredMeshes: number;
@@ -220,16 +224,11 @@ function buildRoof(sb: StaticBuilder) {
 
 /* ------------------------------------------------------------------ site and city */
 
+let plotSeed = 29;
+const plotRnd = () => ((plotSeed = (plotSeed * 16807) % 2147483647) / 2147483647);
+/** the plot's own neem and gulmohar: the same full-canopy trees as the city's near ring */
 function tree(sb: StaticBuilder, x: number, z: number, s = 1) {
-  const trunk = new THREE.CylinderGeometry(0.16 * s, 0.24 * s, 4.2 * s, 8);
-  trunk.translate(x, 2.1 * s, z);
-  sb.add(trunk, "bark");
-  for (let i = 0; i < 6; i++) {
-    const a = i * 2.3 + x;
-    const c = new THREE.IcosahedronGeometry((1.4 + (i % 3) * 0.35) * s, 1);
-    c.translate(x + Math.cos(a) * 1.2 * s, (5 + (i % 3) * 0.7) * s, z + Math.sin(a) * 1.2 * s);
-    sb.add(c, i % 2 ? "leaf" : "olive");
-  }
+  cityTree(sb, x, z, s * 1.15, 0, plotRnd);
 }
 
 function buildSite(sb: StaticBuilder) {
@@ -305,9 +304,9 @@ export const easeInOut = (s: number) => (s < 0.5 ? 2 * s * s : 1 - Math.pow(-2 *
 /* ------------------------------------------------------------------ sky */
 
 export const SKY_PRESETS = {
-  day: { top: "#7fa7c9", horizon: "#eee3cf", sun: "#fff1d6", sunDir: [-0.5, 0.55, 0.67] },
-  golden: { top: "#6a8fb5", horizon: "#f2c592", sun: "#ffd58f", sunDir: [-0.66, 0.26, 0.7] },
-  dusk: { top: "#1d2a40", horizon: "#c98a6a", sun: "#ffb27a", sunDir: [-0.7, 0.03, 0.71] },
+  day: { top: "#5f8fc0", horizon: "#e0dfd9", sun: "#fff1d6", sunDir: [-0.5, 0.55, 0.67], clouds: 0.55 },
+  golden: { top: "#5c82ad", horizon: "#f0c698", sun: "#ffd58f", sunDir: [-0.66, 0.26, 0.7], clouds: 0.4 },
+  dusk: { top: "#1d2a40", horizon: "#c98a6a", sun: "#ffb27a", sunDir: [-0.7, 0.03, 0.71], clouds: 0.25 },
 };
 export type SkyPreset = keyof typeof SKY_PRESETS;
 
@@ -321,20 +320,36 @@ export function createSky(preset: SkyPreset = "day") {
       horizon: { value: new THREE.Color(p.horizon) },
       sunColor: { value: new THREE.Color(p.sun) },
       sunDir: { value: new THREE.Vector3(...p.sunDir).normalize() },
+      clouds: { value: p.clouds },
     },
     vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunColor; uniform vec3 sunDir; varying vec3 vDir;
+    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunColor; uniform vec3 sunDir; uniform float clouds; varying vec3 vDir;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vnoise(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f*f*(3.0-2.0*f);
+        return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+      float fbm(vec2 p){ float v = 0.0; float a = 0.5; for (int i = 0; i < 5; i++){ v += a * vnoise(p); p = p * 2.03 + 17.0; a *= 0.5; } return v; }
       void main(){
-        float h = clamp(vDir.y, -0.2, 1.0);
-        vec3 col = mix(horizon, top, pow(max(h, 0.0), 0.55));
-        float s = max(dot(normalize(vDir), sunDir), 0.0);
-        col += sunColor * (pow(s, 220.0) * 1.6 + pow(s, 8.0) * 0.28);
+        vec3 d = normalize(vDir);
+        float h = clamp(d.y, -0.2, 1.0);
+        vec3 col = mix(horizon, top, pow(max(h, 0.0), 0.5));
+        float s = max(dot(d, sunDir), 0.0);
+        col += sunColor * (pow(s, 240.0) * 1.8 + pow(s, 6.0) * 0.22);
+        if (h > 0.0) {
+          // fair-weather cumulus on a flat layer 1.6 km up, thinning towards the horizon
+          vec2 uv = d.xz / max(d.y, 0.04) * 1.6;
+          float n = fbm(uv * 0.45 + vec2(3.1, 7.7));
+          float cover = smoothstep(0.62 - clouds * 0.18, 0.78 - clouds * 0.1, n);
+          float fade = smoothstep(0.0, 0.16, h);
+          float lit = 0.75 + 0.5 * smoothstep(0.4, 0.9, fbm(uv * 1.3 + vec2(9.0, 2.0)));
+          vec3 cloud = mix(vec3(0.72, 0.74, 0.78), vec3(1.0, 0.99, 0.97), lit) + sunColor * pow(s, 3.0) * 0.12;
+          col = mix(col, cloud, cover * fade * 0.92);
+        }
         if (h < 0.0) col = mix(horizon, vec3(0.42,0.45,0.33), clamp(-h*6.0,0.0,1.0));
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(7000, 32, 16), mat);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(15000, 48, 24), mat);
   sky.position.set(12, 0, 9);
   sky.name = "sky";
   return sky;
@@ -347,6 +362,7 @@ export function setSky(sky: THREE.Mesh, preset: SkyPreset) {
   u.horizon.value.set(p.horizon);
   u.sunColor.value.set(p.sun);
   u.sunDir.value.set(...(p.sunDir as [number, number, number])).normalize();
+  u.clouds.value = p.clouds;
 }
 
 /* ------------------------------------------------------------------ assemble */
@@ -395,6 +411,11 @@ export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture
   // the sun's shadow map only reaches the tower's own plot: the city neither casts into it nor pays for the pass
   city.traverse((o) => { o.castShadow = false; });
   root.add(city);
+  // the traffic on its streets
+  let tseed = 11;
+  const trnd = () => ((tseed = (tseed * 16807) % 2147483647) / 2147483647);
+  const traffic = new Traffic(lib, planTraffic(CITY, trnd));
+  city.add(traffic.group);
   const authoredMeshes = sb.meshCount + csb.meshCount;
   sb.build(lib, root);
 
@@ -416,5 +437,5 @@ export async function buildHouse(lib: MaterialLib, step: Step, opts: { furniture
   await step("Doors");
   const sky = createSky("day");
   root.add(sky);
-  return { root, leaves: leafRuntimes, swings, lights, sky, city, authoredMeshes: authoredMeshes + leafRuntimes.length, ceilingRooms };
+  return { root, leaves: leafRuntimes, swings, lights, sky, city, traffic, authoredMeshes: authoredMeshes + leafRuntimes.length, ceilingRooms };
 }

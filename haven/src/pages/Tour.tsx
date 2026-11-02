@@ -5,7 +5,7 @@ import { FLOOR_NAMES, RESIDENCE_NAME, roomById, walkableRooms, type FloorId } fr
 import { FloorPlanSvg } from "../components/FloorPlanSvg";
 import { TourEngine, type EngineState, type Quality } from "../tour/engine";
 import { runModelChecks, type CheckRow } from "../tour/checks";
-import { CITY_ATTRIBUTION } from "../tour/buildCity";
+import { CITY_ATTRIBUTION } from "../tour/cityData";
 import { GOOGLE_KEY } from "../tour/googleTiles";
 import styles from "./Tour.module.css";
 

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { TilesRenderer } from "3d-tiles-renderer";
 import { GoogleCloudAuthPlugin, ReorientationPlugin, TilesFadePlugin } from "3d-tiles-renderer/plugins";
-import { CITY } from "./buildCity";
+import { CITY } from "./cityData";
 
 /**
  * Optional live layer: Google's Photorealistic 3D Tiles of Kudasan streamed into the tour in

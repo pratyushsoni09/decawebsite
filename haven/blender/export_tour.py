@@ -70,7 +70,7 @@ def main():
         n = ob.name
         if ob.type in ("LIGHT", "CAMERA", "EMPTY") and not n.startswith("item:"):
             doomed.append(ob)
-        elif n.startswith(("static:", "haze")) or re.match(r"^Mesh_\d+$", n) or n in ("water", "water.001") or ob in proto_objs:
+        elif n.startswith(("static:", "haze", "car_", "traffic")) or re.match(r"^Mesh_\d+$", n) or n in ("water", "water.001") or ob in proto_objs:
             doomed.append(ob)  # shell, tower, city (the tour builds these); CC0 sources
         elif n.startswith("item:"):
             keep_lowpoly.append(n[len("item:"):])

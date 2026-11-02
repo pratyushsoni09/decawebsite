@@ -76,14 +76,25 @@ def describe(mat):
         return d
     val = lambda n, default: list(b.inputs[n].default_value)[:3] if n in b.inputs and hasattr(b.inputs[n].default_value, "__len__") else (b.inputs[n].default_value if n in b.inputs else default)
     d["baseColor"] = val("Base Color", d["baseColor"])
+    d["tint"] = [1.0, 1.0, 1.0]  # what multiplies the base texture (the glTF base colour factor, kept as the viewport colour)
     sock = b.inputs["Base Color"]
     if sock.is_linked and sock.links[0].from_node.type != "TEX_IMAGE":
         src = sock.links[0].from_node
         if src.type == "VALTORGB":
             els = src.color_ramp.elements
             d["baseColor"] = [sum(e.color[i] for e in els) / len(els) for i in range(3)]
+        elif src.type in ("MIX", "MIX_RGB"):
+            # the importer multiplies the texture by the glTF base colour factor through a Mix node:
+            # the factor sits on its unlinked colour input (both linked = texture x vertex colours, no tint)
+            tint = [1.0, 1.0, 1.0]
+            for inp in src.inputs:
+                if inp.type == "RGBA" and inp.enabled and inp.name in ("A", "B", "Color1", "Color2") and not inp.is_linked:
+                    tint = list(inp.default_value)[:3]
+            d["baseColor"] = tint
+            d["tint"] = tint
         else:
             d["baseColor"] = list(mat.diffuse_color)[:3]
+            d["tint"] = list(mat.diffuse_color)[:3]
     d["roughness"] = float(val("Roughness", 0.5))
     d["metallic"] = float(val("Metallic", 0.0))
     d["emission"] = val("Emission Color", [0, 0, 0])
@@ -93,6 +104,9 @@ def describe(mat):
             d["transmission"] = float(b.inputs[key].default_value)
             break
     d["alpha"] = float(val("Alpha", 1.0))
+    # foliage cards: the base texture's alpha cuts the leaves out
+    d["masked"] = bool(b.inputs["Alpha"].is_linked)
+    d["twoSided"] = not mat.use_backface_culling
     for inp, key in (("Base Color", "baseColor"), ("Roughness", "roughness"), ("Normal", "normal")):
         img = linked_image(b, inp)
         saved = save_image(img) if img else None
