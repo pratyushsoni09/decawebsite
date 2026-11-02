@@ -35,7 +35,7 @@ export default function Home() {
         <Cinematic
           video="/video/haven-cinematic.mp4"
           poster="/video/haven-cinematic.jpg"
-          download={{ url: "https://github.com/pratyushsoni09/decawebsite/releases/download/walkthrough-v1/HavenOak-Windows.zip", size: "510 MB" }}
+          download={{ url: "https://github.com/pratyushsoni09/decawebsite/releases/download/walkthrough-v2/HavenOak-Windows.zip", size: "550 MB" }}
         />
         <TourCta />
         <Enquiry />
