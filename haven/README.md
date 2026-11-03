@@ -42,11 +42,16 @@ The room and tower photos are Blender Cycles renders of the same model you walk:
 The tower stands in central Kudasan, Gandhinagar. `scripts/fetch_kudasan.py` pulls the surroundings from
 Overture Maps (building footprints, streets with their bridges, greens, water and named places) into
 `src/data/kudasan.json`: every building to 1.8 km, and out to 7 km the skyline, the main roads, the Sabarmati,
-the lakes, parks and farmland. `src/tour/buildCity.ts` turns that into the 3D city around the plot — windows,
-balconies and shopfronts on the near blocks, tree-lined streets, kerbs and lamp posts, the far skyline — and
-`src/tour/traffic.ts` drives cars, autos and buses along the streets. All of it reaches the Blender renders
-and Unreal through the export (the traffic as one mesh per vehicle, with `blender/export/traffic.json` so
-Unreal can play the same plan as a looping sequence). Heights are estimated where the data has none.
+the lakes, parks and farmland. `src/tour/buildCity.ts` turns that into the 3D city around the plot: the near
+blocks built as Kudasan builds them (RCC frames on plinths with projecting window frames, sills, sunshades and
+grills, railed balconies, stilt parking under the bigger blocks, clay-tiled hip roofs and porches on the
+bungalows, drain pipes, tanks, dishes and stair heads, shutters and signboards on the shops), tree-lined
+streets with kerbs, lamp posts, power lines, parked cars, scooters and autos, hoardings and bus shelters, the
+lawns and scrub of a green city between the houses, and the far skyline. `src/tour/traffic.ts` drives cars,
+autos and buses along the streets. All of it reaches the Blender renders and Unreal through the export (the
+traffic as one mesh per vehicle, with `blender/export/traffic.json` so Unreal can play the same plan as a
+looping sequence; Unreal then dresses the surfaces with generated PBR texture sets, see `unreal/README.md`).
+Heights are estimated where the data has none.
 Re-run the script to refresh the data or move `ORIGIN` to the exact plot.
 
 3. Render (GPU/OptiX is picked up automatically):
