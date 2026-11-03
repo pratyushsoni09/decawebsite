@@ -259,36 +259,31 @@ export default function Studio() {
     }
     eng.house.swings.forEach((s) => (s.pivot.rotation.x = 0));
     const root = eng.house.root;
-    root.remove(eng.house.sky);
-    if (eng.house.detailed) root.remove(eng.house.detailed);
-    // the traffic goes out as one plain mesh per vehicle (car_NNN at its t = 0 pose), not as instances
-    eng.house.city.remove(eng.house.traffic.group);
-    const baked = eng.house.traffic.bake();
-    eng.house.city.add(baked);
-    root.updateMatrixWorld(true);
-    const glb = (await new GLTFExporter().parseAsync(root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
-    eng.house.city.remove(baked);
-    eng.house.city.add(eng.house.traffic.group);
-    root.add(eng.house.sky);
-    if (eng.house.detailed) root.add(eng.house.detailed);
     const put = (name: string, body: BodyInit) => fetch(`/api/__save-file?name=${name}`, { method: "POST", body }).then((r) => r.json());
-    const a = await put("tower.glb", glb);
-    // shell without furniture + furniture item by item, so Blender can swap pieces for detailed CC0 models
-    const shell = await buildHouse(eng.lib, async () => {}, { furniture: false });
-    for (const l of shell.leaves) {
-      l.s = l.target = shut(l.geom.doorId) ? 0 : 1;
-      poseLeaf(l);
+    // tower.glb (everything merged) is only Blender's fallback when there is no shell.glb; at 200 MB it is more than
+    // the tab can hold next to the shell's copy of the city, so it is written only on request (?tower)
+    let a = { bytes: 0 };
+    if (new URLSearchParams(location.search).has("tower")) {
+      root.remove(eng.house.sky);
+      if (eng.house.detailed) root.remove(eng.house.detailed);
+      // the traffic goes out as one plain mesh per vehicle (car_NNN at its t = 0 pose), not as instances
+      eng.house.city.remove(eng.house.traffic.group);
+      const baked = eng.house.traffic.bake();
+      eng.house.city.add(baked);
+      root.updateMatrixWorld(true);
+      a = await (async () => {
+        const glb = (await new GLTFExporter().parseAsync(root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
+        return put("tower.glb", glb);
+      })();
+      eng.house.city.remove(baked);
+      eng.house.city.add(eng.house.traffic.group);
+      root.add(eng.house.sky);
+      if (eng.house.detailed) root.add(eng.house.detailed);
     }
-    shell.root.remove(shell.sky);
-    shell.city.remove(shell.traffic.group);
-    shell.city.add(shell.traffic.bake());
-    shell.root.updateMatrixWorld(true);
-    const shellGlb = (await new GLTFExporter().parseAsync(shell.root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
     const items = buildFurnitureItems(eng.lib, furniture);
     items.updateMatrixWorld(true);
     const itemsGlb = (await new GLTFExporter().parseAsync(items, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
-    for (const g of [shell.root, items]) g.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
-    await put("shell.glb", shellGlb);
+    items.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
     await put("furniture.glb", itemsGlb);
     await put("furniture.json", JSON.stringify({ residenceElevation: U, ceilingHeight: CEILING_HEIGHT, items: furniture }, null, 2));
     // rooms, doors, archways and windows of the walkable home, for the Blender finishing pass (skirting, frames, curtains, tiles)
@@ -303,8 +298,33 @@ export default function Studio() {
     const c = await put("lights.json", JSON.stringify(eng.house.lights, null, 2));
     // the traffic plan: each vehicle's road, speed and start, so Unreal can drive the same cars
     await put("traffic.json", JSON.stringify(eng.house.traffic.plan));
-    setLog([`tower.glb: ${Math.round(a.bytes / 1048576)} MB`, `views.json: ${b.bytes} B`, `lights.json: ${c.bytes} B`, "export done"]);
+    // the shell (the whole city again, 200 MB) goes last: everything else is safely written if the tab gives out
+    // the live city is dropped before the shell builds its own copy, or the tab runs out of memory; the page
+    // reloads itself once the export is written
+    eng.house.city.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+    root.remove(eng.house.city);
+    if (eng.house.detailed) {
+      eng.house.detailed.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+      root.remove(eng.house.detailed);
+    }
+    // shell without furniture + furniture item by item, so Blender can swap pieces for detailed CC0 models
+    await (async () => {
+      const shell = await buildHouse(eng.lib, async () => {}, { furniture: false });
+      for (const l of shell.leaves) {
+        l.s = l.target = shut(l.geom.doorId) ? 0 : 1;
+        poseLeaf(l);
+      }
+      shell.root.remove(shell.sky);
+      shell.city.remove(shell.traffic.group);
+      shell.city.add(shell.traffic.bake());
+      shell.root.updateMatrixWorld(true);
+      const shellGlb = (await new GLTFExporter().parseAsync(shell.root, { binary: true, maxTextureSize: 2048 })) as ArrayBuffer;
+      shell.root.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+      await put("shell.glb", shellGlb);
+    })();
+    setLog([a.bytes ? `tower.glb: ${Math.round(a.bytes / 1048576)} MB` : "tower.glb skipped (add ?tower)", `views.json: ${b.bytes} B`, `lights.json: ${c.bytes} B`, "export done"]);
     setBusy(false);
+    setTimeout(() => location.reload(), 4000);
   };
 
   const renderAll = async () => {

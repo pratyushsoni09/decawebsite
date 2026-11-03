@@ -125,16 +125,15 @@ export function vehicleGeometry(kind: Kind) {
   const glass: THREE.BufferGeometry[] = [];
   const tyres: THREE.BufferGeometry[] = [];
   if (kind === "car") {
-    // a hatchback-sized saloon: rounded shell, a cabin of glass under a rounded roof, bumpers, lights, mirrors
-    body.push(rounded(4.3, 0.62, 1.78, 0, 0.64, 0, 0.14));
-    body.push(rounded(1.1, 0.26, 1.6, 1.5, 1.08, 0, 0.1)); // bonnet
-    body.push(rounded(2.4, 0.14, 1.64, -0.3, 1.58, 0, 0.06)); // roof
-    for (const z of [0.78, -0.78]) body.push(box(0.1, 0.62, 0.06, -0.3, 1.3, z)); // the pillars between the windows
-    glass.push(rounded(2.3, 0.56, 1.66, -0.3, 1.28, 0, 0.18));
-    tyres.push(box(4.36, 0.2, 1.82, 0, 0.3, 0)); // dark sills and bumpers
-    for (const z of [0.55, -0.55]) glass.push(box(0.08, 0.14, 0.3, 2.16, 0.78, z)); // headlights
-    for (const z of [0.6, -0.6]) tyres.push(box(0.06, 0.12, 0.3, -2.16, 0.8, z)); // tail lights (dark)
-    for (const z of [0.95, -0.95]) body.push(box(0.12, 0.08, 0.16, 0.85, 1.18, z)); // mirrors
+    // a saloon: one rounded shell, a capsule of glass for the cabin under a thin roof, dark sills, lights, mirrors
+    body.push(rounded(4.3, 0.64, 1.78, 0, 0.66, 0, 0.16));
+    glass.push(rounded(2.3, 0.58, 1.62, -0.25, 1.22, 0, 0.26));
+    body.push(rounded(2.0, 0.1, 1.5, -0.3, 1.5, 0, 0.04)); // roof
+    for (const z of [0.76, -0.76]) body.push(box(0.08, 0.5, 0.05, -0.25, 1.2, z)); // the pillar between the doors
+    tyres.push(box(4.34, 0.16, 1.8, 0, 0.34, 0)); // dark sills and bumpers
+    for (const z of [0.55, -0.55]) glass.push(box(0.06, 0.14, 0.3, 2.14, 0.82, z)); // headlights
+    for (const z of [0.6, -0.6]) tyres.push(box(0.06, 0.12, 0.3, -2.14, 0.82, z)); // tail lights
+    for (const z of [0.95, -0.95]) body.push(box(0.12, 0.08, 0.16, 0.7, 1.14, z)); // mirrors
     for (const x of [1.35, -1.35]) for (const z of [0.78, -0.78]) tyres.push(wheel(x, z));
   } else if (kind === "auto") {
     body.push(box(2.5, 0.6, 1.3, 0, 0.62, 0));
