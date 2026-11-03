@@ -255,7 +255,7 @@ def build_level(mesh_paths):
     settings.set_editor_property("override_auto_exposure_min_brightness", True)
     settings.set_editor_property("auto_exposure_min_brightness", 3.0)
     settings.set_editor_property("override_auto_exposure_max_brightness", True)
-    settings.set_editor_property("auto_exposure_max_brightness", 16.0)
+    settings.set_editor_property("auto_exposure_max_brightness", 32.0)  # the eye can stop down fully on the sunlit balcony
     settings.set_editor_property("override_auto_exposure_bias", True)
     settings.set_editor_property("auto_exposure_bias", -0.25)
     # a photographic look: a touch of grain, bloom and vignette, slightly more contrast, no lens flares

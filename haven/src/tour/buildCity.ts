@@ -421,14 +421,27 @@ function scooter(sb: StaticBuilder, x: number, z: number, yaw: number, colour: M
 
 /* ------------------------------------------------------------------ trees */
 
-/** one cluster of foliage: vertical leaf cards crossed at 60°, and one laid flat so the canopy reads from above */
-function canopy(sb: StaticBuilder, x: number, y: number, z: number, r: number, cards: number, mat: MatKey, spin: number) {
+/**
+ * One cluster of foliage: vertical leaf cards crossed at 60°, then (near the tower) two cards tilted at 50° so the
+ * crown has volume seen from a balcony, or (further out) one card laid flat so the canopy reads from above.
+ */
+function canopy(sb: StaticBuilder, x: number, y: number, z: number, r: number, cards: number, mat: MatKey, spin: number, tilted = false) {
   for (let i = 0; i < cards; i++) {
     const a = spin + (i * Math.PI) / cards;
     const g = new THREE.PlaneGeometry(r * 2, r * 1.7);
     g.rotateY(a);
     g.translate(x, y, z);
     sb.add(g, mat);
+  }
+  if (tilted) {
+    for (let i = 0; i < 2; i++) {
+      const g = new THREE.PlaneGeometry(r * 1.9, r * 1.9);
+      g.rotateX(-Math.PI / 2 + 0.85);
+      g.rotateY(spin + 0.5 + i * Math.PI * 0.5);
+      g.translate(x, y + r * 0.3, z);
+      sb.add(g, mat);
+    }
+    return;
   }
   const top = new THREE.PlaneGeometry(r * 2, r * 2);
   top.rotateX(-Math.PI / 2);
@@ -455,9 +468,9 @@ export function tree(sb: StaticBuilder, x: number, z: number, s: number, tier: 0
       sb.add(bar(x, 3.2 * s, z, lx, ly, lz, 0.09 * s, 5), "bark");
       limbs.push([lx, ly, lz]);
     }
-    for (const [lx, ly, lz] of limbs) canopy(sb, lx, ly + 0.6 * s, lz, (2.0 + rnd() * 0.5) * s, 3, mat, rnd() * Math.PI);
-    canopy(sb, x, 6.3 * s, z, 2.4 * s, 3, mat, spin + 0.9);
-    canopy(sb, x + (rnd() - 0.5) * s, 5.0 * s, z + (rnd() - 0.5) * s, 2.8 * s, 3, mat, spin + 2.2);
+    for (const [lx, ly, lz] of limbs) canopy(sb, lx, ly + 0.6 * s, lz, (2.0 + rnd() * 0.5) * s, 3, mat, rnd() * Math.PI, true);
+    canopy(sb, x, 6.3 * s, z, 2.4 * s, 3, mat, spin + 0.9, true);
+    canopy(sb, x + (rnd() - 0.5) * s, 5.0 * s, z + (rnd() - 0.5) * s, 2.8 * s, 3, mat, spin + 2.2, false);
   } else if (tier === 1) {
     canopy(sb, x, 5.0 * s, z, 3.1 * s, 3, mat, spin);
     canopy(sb, x + 1.2 * s, 5.8 * s, z - 0.6 * s, 2.0 * s, 2, mat, spin + 1.3);

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { CAR_COLOURS, type MatKey, type MaterialLib } from "./materials";
 import type { CityData } from "./cityData";
 
@@ -104,6 +105,13 @@ function box(w: number, h: number, d: number, x: number, y: number, z: number) {
   return g;
 }
 
+/** a softened box: the pressed-steel look of a car body */
+function rounded(w: number, h: number, d: number, x: number, y: number, z: number, r: number) {
+  const g = new RoundedBoxGeometry(w, h, d, 3, r);
+  g.translate(x, y, z);
+  return g;
+}
+
 function wheel(x: number, z: number, r = 0.32, width = 0.22) {
   const g = new THREE.CylinderGeometry(r, r, width, 10);
   g.rotateX(Math.PI / 2);
@@ -117,10 +125,16 @@ export function vehicleGeometry(kind: Kind) {
   const glass: THREE.BufferGeometry[] = [];
   const tyres: THREE.BufferGeometry[] = [];
   if (kind === "car") {
-    body.push(box(4.2, 0.72, 1.76, 0, 0.66, 0));
-    body.push(box(2.3, 0.08, 1.6, -0.25, 1.62, 0)); // roof
-    glass.push(box(2.1, 0.56, 1.62, -0.25, 1.3, 0));
-    body.push(box(0.9, 0.3, 1.5, 1.6, 1.12, 0)); // bonnet rise
+    // a hatchback-sized saloon: rounded shell, a cabin of glass under a rounded roof, bumpers, lights, mirrors
+    body.push(rounded(4.3, 0.62, 1.78, 0, 0.64, 0, 0.14));
+    body.push(rounded(1.1, 0.26, 1.6, 1.5, 1.08, 0, 0.1)); // bonnet
+    body.push(rounded(2.4, 0.14, 1.64, -0.3, 1.58, 0, 0.06)); // roof
+    for (const z of [0.78, -0.78]) body.push(box(0.1, 0.62, 0.06, -0.3, 1.3, z)); // the pillars between the windows
+    glass.push(rounded(2.3, 0.56, 1.66, -0.3, 1.28, 0, 0.18));
+    tyres.push(box(4.36, 0.2, 1.82, 0, 0.3, 0)); // dark sills and bumpers
+    for (const z of [0.55, -0.55]) glass.push(box(0.08, 0.14, 0.3, 2.16, 0.78, z)); // headlights
+    for (const z of [0.6, -0.6]) tyres.push(box(0.06, 0.12, 0.3, -2.16, 0.8, z)); // tail lights (dark)
+    for (const z of [0.95, -0.95]) body.push(box(0.12, 0.08, 0.16, 0.85, 1.18, z)); // mirrors
     for (const x of [1.35, -1.35]) for (const z of [0.78, -0.78]) tyres.push(wheel(x, z));
   } else if (kind === "auto") {
     body.push(box(2.5, 0.6, 1.3, 0, 0.62, 0));
