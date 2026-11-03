@@ -103,9 +103,17 @@ def main():
         cam.set_actor_label(f"Cam_{name}")
         cc = cam.get_cine_camera_component()
         cc.set_editor_property("current_focal_length", focal(fov))
-        cc.set_editor_property("current_aperture", 4.0)
         fs = cc.get_editor_property("focus_settings")
-        fs.set_editor_property("focus_method", unreal.CameraFocusMethod.DISABLE)
+        if STILLS:
+            cc.set_editor_property("current_aperture", 4.0)
+            fs.set_editor_property("focus_method", unreal.CameraFocusMethod.DISABLE)
+        else:
+            # a real lens: focused on what the shot looks at, wide open indoors, stopped down outside
+            interior = name in ("dining", "hall", "master", "swing")
+            cc.set_editor_property("current_aperture", 2.8 if interior else 8.0)
+            fs.set_editor_property("focus_method", unreal.CameraFocusMethod.MANUAL)
+            fs.set_editor_property("manual_focus_distance", max(60.0, (cm(p0) - cm(l0)).length()))
+            fs.set_editor_property("smooth_focus_changes", True)
         cc.set_editor_property("focus_settings", fs)
         binding = seq.add_possessable(cam)
         track = binding.add_track(unreal.MovieScene3DTransformTrack)

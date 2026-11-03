@@ -305,7 +305,7 @@ def add_sun():
 
 def add_haze():
     """
-    Aerial perspective: a shallow drum of thin, dusty air over the city (6.5 km across, 560 m tall) so the
+    Aerial perspective: a shallow drum of thin, humid air over the city (6.5 km across, 560 m tall) so the
     skyline fades with distance instead of ending at a hard edge. Thin enough that the rooms see no change;
     across the 1.8 km of mapped city it takes a third of the contrast out of the far buildings.
     The drum is exported to nothing: the tour has its own fog and Unreal its own height fog.
@@ -323,7 +323,7 @@ def add_haze():
     nt = mat.node_tree
     nt.nodes.clear()
     scatter = nt.nodes.new("ShaderNodeVolumeScatter")
-    scatter.inputs["Color"].default_value = (0.9, 0.88, 0.84, 1.0)
+    scatter.inputs["Color"].default_value = (0.86, 0.88, 0.9, 1.0)  # humid, slightly blue air over the green plain
     scatter.inputs["Density"].default_value = 0.00007
     scatter.inputs["Anisotropy"].default_value = 0.45
     out = nt.nodes.new("ShaderNodeOutputMaterial")

@@ -14,7 +14,14 @@ The commands below show 5.8; use your engine's folder.
   written by `blender/export_unreal.py` from `blender/out/oak-residences.blend`
 - `../blender/export/lights.json` — the home's lamps (read by the level build)
 - `make_project.py` — creates `HavenOak/` from Unreal's First Person template
+- `gen_textures.py` — writes the tileable 2048 px PBR sets (plaster, concrete, asphalt, pavers, soil, dry
+  grass, a ground blend mask, water ripples) into `export/textures/`; run it before the level build
+- `haven_materials.py` — the level's master materials (textured, triplanar, ground blend, water, foliage
+  with wind and light through the leaves, glass, clear-coat car paint) and the table that puts the
+  generated sets on the city's surfaces
 - `build_level.py` — editor script: imports the scene, rebuilds materials and collision, lays out the level
+  (sun with cloud shadows, sky, volumetric clouds, haze, Lumen and a film-look post-process)
+- `traffic_sequence.py` — the looping level sequence that drives the exported vehicles
 - `render_cinematic.py` — editor script: seven-shot sequence + Movie Render Queue manifest
 - `encode.py` — PNG frames → `public/video/haven-cinematic.mp4` and a poster
 - `package.bat` — packages the Windows walkthrough into `dist/`
@@ -23,6 +30,7 @@ The commands below show 5.8; use your engine's folder.
 
 ```bat
 python unreal\make_project.py
+python unreal\gen_textures.py
 "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" unreal\HavenOak\HavenOak.uproject -ExecCmds="py %CD%\unreal\build_level.py" -unattended -nosplash -NoLoadingScreen -log
 "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" unreal\HavenOak\HavenOak.uproject -ExecCmds="py %CD%\unreal\render_cinematic.py" -unattended -nosplash -NoLoadingScreen -log
 ```

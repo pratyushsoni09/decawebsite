@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { CITY, CITY_RADIUS, SIGNED, TOWER_X, TOWER_Z, type CityData } from "./cityData";
 import { StaticBuilder } from "./geom";
-import { signUV, type MatKey } from "./materials";
+import { CAR_COLOURS, signUV, type MatKey } from "./materials";
+import { vehicleGeometry } from "./traffic";
 
 export { CITY, CITY_ATTRIBUTION, CITY_RADIUS } from "./cityData";
 
@@ -229,14 +230,15 @@ function vnoise(x: number, z: number) {
   return (h(ix, iz) * (1 - sx) + h(ix + 1, iz) * sx) * (1 - sz) + (h(ix, iz + 1) * (1 - sx) + h(ix + 1, iz + 1) * sx) * sz;
 }
 
-/** the ground disc, finer near the tower, coloured by two octaves of noise between dust, straw, scrub and grey */
+/** the ground disc, finer near the tower, coloured by two octaves of noise between lawn, meadow, scrub and bare earth */
 function groundDisc() {
   const radii = [0, 25, 55, 90, 140, 200, 280, 380, 500, 650, 820, 1020, 1250, 1520, 1850, 2250, 2700, 3250, 3900, 4700, 5600, 6700, 8000, 9600, 11000, GROUND_RADIUS];
   const segs = 96;
   const pos: number[] = [];
   const uv: number[] = [];
   const col: number[] = [];
-  const dust = [0.82, 0.74, 0.60], straw = [0.70, 0.68, 0.48], scrub = [0.52, 0.56, 0.40], grey = [0.64, 0.62, 0.58];
+  // Gandhinagar is green: lawn and scrub between the houses, meadow and fields beyond, bare earth only in patches
+  const lawn = [0.46, 0.60, 0.30], meadow = [0.58, 0.64, 0.36], scrub = [0.36, 0.50, 0.26], earth = [0.66, 0.60, 0.46];
   const push = (x: number, z: number) => {
     pos.push(x, -0.06, z);
     uv.push(x, z);
@@ -244,12 +246,12 @@ function groundDisc() {
     const n2 = vnoise(x / 900 + 11.1, z / 900 + 5.2);
     const n = n1 * 0.6 + n2 * 0.4;
     const d = Math.hypot(x - TOWER_X, z - TOWER_Z);
-    // towns are dust and grey, the country outside turns to straw and scrub
+    // the town is lawn with worn patches, the country outside turns to meadow and scrub
     const rural = Math.min(1, Math.max(0, (d - 1500) / 2500));
     let c: number[];
-    if (n < 0.38) c = rural > 0.5 ? scrub : grey;
-    else if (n < 0.56) c = dust;
-    else if (n < 0.75) c = straw;
+    if (n < 0.3) c = rural > 0.5 ? scrub : earth;
+    else if (n < 0.62) c = lawn;
+    else if (n < 0.8) c = rural > 0.5 ? meadow : lawn;
     else c = scrub;
     const t = Math.min(1, Math.max(0, (n - 0.4) * 4));
     col.push(c[0] * (0.92 + t * 0.08), c[1] * (0.92 + t * 0.08), c[2] * (0.92 + t * 0.08));
@@ -352,6 +354,71 @@ class Obstacles {
   }
 }
 
+/** a thin rod from a to b (wires, grills, branches) */
+function bar(ax: number, ay: number, az: number, bx: number, by: number, bz: number, r: number, sides = 4) {
+  const len = Math.hypot(bx - ax, by - ay, bz - az);
+  const g = new THREE.CylinderGeometry(r, r, len, sides, 1, true);
+  g.translate(0, len / 2, 0);
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(bx - ax, by - ay, bz - az).normalize());
+  g.applyQuaternion(q);
+  g.translate(ax, ay, az);
+  return g;
+}
+
+/** a low hipped roof: the outline's edges run up to one apex over the centroid */
+function hipRoof(ring: number[][], y: number, rise: number) {
+  const [cx, cz] = centroid(ring);
+  const pos: number[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const [ax, az] = ring[i];
+    const [bx, bz] = ring[(i + 1) % ring.length];
+    // wind each face so its normal points up: ((b - a) x (apex - a)).y
+    const up = (bz - az) * (cx - ax) - (bx - ax) * (cz - az);
+    if (up >= 0) pos.push(ax, y, az, bx, y, bz, cx, y + rise, cz);
+    else pos.push(bx, y, bz, ax, y, az, cx, y + rise, cz);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  const uv = new Float32Array((pos.length / 3) * 2);
+  for (let i = 0; i < pos.length / 3; i++) { uv[i * 2] = pos[i * 3] * 0.5; uv[i * 2 + 1] = pos[i * 3 + 2] * 0.5; }
+  g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+/** the three parts of a parked vehicle (body, glass, tyres), posed at (x, z) heading `yaw` */
+function vehicleParts(kind: "car" | "auto" | "bus", x: number, z: number, yaw: number): [THREE.BufferGeometry, THREE.BufferGeometry, THREE.BufferGeometry] {
+  const geo = vehicleGeometry(kind);
+  geo.deleteAttribute("color");
+  const out: THREE.BufferGeometry[] = [];
+  for (const grp of geo.groups) {
+    const part = new THREE.BufferGeometry();
+    for (const name of ["position", "normal", "uv"]) {
+      const a = geo.attributes[name] as THREE.BufferAttribute;
+      part.setAttribute(name, new THREE.BufferAttribute((a.array as Float32Array).slice(grp.start * a.itemSize, (grp.start + grp.count) * a.itemSize), a.itemSize));
+    }
+    part.rotateY(yaw);
+    part.translate(x, 0, z);
+    out.push(part);
+  }
+  geo.dispose();
+  return out as [THREE.BufferGeometry, THREE.BufferGeometry, THREE.BufferGeometry];
+}
+
+/** a parked scooter: the two-wheeler every Kudasan household keeps by its gate */
+function scooter(sb: StaticBuilder, x: number, z: number, yaw: number, colour: MatKey) {
+  sb.add(boxAt(1.0, 0.36, 0.5, x, 0.55, z, yaw), colour);
+  sb.add(boxAt(0.6, 0.12, 0.42, x - Math.cos(yaw) * 0.15, 0.9, z + Math.sin(yaw) * 0.15, yaw), "tyre");
+  sb.add(boxAt(0.5, 0.5, 0.3, x + Math.cos(yaw) * 0.55, 0.45, z - Math.sin(yaw) * 0.55, yaw), colour);
+  for (const f of [0.7, -0.65]) {
+    const w = new THREE.CylinderGeometry(0.25, 0.25, 0.1, 8);
+    w.rotateX(Math.PI / 2);
+    w.rotateY(yaw);
+    w.translate(x + Math.cos(yaw) * f, 0.25, z - Math.sin(yaw) * f);
+    sb.add(w, "tyre");
+  }
+}
+
 /* ------------------------------------------------------------------ trees */
 
 /** one cluster of foliage: vertical leaf cards crossed at 60°, and one laid flat so the canopy reads from above */
@@ -370,21 +437,30 @@ function canopy(sb: StaticBuilder, x: number, y: number, z: number, r: number, c
   sb.add(top, mat);
 }
 
-/** a neem or gulmohar: three clusters on a trunk near the tower, a single cluster further out, a card pair far off */
+/** a neem or gulmohar: a forked trunk with five clusters near the tower, two further out, a card pair far off */
 export function tree(sb: StaticBuilder, x: number, z: number, s: number, tier: 0 | 1 | 2, rnd: () => number) {
   const mat: MatKey = rnd() < 0.6 ? "leafCard" : "leafCardB";
   const spin = rnd() * Math.PI;
   if (tier < 2) {
-    const trunk = new THREE.CylinderGeometry(0.18 * s, 0.3 * s, 4.0 * s, tier === 0 ? 6 : 4, 1, true);
-    trunk.translate(x, 2.0 * s, z);
+    const trunk = new THREE.CylinderGeometry(0.16 * s, 0.3 * s, 3.4 * s, tier === 0 ? 7 : 4, 1, true);
+    trunk.translate(x, 1.7 * s, z);
     sb.add(trunk, "bark");
   }
   if (tier === 0) {
-    canopy(sb, x, 5.2 * s, z, 2.9 * s, 3, mat, spin);
-    canopy(sb, x + 1.4 * s, 4.4 * s, z - 0.8 * s, 2.2 * s, 3, mat, spin + 0.7);
-    canopy(sb, x - 1.2 * s, 6.0 * s, z + 1.0 * s, 2.1 * s, 3, mat, spin + 1.9);
+    // three limbs fork off the trunk, each carrying a cluster, with two more filling the crown
+    const limbs: [number, number, number][] = [];
+    for (let i = 0; i < 3; i++) {
+      const a = spin + i * 2.1 + rnd() * 0.5;
+      const lx = x + Math.cos(a) * 1.5 * s, lz = z + Math.sin(a) * 1.5 * s, ly = (4.6 + rnd() * 1.2) * s;
+      sb.add(bar(x, 3.2 * s, z, lx, ly, lz, 0.09 * s, 5), "bark");
+      limbs.push([lx, ly, lz]);
+    }
+    for (const [lx, ly, lz] of limbs) canopy(sb, lx, ly + 0.6 * s, lz, (2.0 + rnd() * 0.5) * s, 3, mat, rnd() * Math.PI);
+    canopy(sb, x, 6.3 * s, z, 2.4 * s, 3, mat, spin + 0.9);
+    canopy(sb, x + (rnd() - 0.5) * s, 5.0 * s, z + (rnd() - 0.5) * s, 2.8 * s, 3, mat, spin + 2.2);
   } else if (tier === 1) {
-    canopy(sb, x, 5.0 * s, z, 3.3 * s, 3, mat, spin);
+    canopy(sb, x, 5.0 * s, z, 3.1 * s, 3, mat, spin);
+    canopy(sb, x + 1.2 * s, 5.8 * s, z - 0.6 * s, 2.0 * s, 2, mat, spin + 1.3);
   } else {
     canopy(sb, x, 4.2 * s, z, 3.4 * s, 2, mat, spin);
   }
@@ -438,31 +514,62 @@ function edgeNormal(ring: number[][], i: number, _cw: boolean): [number, number]
 }
 
 /**
- * A near-ring apartment block as Kudasan builds them: painted RCC frame, a window per 3 m bay with a frame and
- * dark glass, half-wall balconies on the longer sides, AC units, a parapet round the flat roof with the stair
- * head, black water tanks and a solar heater.
+ * A near-ring house or apartment block as Kudasan builds them: a painted RCC frame on a concrete plinth with
+ * its columns showing at the corners, a window per 3 m bay with a projecting frame, sill, sunshade (chhajja)
+ * and, low down, a safety grill; half-wall balconies with railings on the longer sides; AC units; drain pipes
+ * down the corners; a parapet with coping round the flat roof, the stair head, black water tanks, a solar
+ * heater and a dish. The bigger blocks stand on stilt parking; the small bungalows get a clay-tiled hip roof
+ * or a porch over the door; the shops a shutter.
  */
 function nearBlock(sb: StaticBuilder, ring: number[][], h: number, cls: string | undefined, d: number, rnd: () => number) {
   const wall = WALLS[Math.floor(rnd() * WALLS.length)];
-  sb.add(extrude(ring, h), wall);
-  sb.add(flat(ring, h + 0.03), "roofGrey");
-  const inner = offset(ring, -0.22);
-  sb.add(extrude(ring, 0.9, h, inner), "parapet");
+  const trim: MatKey = rnd() < 0.55 ? "parapet" : "windowFrame";
   const floors = Math.max(1, Math.round(h / STOREY));
   const cw = clockwise(ring);
   const residential = !cls;
   const close = d < 200;
+  const a = area(ring);
+  const small = residential && a < 190 && floors <= 2;
+  const tiled = small && rnd() < 0.4;
+  const stilts = residential && !small && floors >= 4 && a > 150 && rnd() < 0.5;
+  const yaw = (nx: number, nz: number) => Math.atan2(nx, nz);
+  // the body: walls from the plinth (or from above the open parking), the roof slab, parapet and coping
+  const gf = stilts ? STOREY : 0;
+  sb.add(extrude(ring, h - gf, gf), wall);
+  sb.add(flat(ring, h + 0.03), "roofGrey");
+  sb.add(extrude(offset(ring, 0.06), 0.6), "concrete");
+  if (!tiled) {
+    sb.add(extrude(ring, 0.9, h, offset(ring, -0.22)), "parapet");
+    sb.add(extrude(offset(ring, 0.07), 0.08, h + 0.9, offset(ring, -0.29)), trim);
+  } else {
+    sb.add(hipRoof(offset(ring, 0.55), h + 0.1, 1.2 + Math.sqrt(a) * 0.12), "roofTile");
+    sb.add(extrude(offset(ring, 0.55), 0.14, h - 0.02, ring), trim);
+  }
+  if (stilts) {
+    sb.add(extrude(offset(ring, -0.7), STOREY), "stiltDark");
+    sb.add(extrude(offset(ring, 0.1), 0.16, STOREY - 0.16, offset(ring, -0.75)), trim);
+  }
+  // the frame's columns at the corners
+  const [ccx, ccz] = centroid(ring);
+  if (stilts || rnd() < 0.55) {
+    for (const [vx, vz] of ring) {
+      const dx = vx - ccx, dz = vz - ccz, dl = Math.hypot(dx, dz) || 1;
+      sb.add(boxAt(0.44, stilts ? STOREY : h, 0.44, vx + (dx / dl) * 0.06, 0, vz + (dz / dl) * 0.06), stilts ? "concrete" : trim);
+    }
+  }
   // this building's window proportions and its slab line
   const winW = 1.1 + rnd() * 0.5, winH = 1.2 + rnd() * 0.35;
   if (rnd() < 0.7) {
     const lip = offset(ring, 0.12);
-    for (let f = 1; f < floors; f++) sb.add(extrude(lip, 0.14, f * STOREY - 0.14, ring), rnd() < 0.5 ? "parapet" : wall);
+    for (let f = Math.max(1, stilts ? 2 : 1); f < floors; f++) sb.add(extrude(lip, 0.14, f * STOREY - 0.14, ring), rnd() < 0.5 ? "parapet" : wall);
   }
   if (!residential) sb.add(extrude(offset(ring, 0.05), 3.0), "shopGlass");
+  let longest = 0, longestLen = 0;
   for (let i = 0; i < ring.length; i++) {
     const [ax, az] = ring[i];
     const [bx, bz] = ring[(i + 1) % ring.length];
     const len = Math.hypot(bx - ax, bz - az);
+    if (len > longestLen) { longestLen = len; longest = i; }
     if (len < 2.6) continue;
     const [nx, nz] = edgeNormal(ring, i, cw);
     const ux = (bx - ax) / len, uz = (bz - az) / len;
@@ -475,34 +582,100 @@ function nearBlock(sb: StaticBuilder, ring: number[][], h: number, cls: string |
       const balcony = balconies && b % 2 === 1;
       for (let f = 0; f < floors; f++) {
         const y0 = f * STOREY;
-        if (f === 0 && rnd() < 0.45) continue; // ground floors: parking, entrances, blank walls
+        if (f === 0 && stilts) {
+          // a column per bay in front of the dark of the parking
+          if (b < bays - 1) sb.add(boxAt(0.4, STOREY, 0.4, x + ux * (step / 2) - nx * 0.15, 0, z + uz * (step / 2) - nz * 0.15), "concrete");
+          continue;
+        }
+        if (f === 0 && !residential && close && rnd() < 0.4) {
+          // a rolled-down shutter on part of the shop front
+          const sw = Math.min(2.6, step - 0.4);
+          sb.add(quad(sw, 2.4, x + nx * 0.09, 1.25, z + nz * 0.09, nx, nz), "shutter");
+          for (let r = 0.2; r < 2.4; r += 0.2) sb.add(boxAt(sw, 0.02, 0.03, x + nx * 0.1, r, z + nz * 0.1, yaw(nx, nz)), "pipe");
+          continue;
+        }
+        if (f === 0 && residential && rnd() < 0.45) continue; // ground floors: parking, entrances, blank walls
         if (balcony && f > 0) {
-          // half-wall balcony 2.4 m wide, 1 m deep, with a rail on top
+          // a balcony 2.4 m wide, 1 m deep: slab, half wall, railing, the door onto it, and a sunshade over
           const bw = Math.min(2.4, step - 0.4);
-          sb.add(boxAt(bw, 0.12, 1.0, x + nx * 0.5, y0 - 0.12, z + nz * 0.5, Math.atan2(nx, nz)), "parapet");
-          sb.add(boxAt(bw, 0.5, 0.08, x + nx * 0.96, y0, z + nz * 0.96, Math.atan2(nx, nz)), wall);
-          sb.add(boxAt(0.08, 0.5, 1.0, x + nx * 0.5 + uz * (bw / 2), y0, z + nz * 0.5 - ux * (bw / 2), Math.atan2(nx, nz)), wall);
-          sb.add(boxAt(0.08, 0.5, 1.0, x + nx * 0.5 - uz * (bw / 2), y0, z + nz * 0.5 + ux * (bw / 2), Math.atan2(nx, nz)), wall);
-          sb.add(boxAt(bw, 0.05, 0.05, x + nx * 0.96, y0 + 0.95, z + nz * 0.96, Math.atan2(nx, nz)), "balconyRail");
-          // the door onto it
+          const by = yaw(nx, nz);
+          sb.add(boxAt(bw + 0.2, 0.14, 1.05, x + nx * 0.52, y0 - 0.14, z + nz * 0.52, by), "parapet");
+          sb.add(boxAt(bw, 0.5, 0.08, x + nx * 0.96, y0, z + nz * 0.96, by), wall);
+          sb.add(boxAt(0.08, 0.5, 1.0, x + nx * 0.5 + ux * (bw / 2), y0, z + nz * 0.5 + uz * (bw / 2), by), wall);
+          sb.add(boxAt(0.08, 0.5, 1.0, x + nx * 0.5 - ux * (bw / 2), y0, z + nz * 0.5 - uz * (bw / 2), by), wall);
+          sb.add(boxAt(bw, 0.05, 0.05, x + nx * 0.96, y0 + 1.0, z + nz * 0.96, by), "balconyRail");
+          if (close) {
+            const bars = Math.round(bw / 0.16);
+            for (let k = 1; k < bars; k++) {
+              const o = -bw / 2 + (bw * k) / bars;
+              sb.add(boxAt(0.025, 0.5, 0.025, x + nx * 0.96 + ux * o, y0 + 0.5, z + nz * 0.96 + uz * o, by), "balconyRail");
+            }
+            sb.add(boxAt(0.05, 0.5, 0.05, x + nx * 0.96 + ux * (bw / 2), y0 + 0.5, z + nz * 0.96 + uz * (bw / 2), by), "balconyRail");
+            sb.add(boxAt(0.05, 0.5, 0.05, x + nx * 0.96 - ux * (bw / 2), y0 + 0.5, z + nz * 0.96 - uz * (bw / 2), by), "balconyRail");
+          }
           sb.add(quad(1.4, 2.2, x + nx * 0.03, y0 + 1.1, z + nz * 0.03, nx, nz), "windowGlass");
+          sb.add(boxAt(0.08, 2.2, 0.1, x + nx * 0.04 + ux * 0.72, y0, z + nz * 0.04 + uz * 0.72, by), trim);
+          sb.add(boxAt(0.08, 2.2, 0.1, x + nx * 0.04 - ux * 0.72, y0, z + nz * 0.04 - uz * 0.72, by), trim);
+          sb.add(boxAt(1.56, 0.08, 0.1, x + nx * 0.04, y0 + 2.2, z + nz * 0.04, by), trim);
+          if (f === floors - 1) sb.add(boxAt(bw + 0.4, 0.1, 1.2, x + nx * 0.6, y0 + 2.75, z + nz * 0.6, by), trim);
           continue;
         }
         const ww = Math.min(winW, step - 0.6);
-        sb.add(quad(ww, winH, x + nx * 0.02, y0 + 0.95 + winH / 2, z + nz * 0.02, nx, nz), "windowFrame");
-        sb.add(quad(ww - 0.16, winH - 0.16, x + nx * 0.04, y0 + 0.95 + winH / 2, z + nz * 0.04, nx, nz), "windowGlass");
-        if (close && rnd() < 0.28) sb.add(boxAt(0.8, 0.55, 0.3, x + nx * 0.16, y0 + 0.35, z + nz * 0.16, Math.atan2(nx, nz)), "acUnit");
-        if (close && rnd() < 0.5) sb.add(boxAt(ww + 0.2, 0.06, 0.18, x + nx * 0.1, y0 + 0.92, z + nz * 0.1, Math.atan2(nx, nz)), "parapet");
+        const wy = y0 + 0.95;
+        const by = yaw(nx, nz);
+        sb.add(quad(ww - 0.1, winH - 0.1, x + nx * 0.02, wy + winH / 2, z + nz * 0.02, nx, nz), "windowGlass");
+        // the projecting frame: jambs, head and the mullion down the middle
+        sb.add(boxAt(0.08, winH, 0.1, x + nx * 0.05 + ux * (ww / 2), wy, z + nz * 0.05 + uz * (ww / 2), by), trim);
+        sb.add(boxAt(0.08, winH, 0.1, x + nx * 0.05 - ux * (ww / 2), wy, z + nz * 0.05 - uz * (ww / 2), by), trim);
+        sb.add(boxAt(ww + 0.08, 0.08, 0.1, x + nx * 0.05, wy + winH - 0.08, z + nz * 0.05, by), trim);
+        sb.add(boxAt(0.05, winH, 0.06, x + nx * 0.04, wy, z + nz * 0.04, by), trim);
+        // sill and sunshade
+        sb.add(boxAt(ww + 0.3, 0.07, 0.2, x + nx * 0.1, wy - 0.07, z + nz * 0.1, by), "concrete");
+        sb.add(boxAt(ww + 0.5, 0.1, 0.5, x + nx * 0.25, wy + winH + 0.02, z + nz * 0.25, by), trim);
+        // a grill on the lower windows, an AC unit on some
+        if (close && f <= 1) {
+          const bars = Math.round(ww / 0.14);
+          for (let k = 1; k < bars; k++) {
+            const o = -ww / 2 + (ww * k) / bars;
+            sb.add(boxAt(0.02, winH - 0.1, 0.02, x + nx * 0.08 + ux * o, wy + 0.05, z + nz * 0.08 + uz * o, by), "grill");
+          }
+          sb.add(boxAt(ww, 0.02, 0.02, x + nx * 0.08, wy + winH / 2, z + nz * 0.08, by), "grill");
+        }
+        if (close && rnd() < 0.3) sb.add(boxAt(0.8, 0.55, 0.3, x + nx * 0.16 + ux * (ww / 2 + 0.5), wy - 0.6, z + nz * 0.16 + uz * (ww / 2 + 0.5), by), "acUnit");
       }
     }
   }
-  // the roof: stair head, tanks, a solar heater
-  const [cx, cz] = centroid(ring);
-  const a = area(ring);
-  if (a > 90) {
-    const sx = cx + (rnd() - 0.5) * 2;
-    const sz = cz + (rnd() - 0.5) * 2;
+  // a porch over the front door of the bungalows and small blocks, on the longest side
+  if (residential && !stilts && floors <= 3 && longestLen >= 6) {
+    const [ax, az] = ring[longest];
+    const [bx, bz] = ring[(longest + 1) % ring.length];
+    const [nx, nz] = edgeNormal(ring, longest, cw);
+    const ux = (bx - ax) / longestLen, uz = (bz - az) / longestLen;
+    const t = longestLen * (0.35 + rnd() * 0.3);
+    const x = ax + ux * t, z = az + uz * t;
+    const by = yaw(nx, nz);
+    sb.add(boxAt(2.8, 0.15, 1.6, x + nx * 0.8, 2.75, z + nz * 0.8, by), trim);
+    for (const o of [-1.2, 1.2]) sb.add(boxAt(0.25, 2.75, 0.25, x + nx * 1.45 + ux * o, 0, z + nz * 1.45 + uz * o, by), trim);
+    sb.add(boxAt(2.2, 0.16, 0.9, x + nx * 0.45, 0.0, z + nz * 0.45, by), "concrete");
+    sb.add(boxAt(2.2, 0.16, 0.5, x + nx * 0.25, 0.16, z + nz * 0.25, by), "concrete");
+    sb.add(quad(1.1, 2.1, x + nx * 0.03, 1.05 + 0.32, z + nz * 0.03, nx, nz), "darkPlank");
+  }
+  // drain pipes down two corners
+  if (close) {
+    for (let k = 0; k < 2; k++) {
+      const [vx, vz] = ring[Math.floor(rnd() * ring.length)];
+      const dx = vx - ccx, dz = vz - ccz, dl = Math.hypot(dx, dz) || 1;
+      const px = vx + (dx / dl) * 0.3, pz = vz + (dz / dl) * 0.3;
+      sb.add(bar(px, 0.3, pz, px, h + 0.9, pz, 0.06, 6), "pipe");
+    }
+  }
+  // the roof: stair head with its door, tanks on stands, a solar heater, a dish
+  if (a > 90 && !tiled) {
+    const sx = ccx + (rnd() - 0.5) * 2;
+    const sz = ccz + (rnd() - 0.5) * 2;
     sb.add(boxAt(2.6, 2.5, 2.8, sx, h, sz), wall);
+    sb.add(boxAt(2.9, 0.12, 3.1, sx, h + 2.5, sz), "parapet");
+    sb.add(quad(0.9, 2.0, sx, h + 1.0, sz + 1.41, 0, 1), "darkPlank");
     const tanks = a > 320 ? 3 : a > 160 ? 2 : 1;
     for (let t = 0; t < tanks; t++) {
       const tx = sx + 2.3 + t * 1.5;
@@ -517,6 +690,13 @@ function nearBlock(sb: StaticBuilder, ring: number[][], h: number, cls: string |
       panel.translate(sx - 2.4, h + 0.9, sz + 1.2);
       sb.add(panel, "windowGlass");
       sb.add(boxAt(0.1, 0.9, 1.2, sx - 2.4, h, sz + 1.2), "balconyRail");
+    }
+    if (close && rnd() < 0.5) {
+      const dish = new THREE.CylinderGeometry(0.45, 0.45, 0.05, 10);
+      dish.rotateX(-1.0);
+      dish.translate(sx - 1.0, h + 1.6, sz - 1.6);
+      sb.add(dish, "acUnit");
+      sb.add(bar(sx - 1.0, h, sz - 1.6, sx - 1.0, h + 1.5, sz - 1.6, 0.03, 4), "pipe");
     }
   }
 }
@@ -640,6 +820,105 @@ export function buildCity(sb: StaticBuilder) {
         }
       }
     }
+  }
+
+  // ---- street life near the tower: overhead lines on concrete poles, parked cars, scooters and autos,
+  // hoardings and bus shelters along the main roads
+  const parkedKinds = ["car", "car", "car", "auto"] as const;
+  for (const r of CITY.roads) {
+    if (r.b) continue;
+    const [rcx, rcz] = centroid(r.p);
+    const d = dist(rcx, rcz);
+    if (d > 650) continue;
+    const total = pathLength(r.p);
+    // the power lines: poles every 26 m on the side the lamps are not, three sagging wires between them
+    if (r.w <= 12 && d < 500) {
+      let prev: [number, number] | null = null;
+      for (let s = 4; s < total; s += 26) {
+        const [x, z, ux, uz] = along(r.p, s);
+        const px = x + uz * (r.w / 2 + 1.1), pz = z - ux * (r.w / 2 + 1.1);
+        if (obstacles.inBuilding(px, pz)) { prev = null; continue; }
+        sb.add(boxAt(0.22, 8.4, 0.22, px, 0, pz), "pole");
+        sb.add(boxAt(0.1, 0.1, 1.3, px, 7.9, pz, Math.atan2(uz, ux) + Math.PI / 2), "pole");
+        if (prev) {
+          for (const o of [-0.55, 0, 0.55]) {
+            const ax = prev[0] - uz * o, az = prev[1] + ux * o, bx = px - uz * o, bz = pz + ux * o;
+            let lx = ax, ly = 8.0, lz = az;
+            for (let k = 1; k <= 5; k++) {
+              const t = k / 5;
+              const wx = ax + (bx - ax) * t, wz = az + (bz - az) * t, wy = 8.0 - Math.sin(t * Math.PI) * 0.55;
+              sb.add(bar(lx, ly, lz, wx, wy, wz, 0.014, 3), "wire");
+              lx = wx; ly = wy; lz = wz;
+            }
+          }
+        }
+        prev = [px, pz];
+      }
+    }
+    // parked vehicles along the kerb
+    if (r.w >= 6 && d < 420) {
+      for (let s = 8; s < total - 6; s += 15) {
+        if (rnd() < 0.6) continue;
+        const [x, z, ux, uz] = along(r.p, s);
+        const side = rnd() < 0.5 ? 1 : -1;
+        const px = x - uz * side * (r.w / 2 - 1.3), pz = z + ux * side * (r.w / 2 - 1.3);
+        if (obstacles.inBuilding(px, pz) || obstacles.inWater(px, pz)) continue;
+        const kind = parkedKinds[Math.floor(rnd() * parkedKinds.length)];
+        const [body, glass, tyres] = vehicleParts(kind, px, pz, Math.atan2(-uz, ux) + (side > 0 ? Math.PI : 0) + (rnd() - 0.5) * 0.1);
+        sb.add(body, kind === "auto" ? (rnd() < 0.7 ? "carYellow" : "carBlack") : CAR_COLOURS[Math.floor(rnd() * CAR_COLOURS.length)]);
+        sb.add(glass, "carGlass");
+        sb.add(tyres, "tyre");
+      }
+      // scooters by the gates
+      for (let s = 3; s < total - 3; s += 9) {
+        if (rnd() < 0.55) continue;
+        const [x, z, ux, uz] = along(r.p, s);
+        const side = rnd() < 0.5 ? 1 : -1;
+        const off = side * (r.w / 2 + (r.w >= 9 ? 2.2 : 0.9));
+        const px = x - uz * off, pz = z + ux * off;
+        if (obstacles.inBuilding(px, pz) || obstacles.inWater(px, pz)) continue;
+        scooter(sb, px, pz, Math.atan2(-uz, ux) + (rnd() - 0.5) * 0.6, (["carBlack", "carBlack", "carRed", "carSilver", "carBlue"] as MatKey[])[Math.floor(rnd() * 5)]);
+      }
+    }
+    // hoardings and bus shelters on the main roads
+    if (r.w >= 9) {
+      for (let s = 60; s < total - 20; s += 170) {
+        const [x, z, ux, uz] = along(r.p, s);
+        const side = rnd() < 0.5 ? 1 : -1;
+        const off = side * (r.w / 2 + 4.5);
+        const hx = x - uz * off, hz = z + ux * off;
+        if (obstacles.inBuilding(hx, hz) || obstacles.inWater(hx, hz)) continue;
+        const nx = uz * side, nz = -ux * side; // facing the road
+        const sy = 6 + rnd() * 3;
+        sb.add(quad(8, 3, hx + nx * 0.05, sy + 1.5, hz + nz * 0.05, nx, nz, signUV(Math.floor(rnd() * 128))), "shopSign");
+        sb.add(boxAt(8.2, 3.2, 0.1, hx, sy - 0.1, hz, Math.atan2(nx, nz)), "parapet");
+        for (const o of [-2.5, 2.5]) sb.add(boxAt(0.3, sy, 0.3, hx + ux * o, 0, hz + uz * o), "streetLight");
+      }
+      if (d < 600) {
+        for (let s = 110; s < total - 10; s += 260) {
+          const [x, z, ux, uz] = along(r.p, s);
+          const side = rnd() < 0.5 ? 1 : -1;
+          const off = side * (r.w / 2 + 2.2);
+          const bx = x - uz * off, bz = z + ux * off;
+          if (obstacles.inBuilding(bx, bz)) continue;
+          const by = Math.atan2(ux, uz);
+          sb.add(boxAt(4.2, 0.12, 1.8, bx, 2.7, bz, by), "roofGrey");
+          sb.add(boxAt(4.2, 1.6, 0.06, bx - uz * side * 0.85, 1.1, bz + ux * side * 0.85, by), "shopGlass");
+          sb.add(boxAt(3.6, 0.08, 0.5, bx - uz * side * 0.5, 0.5, bz + ux * side * 0.5, by), "balconyRail");
+          for (const o of [-1.9, 1.9]) sb.add(boxAt(0.12, 2.7, 0.12, bx + ux * o, 0, bz + uz * o), "streetLight");
+        }
+      }
+    }
+  }
+  // autos waiting outside the shops
+  for (const poi of SIGNED) {
+    if (poi.d > 500 || rnd() < 0.5) continue;
+    const px = poi.x + (rnd() - 0.5) * 6, pz = poi.y + 7 + rnd() * 3;
+    if (obstacles.inBuilding(px, pz) || obstacles.inWater(px, pz)) continue;
+    const [body, glass, tyres] = vehicleParts("auto", px, pz, rnd() * Math.PI * 2);
+    sb.add(body, rnd() < 0.7 ? "carYellow" : "carBlack");
+    sb.add(glass, "carGlass");
+    sb.add(tyres, "tyre");
   }
 
   // ---- buildings of the near ring

@@ -259,11 +259,11 @@ const paintFarm: Paint = (ctx, w, h, rnd) => {
 };
 
 const paintScrub: Paint = (ctx, w, h, rnd) => {
-  // dry season Gandhinagar: straw grass with bare earth showing and patches of darker scrub
-  ctx.fillStyle = hsl(46, 26, 52);
+  // Gandhinagar's green belt: grass and low scrub, a little straw and earth showing between the bushes
+  ctx.fillStyle = hsl(82, 30, 40);
   ctx.fillRect(0, 0, w, h);
   for (let k = 0; k < 120; k++) {
-    ctx.fillStyle = rnd() < 0.5 ? hsl(70 + rnd() * 20, 22, 30 + rnd() * 10, 0.5) : hsl(38 + rnd() * 10, 26, 44 + rnd() * 14, 0.45);
+    ctx.fillStyle = rnd() < 0.55 ? hsl(95 + rnd() * 25, 32, 24 + rnd() * 10, 0.5) : hsl(50 + rnd() * 16, 28, 46 + rnd() * 14, 0.4);
     ctx.beginPath();
     ctx.ellipse(rnd() * w, rnd() * h, 6 + rnd() * 40, 4 + rnd() * 24, rnd() * Math.PI, 0, Math.PI * 2);
     ctx.fill();
@@ -333,13 +333,13 @@ const paintAsphalt: Paint = (ctx, w, h, rnd) => {
 
 const paintGround: Paint = (ctx, w, h, rnd) => {
   // the grain of the ground only; its tones come from the disc's vertex colours
-  ctx.fillStyle = hsl(44, 14, 74);
+  ctx.fillStyle = hsl(80, 8, 74);
   ctx.fillRect(0, 0, w, h);
   for (let k = 0; k < 160; k++) {
     const roll = rnd();
-    ctx.fillStyle = roll < 0.4 ? hsl(66 + rnd() * 24, 14, 60 + rnd() * 12, 0.4)
-      : roll < 0.7 ? hsl(50 + rnd() * 14, 16, 68 + rnd() * 12, 0.4)
-      : hsl(34 + rnd() * 12, 16, 76 + rnd() * 12, 0.4);
+    ctx.fillStyle = roll < 0.4 ? hsl(90 + rnd() * 24, 16, 60 + rnd() * 12, 0.4)
+      : roll < 0.7 ? hsl(70 + rnd() * 14, 14, 68 + rnd() * 12, 0.4)
+      : hsl(50 + rnd() * 12, 12, 76 + rnd() * 12, 0.4);
     ctx.beginPath();
     ctx.ellipse(rnd() * w, rnd() * h, 24 + rnd() * 160, 14 + rnd() * 90, rnd() * Math.PI, 0, Math.PI * 2);
     ctx.fill();
@@ -356,12 +356,12 @@ const paintGround: Paint = (ctx, w, h, rnd) => {
   noise(ctx, w, h, rnd, 0.1, 16000, 1.5);
 };
 
-/** the ground of the built-up plots: trodden dust and gravel in beige and grey, darker where it is paved */
+/** the ground of the built-up plots: lawns and gardens between the houses, worn to earth and gravel along the paths */
 const paintUrban: Paint = (ctx, w, h, rnd) => {
-  ctx.fillStyle = hsl(38, 16, 60);
+  ctx.fillStyle = hsl(88, 26, 46);
   ctx.fillRect(0, 0, w, h);
   for (let k = 0; k < 120; k++) {
-    ctx.fillStyle = rnd() < 0.5 ? hsl(34 + rnd() * 10, 12 + rnd() * 10, 50 + rnd() * 18, 0.5) : hsl(40, 6, 44 + rnd() * 16, 0.45);
+    ctx.fillStyle = rnd() < 0.5 ? hsl(95 + rnd() * 20, 24 + rnd() * 10, 36 + rnd() * 14, 0.5) : hsl(40 + rnd() * 8, 14, 52 + rnd() * 14, 0.4);
     ctx.beginPath();
     ctx.ellipse(rnd() * w, rnd() * h, 14 + rnd() * 90, 10 + rnd() * 60, rnd() * Math.PI, 0, Math.PI * 2);
     ctx.fill();
@@ -606,7 +606,8 @@ export type MatKey =
   | "windowGlass" | "windowFrame" | "balconyRail" | "acUnit" | "shopSign" | "shopGlass" | "awning" | "compoundWall"
   | "kerb" | "paver" | "divider" | "streetLight" | "bridgeConcrete" | "river" | "lake" | "leafCard" | "leafCardB" | "palmFrond"
   | "farm" | "scrub" | "dirt" | "pitch" | "urban" | "carWhite" | "carSilver" | "carGrey" | "carRed" | "carBlue" | "carBlack"
-  | "carYellow" | "carOrange" | "carGlass" | "tyre" | "carPaint";
+  | "carYellow" | "carOrange" | "carGlass" | "tyre" | "carPaint"
+  | "roofTile" | "stiltDark" | "pipe" | "grill" | "wire" | "pole" | "shutter";
 
 /** the body colour of a car, chosen by its number; the keys the exporter writes one material per */
 export const CAR_COLOURS: MatKey[] = ["carWhite", "carWhite", "carWhite", "carSilver", "carSilver", "carGrey", "carRed", "carBlue", "carBlack", "carBlack"];
@@ -724,6 +725,15 @@ export function createMaterials(onStep?: (name: string) => void): MaterialLib {
     carOrange: std({ color: 0xd9601e, roughness: 0.4 }),
     carGlass: std({ color: 0x1a2229, metalness: 0.5, roughness: 0.1 }),
     tyre: std({ color: 0x151515, roughness: 0.9 }),
+    // the houses' details: clay-tiled roofs on the bungalows, the dark of stilt parking, drain pipes, window grills,
+    // the overhead lines on their concrete poles, shop shutters
+    roofTile: std({ color: 0x9a5236, roughness: 0.9 }),
+    stiltDark: std({ color: 0x1e1d1b, roughness: 0.95 }),
+    pipe: std({ color: 0x5a5a58, roughness: 0.8 }),
+    grill: std({ color: 0x2c2c2c, metalness: 0.6, roughness: 0.5 }),
+    wire: std({ color: 0x1c1c1c, roughness: 0.8 }),
+    pole: std({ color: 0x9a968e, roughness: 0.9 }),
+    shutter: std({ color: 0x8a8d90, metalness: 0.5, roughness: 0.5 }),
     // the moving traffic of the tour: one instanced mesh, body colour per instance over vertex colours
     carPaint: std({ color: 0xffffff, roughness: 0.3, metalness: 0.2, vertexColors: true }),
     glowWarm: std({ color: 0xffe3a6, emissive: 0xffc95e, emissiveIntensity: 1.1, roughness: 0.9 }),

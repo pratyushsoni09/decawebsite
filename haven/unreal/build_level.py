@@ -19,6 +19,7 @@ import sys
 import unreal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import haven_materials  # noqa: E402
 import traffic_sequence  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -93,7 +94,7 @@ def import_textures():
             out[os.path.basename(t.filename)] = unreal.load_asset(p)
     # roughness and normal maps are data, not colour
     for name, tex in out.items():
-        if "_nor" in name or "_rough" in name:
+        if "_nor" in name or "_rough" in name or "_mask" in name:
             tex.set_editor_property("srgb", False)
             if "_nor" in name:
                 tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
@@ -102,117 +103,7 @@ def import_textures():
     return out
 
 
-# ---------------------------------------------------------------- materials
-
-def master(name, textured=False, glass=False, masked=False):
-    path = f"{MAT_DIR}/{name}"
-    if EAL.does_asset_exist(path):
-        EAL.delete_asset(path)
-    mat = AT.create_asset(name, MAT_DIR, unreal.Material, unreal.MaterialFactoryNew())
-    if masked:
-        # foliage cards: the texture's alpha cuts the leaves out, seen from both sides
-        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
-        mat.set_editor_property("two_sided", True)
-        mat.set_editor_property("opacity_mask_clip_value", 0.4)
-    if glass:
-        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-        mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
-        mat.set_editor_property("two_sided", True)
-    rough = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -400, 200)
-    rough.set_editor_property("parameter_name", "Roughness")
-    rough.set_editor_property("default_value", 0.5)
-    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    metal = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -400, 300)
-    metal.set_editor_property("parameter_name", "Metallic")
-    MEL.connect_material_property(metal, "", unreal.MaterialProperty.MP_METALLIC)
-    emis = MEL.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -400, 400)
-    emis.set_editor_property("parameter_name", "Emissive")
-    MEL.connect_material_property(emis, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-    tint = MEL.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -700, 0)
-    tint.set_editor_property("parameter_name", "Color")
-    tint.set_editor_property("default_value", unreal.LinearColor(0.8, 0.8, 0.8, 1))
-    if textured:
-        coord = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureCoordinate, -1300, 0)
-        tiling = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -1300, 150)
-        tiling.set_editor_property("parameter_name", "Tiling")
-        tiling.set_editor_property("default_value", 1.0)
-        mul_uv = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -1100, 50)
-        MEL.connect_material_expressions(coord, "", mul_uv, "A")
-        MEL.connect_material_expressions(tiling, "", mul_uv, "B")
-        tex = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureSampleParameter2D, -900, -100)
-        tex.set_editor_property("parameter_name", "BaseTex")
-        # an unset sampler shows the engine's checkerboard: default to plain white / a flat normal instead
-        tex.set_editor_property("texture", unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture"))
-        MEL.connect_material_expressions(mul_uv, "", tex, "UVs")
-        mul = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -500, -50)
-        MEL.connect_material_expressions(tex, "RGB", mul, "A")
-        MEL.connect_material_expressions(tint, "", mul, "B")
-        # the mesh's vertex colours (the ground's large-scale tones; white on everything else)
-        vcol = MEL.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -500, -200)
-        mul2 = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -300, -100)
-        MEL.connect_material_expressions(mul, "", mul2, "A")
-        MEL.connect_material_expressions(vcol, "", mul2, "B")
-        MEL.connect_material_property(mul2, "", unreal.MaterialProperty.MP_BASE_COLOR)
-        if masked:
-            MEL.connect_material_property(tex, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
-        nor = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureSampleParameter2D, -900, 300)
-        nor.set_editor_property("parameter_name", "NormalTex")
-        nor.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
-        nor.set_editor_property("texture", unreal.load_asset("/Engine/EngineMaterials/DefaultNormal"))
-        MEL.connect_material_expressions(mul_uv, "", nor, "UVs")
-        MEL.connect_material_property(nor, "RGB", unreal.MaterialProperty.MP_NORMAL)
-    else:
-        MEL.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    if glass:
-        op = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -400, 500)
-        op.set_editor_property("parameter_name", "Opacity")
-        op.set_editor_property("default_value", 0.25)
-        MEL.connect_material_property(op, "", unreal.MaterialProperty.MP_OPACITY)
-    MEL.recompile_material(mat)
-    EAL.save_loaded_asset(mat)
-    return mat
-
-
-def build_materials(textures):
-    with open(os.path.join(EXPORT, "materials.json"), encoding="utf8") as f:
-        specs = json.load(f)
-    masters = {"color": master("M_Haven"), "tex": master("M_HavenTex", textured=True), "glass": master("M_HavenGlass", glass=True),
-               "masked": master("M_HavenMasked", textured=True, masked=True)}
-    instances = {}
-    for spec in specs:
-        name = "MI_" + clean(spec["name"])
-        path = f"{MAT_DIR}/{name}"
-        if EAL.does_asset_exist(path):
-            EAL.delete_asset(path)
-        glass = spec["transmission"] > 0.5 or spec["alpha"] < 0.9
-        base_tex = textures.get(spec["textures"].get("baseColor", ""))
-        nor_tex = textures.get(spec["textures"].get("normal", ""))
-        kind = "masked" if (spec.get("masked") and base_tex) else "glass" if glass else ("tex" if (base_tex or nor_tex) else "color")
-        mi = AT.create_asset(name, MAT_DIR, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
-        MEL.set_material_instance_parent(mi, masters[kind])
-        c = spec["baseColor"]
-        t = spec.get("tint", [1, 1, 1])
-        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(t[0], t[1], t[2], 1) if (kind in ("tex", "masked") and base_tex) else unreal.LinearColor(c[0], c[1], c[2], 1))
-        MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", spec["roughness"])
-        MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", spec["metallic"])
-        e = spec["emission"]
-        s = spec["emissionStrength"]
-        MEL.set_material_instance_vector_parameter_value(mi, "Emissive", unreal.LinearColor(e[0] * s, e[1] * s, e[2] * s, 1))
-        if kind in ("tex", "masked"):
-            if base_tex:
-                MEL.set_material_instance_texture_parameter_value(mi, "BaseTex", base_tex)
-            if nor_tex:
-                MEL.set_material_instance_texture_parameter_value(mi, "NormalTex", nor_tex)
-            # Blender maps these in metres through a Mapping node; Unreal's UVs are the mesh's own
-            scale = spec.get("uvScale", [1, 1])[0]
-            MEL.set_material_instance_scalar_parameter_value(mi, "Tiling", float(scale) if scale else 1.0)
-        if kind == "glass":
-            MEL.set_material_instance_scalar_parameter_value(mi, "Opacity", 0.2 if spec["transmission"] > 0.5 else spec["alpha"])
-        MEL.update_material_instance(mi)
-        EAL.save_loaded_asset(mi)
-        instances[clean(spec["name"])] = mi
-    log(f"{len(instances)} material instances")
-    return instances
+# ---------------------------------------------------------------- materials: see haven_materials.py
 
 
 def assign_materials(mesh_paths, instances):
@@ -306,6 +197,12 @@ def build_level(mesh_paths):
     lc.set_editor_property("light_source_angle", 0.8)
     lc.set_editor_property("atmosphere_sun_light", True)
     lc.set_editor_property("cast_shadows", True)
+    # the cumulus throw moving shadows over the plain
+    for prop, value in (("cast_cloud_shadows", True), ("cloud_shadow_strength", 0.6), ("cloud_shadow_extent", 300.0)):
+        try:
+            lc.set_editor_property(prop, value)
+        except Exception as err:  # noqa: BLE001
+            log(f"{prop} left at the default ({err})")
     spawn(unreal.SkyAtmosphere, (0, 0, 0)).set_actor_label("SkyAtmosphere")
     # fair-weather cumulus over the plain
     try:
@@ -324,11 +221,11 @@ def build_level(mesh_paths):
     fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0))
     fog.set_actor_label("Haze")
     fc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
-    # aerial perspective over 7 km of mapped country: a clear day, the Sabarmati still readable at 3 km
+    # aerial perspective over 7 km of green country: a clear, humid day, the Sabarmati still readable at 3 km
     fc.set_editor_property("fog_density", 0.0045)
     fc.set_editor_property("fog_height_falloff", 0.02)
     try:
-        fc.set_editor_property("fog_inscattering_luminance", unreal.LinearColor(0.86, 0.82, 0.74, 1.0))
+        fc.set_editor_property("fog_inscattering_luminance", unreal.LinearColor(0.80, 0.84, 0.90, 1.0))
     except Exception as err:  # noqa: BLE001 - older property name
         log(f"haze colour left at the default ({err})")
     fc.set_editor_property("start_distance", 20000.0)
@@ -360,7 +257,21 @@ def build_level(mesh_paths):
     settings.set_editor_property("override_auto_exposure_max_brightness", True)
     settings.set_editor_property("auto_exposure_max_brightness", 16.0)
     settings.set_editor_property("override_auto_exposure_bias", True)
-    settings.set_editor_property("auto_exposure_bias", 0.0)
+    settings.set_editor_property("auto_exposure_bias", -0.25)
+    # a photographic look: a touch of grain, bloom and vignette, slightly more contrast, no lens flares
+    for flag, prop, value in (("override_film_grain_intensity", "film_grain_intensity", 0.12),
+                              ("override_bloom_intensity", "bloom_intensity", 0.3),
+                              ("override_vignette_intensity", "vignette_intensity", 0.3),
+                              ("override_scene_fringe_intensity", "scene_fringe_intensity", 0.25),
+                              ("override_lens_flare_intensity", "lens_flare_intensity", 0.0),
+                              ("override_color_contrast", "color_contrast", unreal.Vector4(1.06, 1.06, 1.06, 1.0)),
+                              ("override_color_saturation", "color_saturation", unreal.Vector4(1.05, 1.05, 1.05, 1.0)),
+                              ("override_color_gain_shadows", "color_gain_shadows", unreal.Vector4(0.98, 0.99, 1.03, 1.0))):
+        try:
+            settings.set_editor_property(flag, True)
+            settings.set_editor_property(prop, value)
+        except Exception as err:  # noqa: BLE001
+            log(f"{prop} left at the default ({err})")
     settings.set_editor_property("override_white_temp", True)
     settings.set_editor_property("white_temp", 6900.0)
     settings.set_editor_property("override_dynamic_global_illumination_method", True)
@@ -402,7 +313,7 @@ def build_level(mesh_paths):
 def main():
     meshes = import_fbx()
     textures = import_textures()
-    instances = build_materials(textures)
+    instances = haven_materials.build_materials(textures)
     assign_materials(meshes, instances)
     build_level(meshes)
     EAL.save_directory("/Game/Haven")
